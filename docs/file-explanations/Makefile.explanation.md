@@ -1,0 +1,57 @@
+# Makefile
+
+Source: [Makefile](../../Makefile)
+
+## A. File Purpose
+Gives short names to the project's setup, pipeline, test, lint and build commands.
+
+## B. Why This File Exists
+The PRD's repository structure requires it, and it gives every developer the same entry points. Each recipe is one plain command, so developers without `make` can copy it directly.
+
+## C. Dependencies
+- **Tools:** `make`, `uv`, `npm`.
+- **Internal files:** `scripts/*.py`, `backend/pyproject.toml`, `frontend/package.json`.
+- **External services / database:** none.
+- **Depended on by:** developers; CI may use it from Phase 5.
+
+## D. Every Function Explained
+A Makefile has targets rather than functions. Each takes no parameters and returns the exit code of its command; a failure stops the run.
+
+| Target | Runs |
+|---|---|
+| `setup` | Installs Python and frontend dependencies. |
+| `data` | `validate`, `prepare`, `eda`, `audit`, in that required order. |
+| `validate` | `scripts/validate_dataset.py` |
+| `prepare` | `scripts/prepare_dataset.py` |
+| `eda` | `scripts/run_eda.py` |
+| `audit` | `scripts/audit_leakage.py` |
+| `test` | The whole backend test suite. |
+| `test-fast` | All tests except those marked `real_data`. |
+| `lint` | `ruff check` on `backend` and `scripts`. |
+| `docs-check` | `scripts/check_explanations.py` |
+| `frontend-build` | Type-checks and builds the frontend. |
+
+## E. Classes Explained
+None.
+
+## F. Execution Flow
+`make data` runs each stage in order and stops at the first failure, so an invalid dataset never reaches later stages.
+
+## G. Input and Output
+Input: a target name. Output: whatever the underlying command produces.
+
+## H. Important Technical Concepts
+`.PHONY` marks targets as commands rather than files. **`make` is not installed on the development machine, so this file itself has not been executed.** The commands inside it have each been run directly.
+
+## I. Example
+```bash
+make data
+make test-fast
+```
+
+## J. Maintenance Notes
+Keep recipes as single commands that can be pasted. Add targets for Phase 2 (`train`, `evaluate`) and Phase 3 (`migrate`, `serve`) when those commands exist.
+
+## K. Related Files
+- `ENVIRONMENT_SETUP.md` and `TESTING_GUIDE.md`: the same commands, written out.
+- [validate_dataset.py](scripts/validate_dataset.py.explanation.md), [prepare_dataset.py](scripts/prepare_dataset.py.explanation.md), [run_eda.py](scripts/run_eda.py.explanation.md), [audit_leakage.py](scripts/audit_leakage.py.explanation.md): pipeline stages.

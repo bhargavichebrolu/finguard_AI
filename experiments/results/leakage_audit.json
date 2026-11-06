@@ -1,0 +1,106 @@
+{
+  "processed_file_check": {
+    "observed_steps": {
+      "test": {
+        "max_step": 743,
+        "min_step": 378
+      },
+      "train": {
+        "max_step": 322,
+        "min_step": 1
+      },
+      "validation": {
+        "max_step": 377,
+        "min_step": 323
+      }
+    },
+    "passed": true
+  },
+  "schema_check": {
+    "feature_columns": [
+      "amount",
+      "amount_log1p",
+      "transaction_type",
+      "destination_category",
+      "hour_of_day",
+      "hour_sin",
+      "hour_cos"
+    ],
+    "passed": true
+  },
+  "training_signal": {
+    "balance_behaviour_rate_by_class": {
+      "destination_balance_unchanged": {
+        "fraud": 0.49077897054775665,
+        "legitimate": 0.36275295875685937
+      },
+      "newbalanceOrig_is_zero": {
+        "fraud": 0.9870630333058079,
+        "legitimate": 0.5647635364678211
+      },
+      "origin_balance_reconciles_exactly": {
+        "fraud": 0.9911918524635288,
+        "legitimate": 0.20331823199181953
+      }
+    },
+    "excluded_balance_columns": {
+      "derived_destination_balance_error": {
+        "roc_auc": 0.5524986195065469,
+        "separation": 0.5524986195065469
+      },
+      "derived_origin_balance_error": {
+        "roc_auc": 0.081247924147808,
+        "separation": 0.918752075852192
+      },
+      "newbalanceDest": {
+        "roc_auc": 0.45755477499924935,
+        "separation": 0.5424452250007507
+      },
+      "newbalanceOrig": {
+        "roc_auc": 0.2907273071299968,
+        "separation": 0.7092726928700033
+      },
+      "oldbalanceDest": {
+        "roc_auc": 0.366972686800393,
+        "separation": 0.6330273131996069
+      },
+      "oldbalanceOrg": {
+        "roc_auc": 0.8031114508855013,
+        "separation": 0.8031114508855013
+      }
+    },
+    "scope": "training partition only",
+    "selected_features": {
+      "amount": {
+        "roc_auc": 0.7829790689430769,
+        "separation": 0.7829790689430769
+      },
+      "amount_log1p": {
+        "roc_auc": 0.7829790689430769,
+        "separation": 0.7829790689430769
+      },
+      "destination_category": {
+        "roc_auc": 0.668957149661292,
+        "separation": 0.668957149661292
+      },
+      "hour_cos": {
+        "roc_auc": 0.6319277996246645,
+        "separation": 0.6319277996246645
+      },
+      "hour_of_day": {
+        "roc_auc": 0.35142834400226647,
+        "separation": 0.6485716559977335
+      },
+      "hour_sin": {
+        "roc_auc": 0.6739551300171605,
+        "separation": 0.6739551300171605
+      },
+      "transaction_type": {
+        "roc_auc": 0.8490407625325462,
+        "separation": 0.8490407625325462
+      }
+    },
+    "training_fraud_rows": 3633,
+    "training_rows": 4433703
+  }
+}

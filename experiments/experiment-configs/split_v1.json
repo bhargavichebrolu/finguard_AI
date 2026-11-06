@@ -1,0 +1,5 @@
+{
+  "version": "split-v1",
+  "train_row_fraction": 0.70,
+  "validation_row_fraction": 0.15
+}

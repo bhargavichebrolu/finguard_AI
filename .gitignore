@@ -1,0 +1,48 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Datasets: the full PaySim CSV and everything derived from it stay out of Git
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+*.zip
+
+# Model binaries are released separately (see DEPLOYMENT.md)
+artifacts/models/*
+!artifacts/models/.gitkeep
+*.joblib
+*.cbm
+
+# Batch upload scratch space
+backend/tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+catboost_info/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/coverage/
+*.tsbuildinfo
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,115 @@
+{
+  "feature_schema_version": "1.0.0",
+  "features": [
+    {
+      "available_before_completion": true,
+      "business_meaning": "Value of the transaction in the simulation's currency units.",
+      "data_type": "float64",
+      "kind": "numeric",
+      "name": "amount",
+      "rationale": "Known when the transaction is requested; tree models split on it directly.",
+      "source_columns": [
+        "amount"
+      ],
+      "transformation": "Unchanged"
+    },
+    {
+      "available_before_completion": true,
+      "business_meaning": "Order of magnitude of the transaction value.",
+      "data_type": "float64",
+      "kind": "numeric",
+      "name": "amount_log1p",
+      "rationale": "Amounts are heavily right-skewed; linear models need a compressed scale.",
+      "source_columns": [
+        "amount"
+      ],
+      "transformation": "natural log of (1 + amount)"
+    },
+    {
+      "available_before_completion": true,
+      "business_meaning": "Kind of movement: cash in, cash out, debit, payment or transfer.",
+      "data_type": "category",
+      "kind": "categorical",
+      "name": "transaction_type",
+      "rationale": "Known at request time. Labelled fraud occurs only in TRANSFER and CASH_OUT.",
+      "source_columns": [
+        "type"
+      ],
+      "transformation": "Categorical restricted to the five PaySim types"
+    },
+    {
+      "available_before_completion": true,
+      "business_meaning": "Whether money goes to a customer account or a merchant.",
+      "data_type": "category",
+      "kind": "categorical",
+      "name": "destination_category",
+      "rationale": "Required by PRD 4.4. The category is used instead of the identifier. In PaySim it is fully determined by type (merchant if and only if PAYMENT), so it adds no signal here.",
+      "source_columns": [
+        "nameDest"
+      ],
+      "transformation": "First letter of nameDest: C maps to customer, M maps to merchant"
+    },
+    {
+      "available_before_completion": true,
+      "business_meaning": "Simulated hour of the day, assuming one step is one hour.",
+      "data_type": "int64",
+      "kind": "numeric",
+      "name": "hour_of_day",
+      "rationale": "Legitimate activity follows a daily cycle, so the hour carries signal.",
+      "source_columns": [
+        "step"
+      ],
+      "transformation": "step modulo 24"
+    },
+    {
+      "available_before_completion": true,
+      "business_meaning": "Position on the 24-hour clock, sine component.",
+      "data_type": "float64",
+      "kind": "numeric",
+      "name": "hour_sin",
+      "rationale": "Keeps 23:00 next to 00:00 for linear and distance-based methods such as SMOTE.",
+      "source_columns": [
+        "step"
+      ],
+      "transformation": "sin(2 * pi * hour_of_day / 24)"
+    },
+    {
+      "available_before_completion": true,
+      "business_meaning": "Position on the 24-hour clock, cosine component.",
+      "data_type": "float64",
+      "kind": "numeric",
+      "name": "hour_cos",
+      "rationale": "Pairs with hour_sin; both are needed to locate a point on the circle.",
+      "source_columns": [
+        "step"
+      ],
+      "transformation": "cos(2 * pi * hour_of_day / 24)"
+    }
+  ],
+  "rejected_features": [
+    {
+      "name": "oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest",
+      "reason": "Affected by the simulator's fraud cancellation behaviour, and the post-transaction values do not exist at assessment time (PRD 4.3)."
+    },
+    {
+      "name": "isFlaggedFraud",
+      "reason": "Output of an existing rule, kept only as a separate baseline (PRD 4.3)."
+    },
+    {
+      "name": "step, day_index",
+      "reason": "Grow without bound, so later partitions fall outside the range seen in training, and a tree could memorise when fraud occurred instead of learning a pattern."
+    },
+    {
+      "name": "nameOrig, nameDest as numbers",
+      "reason": "Identifiers have no numeric meaning (PRD 4.3)."
+    },
+    {
+      "name": "destination or origin transaction counts",
+      "reason": "Would need account identifiers and an online history store, which the prediction input in PRD 6.2 does not provide. Training on them would create training/serving skew."
+    },
+    {
+      "name": "is_amount_exactly_10m, is_round_amount",
+      "reason": "Available at request time, but they encode the simulator's fraud amount cap rather than behaviour that would carry over to other data."
+    }
+  ]
+}

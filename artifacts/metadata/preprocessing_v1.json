@@ -1,0 +1,72 @@
+{
+  "chunk_size": 500000,
+  "columns_never_read": [
+    "nameOrig",
+    "newbalanceDest",
+    "newbalanceOrig",
+    "oldbalanceDest",
+    "oldbalanceOrg"
+  ],
+  "feature_columns": [
+    "amount",
+    "amount_log1p",
+    "transaction_type",
+    "destination_category",
+    "hour_of_day",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "feature_schema_version": "1.0.0",
+  "library_versions": {
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "pyarrow": "26.0.1",
+    "python": "3.11.15"
+  },
+  "partitions": {
+    "test": {
+      "content_sha256": "0477abf1c84b153a870a7847b220fe4a095f168e2d8bc89c59163d1c8ae88a0b",
+      "first_step": 378,
+      "fraud_rate": 0.004195684199953125,
+      "fraud_rows": 4010,
+      "last_step": 743,
+      "rows": 955744,
+      "rule_flagged_fraud_rows": 13,
+      "rule_flagged_rows": 13
+    },
+    "train": {
+      "content_sha256": "ce4fe3d831c60783b16376d0e41ca1cac6c0f6a78a10c6e05c1c8e982ff77f9f",
+      "first_step": 1,
+      "fraud_rate": 0.0008194053593576295,
+      "fraud_rows": 3633,
+      "last_step": 322,
+      "rows": 4433703,
+      "rule_flagged_fraud_rows": 3,
+      "rule_flagged_rows": 3
+    },
+    "validation": {
+      "content_sha256": "c12d32f24be3642bb8c11a12c4ba408bce1db788a66f5bc2614ca3b0d43279d4",
+      "first_step": 323,
+      "fraud_rate": 0.0005857129205187567,
+      "fraud_rows": 570,
+      "last_step": 377,
+      "rows": 973173,
+      "rule_flagged_fraud_rows": 0,
+      "rule_flagged_rows": 0
+    }
+  },
+  "preprocessing_version": "split-v1",
+  "source_file": "PS_20174392719_1491204439457_log.csv",
+  "source_sha256": "16910f90577b0d981bf8ff289714510bb89bc71bff7d3f220f024e287e4eea6b",
+  "split_boundaries": {
+    "first_step": 1,
+    "last_step": 743,
+    "train_end_step": 322,
+    "validation_end_step": 377
+  },
+  "split_config": {
+    "train_row_fraction": 0.7,
+    "validation_row_fraction": 0.15,
+    "version": "split-v1"
+  }
+}
