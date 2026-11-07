@@ -42,6 +42,7 @@ A Phase 2 acceptance criterion is that artefacts can be loaded independently. PR
 | `test_loaded_model_scores_like_the_fitted_one` | `saved_model`, `model_partition` | Saving changes nothing. |
 | `test_scores_are_probabilities_in_range` | `saved_model` | PRD 14.1 output and range. |
 | `test_classify_uses_the_frozen_threshold` | `saved_model` | PRD 14.1 threshold behaviour. |
+| `test_threshold_just_above_a_tied_score_excludes_that_score` | `saved_model` | `classify` compares as float64. A frozen threshold can sit one float64 step above a tied block of float32 scores, and a float32 comparison would round it down and alert on the whole block. |
 | `test_extra_columns_such_as_labels_are_ignored` | `saved_model` | A label or balance column cannot affect a prediction. |
 | `test_altered_model_file_is_refused` | `saved_model` | A one-byte change is detected. |
 | `test_schema_version_mismatch_is_refused` | `saved_model` | Incompatible schema is refused. |

@@ -15,12 +15,20 @@ from sklearn.model_selection import ParameterSampler
 
 from app.ml.candidates import IMBALANCE_STRATEGIES, MODEL_FAMILIES, CandidateSpec
 from app.ml.dataset_preparation import PartitionData
-from app.ml.evaluation import build_slices, evaluate_scores, ranking_metrics, threshold_metrics
+from app.ml.evaluation import (
+    build_slices,
+    evaluate_scores,
+    ranking_metrics,
+    threshold_for_fpr_cap,
+    threshold_metrics,
+)
 from app.ml.experiments import (
     RunStore,
     evaluate_candidate,
+    fit_candidate,
     load_development_partition,
     run_candidate,
+    score_rows,
 )
 from app.ml.imbalance import OVERSAMPLING_METHODS
 from app.ml.pipeline_io import write_json
@@ -199,6 +207,67 @@ def tuning_specs(
         )
         for sample in samples
     ]
+
+
+def run_lightgbm_diagnostic(
+    data: ExperimentData, config: dict[str, Any], tuned_hyperparameters: dict[str, Any]
+) -> dict[str, Any]:
+    """Find out why LightGBM collapsed in the matrix on two imbalance strategies.
+
+    The matrix used one baseline for LightGBM, and tuning kept only its best strategy, so the two
+    strategies that collapsed never met any other settings. This refits them with the tuned
+    settings, and with LightGBM's starting score turned off, which is what stops the divergence.
+    It ran after selection, so none of these fits were eligible and none enter the run store.
+    """
+    baseline = config["baseline_hyperparameters"]["lightgbm"]
+    settings = {
+        "baseline": baseline,
+        "tuned": tuned_hyperparameters,
+        "baseline, boost_from_average off": {**baseline, "boost_from_average": False},
+        "tuned, boost_from_average off": {**tuned_hyperparameters, "boost_from_average": False},
+    }
+    train_labels = data.train.labels.to_numpy()
+    labels = data.validation.labels.to_numpy()
+    cap = config["threshold"]["operational_fpr_cap"]
+    cells = []
+    for strategy in ("original", "class_weight"):
+        for name, hyperparameters in settings.items():
+            cell: dict[str, Any] = {"strategy": strategy, "settings": name}
+            spec = CandidateSpec("lightgbm", strategy, hyperparameters, config["primary_seed"])
+            try:
+                fitted = fit_candidate(
+                    spec,
+                    data.train.features,
+                    train_labels,
+                    config["threads"],
+                    config["oversampling"]["k_neighbors"],
+                )
+                scores = score_rows(fitted.pipeline, data.validation.features)
+            except Exception as error:  # noqa: BLE001 - a crash is itself the finding to record
+                cells.append({**cell, "status": "failed", "error": f"{type(error).__name__}"})
+                continue
+            ranking = ranking_metrics(labels, scores)
+            threshold = threshold_for_fpr_cap(labels, scores, cap)
+            booster = fitted.pipeline.named_steps["model"].booster_
+            cells.append(
+                {
+                    **cell,
+                    "status": "ok",
+                    "trees_built": int(booster.num_trees()),
+                    "trees_requested": int(hyperparameters["n_estimators"]),
+                    "largest_split_gain": float(booster.trees_to_dataframe()["split_gain"].max()),
+                    "distinct_scores": int(np.unique(scores).size),
+                    "pr_auc": ranking["pr_auc"],
+                    "roc_auc": ranking["roc_auc"],
+                    "recall_at_fpr_cap": threshold_metrics(labels, scores, threshold)["recall"],
+                }
+            )
+    return {
+        "scope": "Diagnostic on train and validation, after selection. Not eligible for selection.",
+        "eligible_for_selection": False,
+        "settings": settings,
+        "cells": cells,
+    }
 
 
 def run_tuning(data: ExperimentData, config: dict[str, Any], store: RunStore) -> None:

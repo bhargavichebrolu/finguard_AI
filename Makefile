@@ -3,7 +3,7 @@
 
 UV_RUN = uv run --project backend
 
-.PHONY: setup data validate prepare eda audit drift train select explain final-test export test test-fast lint docs-check frontend-build
+.PHONY: setup data validate prepare eda audit drift train select explain diagnose final-test export test test-fast lint docs-check frontend-build
 
 setup:
 	uv sync --project backend
@@ -34,6 +34,9 @@ select:
 
 explain:
 	$(UV_RUN) python scripts/explain_model.py
+
+diagnose:
+	$(UV_RUN) python scripts/diagnose_lightgbm.py
 
 final-test:
 	$(UV_RUN) python scripts/evaluate_final_test.py

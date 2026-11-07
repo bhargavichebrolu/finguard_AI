@@ -34,6 +34,10 @@ The authorisation forbids adjusting or selectively reporting results. A reportin
 |---|---|---|
 | `test_matrix_values_mark_a_failed_run_as_missing` | none | A failure is never shown as a score. |
 | `test_all_runs_csv_keeps_failures_and_exact_values` | `tmp_path` | The CSV has every run and unrounded values. |
+| `test_partitions_are_reported_in_time_order_not_key_order` | none | Tables and charts read train, validation, test. |
+| `test_sensitivity_runs_are_all_reported_beside_what_they_changed` | none | Sensitivity runs appear with their reference, and a failed one still appears. `_sensitivity_runs` builds the fixture data. |
+| `test_search_table_counts_failed_settings` | none | Failed search settings are counted, not hidden. |
+| `test_lightgbm_diagnostic_states_it_was_outside_selection_and_shows_crashes` | none | The diagnostic is labelled, and a crashed fit stays visible. |
 | `test_undefined_values_show_as_not_available_not_zero` | none | `n/a` and 0 stay distinct. |
 | `test_table_aligns_columns_and_has_a_separator` | none | Markdown is well formed. |
 | `test_injection_replaces_only_the_generated_block` | `tmp_path` | Written interpretation is preserved. |

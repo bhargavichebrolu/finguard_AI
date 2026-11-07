@@ -144,6 +144,7 @@ Each has a full document in [docs/file-explanations/](docs/file-explanations/).
 | `scripts/train_models.py` | Runs the experiment stages |
 | `scripts/evaluate_models.py` | Selects and freezes the model and threshold |
 | `scripts/explain_model.py` | Produces SHAP results on validation |
+| `scripts/diagnose_lightgbm.py` | Explains LightGBM's collapse in the matrix; its fits are not eligible for selection |
 | `scripts/evaluate_final_test.py` | Runs the one test evaluation, after checking the freeze is committed |
 | `scripts/export_metrics.py` | Generates charts, tables and the metrics bundle |
 | `scripts/check_explanations.py` | Enforces the documentation rule |
@@ -201,6 +202,7 @@ experiments_v1.json, train.parquet, validation.parquet
   |                            --> artifacts/models/fraud_detector_v1/model.joblib
   |                            --> artifacts/metadata/model_v1.json (frozen)
   | explain_model.py           --> results/phase2/shap_summary.json
+  | diagnose_lightgbm.py       --> results/phase2/lightgbm_diagnostic.json (outside selection)
   | git commit (the freeze)
   | evaluate_final_test.py     --> results/phase2/test_evaluation.json (once; reads test.parquet)
   | export_metrics.py          --> figures/models/, all_runs.csv, ML_EXPERIMENTS.md, model_v1_metrics.json
@@ -208,7 +210,7 @@ experiments_v1.json, train.parquet, validation.parquet
 Partitions are read through `load_development_partition`, which refuses the test partition. Oversampling happens only inside `fit_candidate`, on the rows of the fold being fitted. Every result is reported overall and for sparse and normal steps.
 
 ## 10. Model saving and loading (implemented; API use planned for Phase 3)
-`save_model_artifact` writes one sklearn pipeline (preprocessing and model together) to `artifacts/models/<version>/model.joblib`, and metadata to `artifacts/metadata/model_v1.json`. The metadata records the feature schema version, preprocessing hash, threshold, score meaning, library versions and the file's SHA-256. `load_model_artifact` checks the schema, columns and hash before opening the file, and imports no experiment code. `LoadedModel.predict_scores` starts from the four prediction inputs. The Phase 3 API will use this directly.
+`save_model_artifact` writes one sklearn pipeline (preprocessing and model together) to `artifacts/models/<version>/model.joblib`, and metadata to `artifacts/metadata/model_v1.json`. The metadata records the feature schema version, preprocessing hash, threshold, score meaning, library versions and the file's SHA-256. `load_model_artifact` checks the schema, columns and hash before opening the file, and imports no experiment code. `LoadedModel.predict_scores` starts from the four prediction inputs and returns float64 scores, which the frozen threshold must be compared with. The Phase 3 API will use this directly.
 
 ## 11. FastAPI architecture (planned: Phase 3)
 Routes handle HTTP only, calling services for business logic, repositories for database access, and `app/ml` for inference, with configuration in `app/core` and authentication in `app/security`.

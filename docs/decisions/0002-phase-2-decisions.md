@@ -88,3 +88,13 @@ Rolling-origin anchors at 55%, 70%, 85% and 100% of training rows, using row cou
 ## 10. Added files beyond PRD 13
 
 `scripts/analyse_temporal_drift.py`, `explain_model.py` and `evaluate_final_test.py` give their steps a command. Section 13 permits additions.
+
+## 11. Added after results existed
+
+Everything in this section was written after validation results were seen and before test was opened. None of it changes the rule, the candidates or the threshold objective above.
+
+- **Run count.** 125 runs were recorded, not 126. One Logistic Regression tuning sample matched its baseline, so the run store reused that result.
+- **Sensitivity runs added to the report.** They were always saved, but the generated tables left them out. They now appear with the range of each family's search.
+- **LightGBM diagnostic.** `scripts/diagnose_lightgbm.py` explains why LightGBM collapsed on two strategies. It is marked ineligible, stays out of the run store, and did not affect selection. Its best fit would not automatically have won, and was not bootstrapped.
+- **Freeze evidence strengthened.** The test report field `frozen_at_commit` was renamed `model_fitted_at_commit`, because it records the commit the model was fitted from. Tests now check the Git history of the freeze files directly.
+- **Comparison precision.** The frozen threshold sits one float64 step above a float32 score, so scores must be compared as float64. All scoring paths already did, and a test now guards this.

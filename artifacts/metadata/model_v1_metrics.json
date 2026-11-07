@@ -1,0 +1,70 @@
+{
+  "explanation_limitations": [
+    "SHAP explains this model's output. It does not establish that a feature causes fraud.",
+    "Credit is split among correlated features, so groups are more reliable than single features.",
+    "Fraud labels come from a simulator, so patterns may reflect how it was programmed.",
+    "Local explanations describe one score and do not carry over to other transactions."
+  ],
+  "family": "xgboost",
+  "feature_schema_version": "1.0.0",
+  "global_feature_importance": {
+    "by_feature": {
+      "amount": 0.3719262375680284,
+      "amount_log1p": 0.14982088134118907,
+      "destination_category_customer": 0.2648292128208535,
+      "destination_category_merchant": 0.04848322929257761,
+      "hour_cos": 0.04679773158770518,
+      "hour_of_day": 0.22850005283645192,
+      "hour_sin": 0.10667133869273743,
+      "transaction_type_CASH_IN": 0.7013793273225144,
+      "transaction_type_CASH_OUT": 0.39670080902598004,
+      "transaction_type_DEBIT": 0.0035278189827213555,
+      "transaction_type_PAYMENT": 0.8839292730794839,
+      "transaction_type_TRANSFER": 0.38404257832531025
+    },
+    "by_group": {
+      "amount": 0.516690362260134,
+      "hour": 0.3536162248454062,
+      "transaction_type_and_destination": 2.3020379072005817
+    },
+    "output_scale": "log_odds"
+  },
+  "model_version": "fraud_detector_v1",
+  "score_semantics": "Model output trained on the natural class distribution. It is estimated on the training period's fraud rate, so it is not a calibrated probability for other periods.",
+  "strategy": "original",
+  "test": null,
+  "threshold": {
+    "chosen_on": "validation partition",
+    "objective": "Highest recall with a false positive rate of at most 0.001 on validation. A false positive rate does not depend on prevalence, whereas precision and F1 do.",
+    "operational_fpr_cap": 0.001,
+    "value": 0.02841914258897305
+  },
+  "validation": {
+    "at_threshold": {
+      "accuracy": 0.9987586996351111,
+      "alert_rate": 0.0011385437121662848,
+      "alerts": 1108,
+      "alerts_per_step": 20.145454545454545,
+      "balanced_accuracy": 0.7056915552226454,
+      "f1": 0.2800953516090584,
+      "false_negative_rate": 0.5877192982456141,
+      "false_negatives": 335,
+      "false_positive_rate": 0.0008975913090952834,
+      "false_positives": 873,
+      "precision": 0.21209386281588447,
+      "recall": 0.41228070175438597,
+      "threshold": 0.02841914258897305,
+      "true_negatives": 971730,
+      "true_positives": 235
+    },
+    "ranking": {
+      "brier": 0.00045157325241136105,
+      "fraud_rows": 570,
+      "pr_auc": 0.3498507179238988,
+      "pr_auc_lift": 597.3074959897446,
+      "prevalence": 0.0005857129205187567,
+      "roc_auc": 0.9461268107968036,
+      "rows": 973173
+    }
+  }
+}

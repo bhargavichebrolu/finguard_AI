@@ -1,6 +1,6 @@
 # Architecture
 
-**Implemented through Phase 1:** the offline data pipeline and frontend toolchain. Everything else below is the target design from the [PRD](docs/PRD.md) and is marked as planned.
+**Implemented through Phase 2:** the offline data pipeline, experiments and model artefacts, and the frontend toolchain. Everything else below is the target design from the [PRD](docs/PRD.md) and is marked as planned.
 
 ## Target system
 
@@ -26,7 +26,8 @@ Training and live inference are separate processes. The API loads an already-tra
 |---|---|---|
 | Schema and feature code | `backend/app/ml/` | Implemented |
 | Data pipeline commands | `scripts/` | Implemented |
-| Model training | `backend/app/ml/`, `scripts/` | Planned: Phase 2 |
+| Model experiments, selection, final evaluation | `backend/app/ml/`, `scripts/` | Implemented |
+| Model loading for serving | `backend/app/ml/model_artifacts.py`, `preprocessing.py` | Implemented; the API uses it from Phase 3 |
 | REST API, services, repositories | `backend/app/` | Planned: Phase 3 |
 | Database models and migrations | `backend/app/models/`, `backend/migrations/` | Planned: Phase 3 |
 | React application | `frontend/src/` | Toolchain only; pages in Phase 4 |
@@ -42,6 +43,8 @@ Training and live inference are separate processes. The API loads an already-tra
 5. **Library code takes paths as arguments.** Only `scripts/` uses repository defaults, which is what lets tests run on small fixtures.
 6. **Saved outputs are the source of truth.** Charts render from saved summaries, and documentation and the planned UI report saved results.
 7. **Three kinds of truth stay separate** (PRD 6.1): ground-truth labels, model predictions and investigation outcomes.
+8. **The serving path is light.** `model_artifacts`, `preprocessing`, `features` and `schema` import no training-only code, which a test checks in a new process.
+9. **One choke point per rule.** Oversampling happens only in `fit_candidate`. The test partition is read only by `final_evaluation`.
 
 ## Dependency layout
 
@@ -56,11 +59,26 @@ backend/app/ml/pipeline_io.py   no internal imports
         |--- dataset_preparation.py uses features, splitting, schema, pipeline_io
         ^
         |--- leakage_audit.py     uses dataset_preparation, features, schema, splitting, pipeline_io
-        |--- eda.py               uses features, schema, splitting, pipeline_io
+        |--- eda.py               uses features, regimes, schema, splitting, pipeline_io
+        |--- regimes.py           no internal imports
+        |--- preprocessing.py     uses schema
+        |--- model_artifacts.py   uses features, preprocessing, schema, pipeline_io  (serving path)
+        ^
+        |--- imbalance.py         uses features, preprocessing, schema
+        |--- candidates.py        uses imbalance, preprocessing
+        |--- evaluation.py        uses regimes, schema
+        |--- drift.py             uses features, regimes, schema, splitting
+        ^
+        |--- experiments.py       uses candidates, dataset_preparation, evaluation, imbalance, preprocessing, pipeline_io
+        |--- experiment_stages.py uses experiments and the modules above
+        |--- selection.py         uses experiment_stages, experiments, model_artifacts, evaluation
+        |--- explainability.py    no internal imports
+        |--- final_evaluation.py  uses dataset_preparation, drift, evaluation, experiment_stages, model_artifacts
+        |--- reporting.py         uses candidates, explainability
         ^
 scripts/*.py                    command-line wrappers
 ```
 
 ## Key decisions
 
-Recorded in [docs/decisions/0001-phase-1-decisions.md](docs/decisions/0001-phase-1-decisions.md).
+Recorded in [ADR 0001](docs/decisions/0001-phase-1-decisions.md) and [ADR 0002](docs/decisions/0002-phase-2-decisions.md).

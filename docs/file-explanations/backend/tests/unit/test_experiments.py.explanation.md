@@ -46,6 +46,7 @@ Small helpers nested inside single tests. `spy` records what the oversampler rec
 | `test_same_seed_reproduces_scores_exactly` | `model_partition`, `later_partition` | PRD 14.1 reproducibility, including oversampling. |
 | `test_measure_inference_returns_batch_scores_and_timings` | `model_partition`, `later_partition` | Timing fields are filled. |
 | `test_evaluate_candidate_reports_natural_evaluation_rows` | `model_partition`, `later_partition` | Evaluation rows keep their natural count and fraud total. |
+| `test_lightgbm_diagnostic_is_outside_selection_and_records_crashes` | `monkeypatch`, `model_partition`, `later_partition` | The diagnostic is marked ineligible, runs all eight cells, and keeps a crash as a result. Its nested helper `crash` stands in for a failing fit. |
 | `test_store_saves_and_resumes` | `tmp_path` | Results survive a restart. |
 | `test_run_candidate_skips_finished_runs` | `tmp_path` | Reruns don't repeat work. |
 | `test_run_candidate_records_failure_rather_than_dropping_it` | `tmp_path` | No selective reporting of failures. |

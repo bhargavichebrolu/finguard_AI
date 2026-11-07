@@ -12,11 +12,13 @@ import pytest
 
 from app.ml.candidates import CandidateSpec
 from app.ml.experiments import fit_candidate, score_rows
+from app.ml.features import engineer_features
 from app.ml.model_artifacts import (
     ModelArtifactError,
     load_model_artifact,
     save_model_artifact,
 )
+from app.ml.preprocessing import compact_features
 from app.ml.schema import FEATURE_COLUMNS, FEATURE_SCHEMA_VERSION
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -94,6 +96,24 @@ def test_classify_uses_the_frozen_threshold(saved_model):
     # Setting the threshold to a row's score makes that row alert, and only rows at or above it.
     model.threshold = float(scores.max())
     assert model.classify(inputs_frame()).tolist() == (scores >= scores.max()).tolist()
+
+
+def test_threshold_just_above_a_tied_score_excludes_that_score(saved_model):
+    """Frozen thresholds can sit one float64 step above a tied block of float32 model scores.
+
+    Comparing float32 scores with that threshold would round it down onto the block under NumPy 2
+    rules and add every tied row as an alert, so scores must be compared as float64.
+    """
+    _, metadata_path, models_dir = saved_model
+    model = load_model_artifact(metadata_path, models_dir)
+    highest_model_output = model.pipeline.predict_proba(
+        compact_features(engineer_features(inputs_frame()))
+    )[:, 1].astype("float32")
+    highest = float(highest_model_output.max())
+    model.threshold = float(np.nextafter(highest, np.inf))
+
+    assert (highest_model_output >= model.threshold).any(), "float32 comparison would round down"
+    assert not model.classify(inputs_frame()).any()
 
 
 def test_extra_columns_such_as_labels_are_ignored(saved_model):

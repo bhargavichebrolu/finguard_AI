@@ -1,0 +1,107 @@
+{
+  "experiment_config_version": "experiments_v1",
+  "family": "xgboost",
+  "feature_columns": [
+    "amount",
+    "amount_log1p",
+    "transaction_type",
+    "destination_category",
+    "hour_of_day",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "feature_schema_version": "1.0.0",
+  "library_versions": {
+    "joblib": "1.6.0",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "python": "3.11.15",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0"
+  },
+  "model_file": "fraud_detector_v1/model.joblib",
+  "model_input_columns": [
+    "transaction_type_CASH_IN",
+    "transaction_type_CASH_OUT",
+    "transaction_type_DEBIT",
+    "transaction_type_PAYMENT",
+    "transaction_type_TRANSFER",
+    "destination_category_customer",
+    "destination_category_merchant",
+    "amount",
+    "amount_log1p",
+    "hour_of_day",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "model_sha256": "69813c176b02d035f550e80f0f694f44bb9fec8a31222a25de189525a91ad40c",
+  "model_size_bytes": 57526,
+  "model_version": "fraud_detector_v1",
+  "preprocessing_metadata_sha256": "34b1668b03674fe9fa16df835329f4bc77617f57ac87d59ab48986e0926cd7b9",
+  "refit_matches_recorded_run": true,
+  "run_id": "xgboost-original-3d136cf31f",
+  "score_semantics": "Model output trained on the natural class distribution. It is estimated on the training period's fraud rate, so it is not a calibrated probability for other periods.",
+  "source_commit": "80371beb90ceb12ea5b394f8b1b58454db8ae111",
+  "spec": {
+    "dropped_features": [],
+    "family": "xgboost",
+    "hyperparameters": {
+      "colsample_bytree": 0.8,
+      "learning_rate": 0.03,
+      "max_depth": 4,
+      "min_child_weight": 20,
+      "n_estimators": 200,
+      "reg_lambda": 1.0,
+      "subsample": 0.8
+    },
+    "seed": 42,
+    "strategy": "original",
+    "target_ratio": null
+  },
+  "status": "frozen",
+  "threshold": {
+    "chosen_on": "validation partition",
+    "objective": "Highest recall with a false positive rate of at most 0.001 on validation. A false positive rate does not depend on prevalence, whereas precision and F1 do.",
+    "operational_fpr_cap": 0.001,
+    "value": 0.02841914258897305
+  },
+  "trained_on": "train partition only",
+  "training_report": {
+    "fit_seconds": 37.78301139990799,
+    "fraud_rows_fitted": 3633,
+    "resample_seconds": 0.0,
+    "resampling": null,
+    "rows_fitted": 4433703,
+    "source_fraud_rows": 3633,
+    "source_rows": 4433703,
+    "total_seconds": 37.78301139990799
+  },
+  "validation_summary": {
+    "at_threshold": {
+      "accuracy": 0.9987586996351111,
+      "alert_rate": 0.0011385437121662848,
+      "alerts": 1108,
+      "alerts_per_step": 20.145454545454545,
+      "balanced_accuracy": 0.7056915552226454,
+      "f1": 0.2800953516090584,
+      "false_negative_rate": 0.5877192982456141,
+      "false_negatives": 335,
+      "false_positive_rate": 0.0008975913090952834,
+      "false_positives": 873,
+      "precision": 0.21209386281588447,
+      "recall": 0.41228070175438597,
+      "threshold": 0.02841914258897305,
+      "true_negatives": 971730,
+      "true_positives": 235
+    },
+    "ranking": {
+      "brier": 0.00045157325241136105,
+      "fraud_rows": 570,
+      "pr_auc": 0.3498507179238988,
+      "pr_auc_lift": 597.3074959897446,
+      "prevalence": 0.0005857129205187567,
+      "roc_auc": 0.9461268107968036,
+      "rows": 973173
+    }
+  }
+}

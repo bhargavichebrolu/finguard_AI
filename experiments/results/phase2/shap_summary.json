@@ -1,0 +1,458 @@
+{
+  "additivity_max_error": 5.364418029785156e-07,
+  "base_value": -7.161013603210449,
+  "family": "xgboost",
+  "fraud_rows_explained": 570,
+  "limitations": [
+    "SHAP explains this model's output. It does not establish that a feature causes fraud.",
+    "Credit is split among correlated features, so groups are more reliable than single features.",
+    "Fraud labels come from a simulator, so patterns may reflect how it was programmed.",
+    "Local explanations describe one score and do not carry over to other transactions."
+  ],
+  "local_examples": {
+    "most_missed_fraud": {
+      "alert": false,
+      "base_value": -7.161013603210449,
+      "inputs": {
+        "amount": 161859.15625,
+        "destination_category": "customer",
+        "hour_of_day": 19,
+        "transaction_type": "CASH_OUT"
+      },
+      "negative_contributions": [
+        {
+          "feature": "amount",
+          "shap_value": -0.5973394513130188
+        },
+        {
+          "feature": "hour_of_day",
+          "shap_value": -0.32085317373275757
+        },
+        {
+          "feature": "hour_sin",
+          "shap_value": -0.3052307367324829
+        },
+        {
+          "feature": "transaction_type_TRANSFER",
+          "shap_value": -0.29209059476852417
+        },
+        {
+          "feature": "amount_log1p",
+          "shap_value": -0.22481168806552887
+        }
+      ],
+      "output_scale": "log_odds",
+      "positive_contributions": [
+        {
+          "feature": "transaction_type_CASH_OUT",
+          "shap_value": 0.34146514534950256
+        },
+        {
+          "feature": "transaction_type_PAYMENT",
+          "shap_value": 0.20465989410877228
+        },
+        {
+          "feature": "transaction_type_CASH_IN",
+          "shap_value": 0.1787632703781128
+        },
+        {
+          "feature": "destination_category_customer",
+          "shap_value": 0.0450654961168766
+        },
+        {
+          "feature": "hour_cos",
+          "shap_value": 0.013963541015982628
+        },
+        {
+          "feature": "destination_category_merchant",
+          "shap_value": 0.004931223578751087
+        },
+        {
+          "feature": "transaction_type_DEBIT",
+          "shap_value": 0.0015805098228156567
+        }
+      ],
+      "score": 0.0003001538570970297,
+      "true_label": 1
+    },
+    "strongest_false_alert": {
+      "alert": true,
+      "base_value": -7.161013603210449,
+      "inputs": {
+        "amount": 2821973.25,
+        "destination_category": "customer",
+        "hour_of_day": 2,
+        "transaction_type": "TRANSFER"
+      },
+      "negative_contributions": [
+        {
+          "feature": "transaction_type_CASH_OUT",
+          "shap_value": -0.443205326795578
+        },
+        {
+          "feature": "hour_sin",
+          "shap_value": -0.007008653599768877
+        }
+      ],
+      "output_scale": "log_odds",
+      "positive_contributions": [
+        {
+          "feature": "hour_of_day",
+          "shap_value": 3.3213388919830322
+        },
+        {
+          "feature": "amount",
+          "shap_value": 2.2916274070739746
+        },
+        {
+          "feature": "amount_log1p",
+          "shap_value": 0.7989653944969177
+        },
+        {
+          "feature": "transaction_type_TRANSFER",
+          "shap_value": 0.5437808036804199
+        },
+        {
+          "feature": "transaction_type_PAYMENT",
+          "shap_value": 0.43759608268737793
+        },
+        {
+          "feature": "hour_cos",
+          "shap_value": 0.2491343468427658
+        },
+        {
+          "feature": "transaction_type_CASH_IN",
+          "shap_value": 0.19182328879833221
+        },
+        {
+          "feature": "destination_category_customer",
+          "shap_value": 0.04952152073383331
+        },
+        {
+          "feature": "destination_category_merchant",
+          "shap_value": 0.006767653860151768
+        },
+        {
+          "feature": "transaction_type_DEBIT",
+          "shap_value": 0.0016896477900445461
+        }
+      ],
+      "score": 0.569795548915863,
+      "true_label": 0
+    },
+    "strongest_true_alert": {
+      "alert": true,
+      "base_value": -7.161013603210449,
+      "inputs": {
+        "amount": 3244067.25,
+        "destination_category": "customer",
+        "hour_of_day": 5,
+        "transaction_type": "CASH_OUT"
+      },
+      "negative_contributions": [],
+      "output_scale": "log_odds",
+      "positive_contributions": [
+        {
+          "feature": "amount",
+          "shap_value": 3.647545337677002
+        },
+        {
+          "feature": "hour_of_day",
+          "shap_value": 3.1493608951568604
+        },
+        {
+          "feature": "transaction_type_CASH_OUT",
+          "shap_value": 1.5413823127746582
+        },
+        {
+          "feature": "amount_log1p",
+          "shap_value": 1.317677617073059
+        },
+        {
+          "feature": "hour_sin",
+          "shap_value": 1.182693600654602
+        },
+        {
+          "feature": "transaction_type_PAYMENT",
+          "shap_value": 0.47032564878463745
+        },
+        {
+          "feature": "transaction_type_TRANSFER",
+          "shap_value": 0.3453502357006073
+        },
+        {
+          "feature": "transaction_type_CASH_IN",
+          "shap_value": 0.21081066131591797
+        },
+        {
+          "feature": "hour_cos",
+          "shap_value": 0.1583109349012375
+        },
+        {
+          "feature": "destination_category_customer",
+          "shap_value": 0.06108403950929642
+        },
+        {
+          "feature": "destination_category_merchant",
+          "shap_value": 0.007130894344300032
+        },
+        {
+          "feature": "transaction_type_DEBIT",
+          "shap_value": 0.0016896477900445461
+        }
+      ],
+      "score": 0.9928420782089233,
+      "true_label": 1
+    }
+  },
+  "output_scale": "log_odds",
+  "rows_explained": 20570,
+  "scope": "Validation rows: all fraud, plus a reweighted sample of legitimate rows",
+  "summary": {
+    "all_rows": {
+      "mean_absolute_by_feature": {
+        "amount": 0.3719262375680284,
+        "amount_log1p": 0.14982088134118907,
+        "destination_category_customer": 0.2648292128208535,
+        "destination_category_merchant": 0.04848322929257761,
+        "hour_cos": 0.04679773158770518,
+        "hour_of_day": 0.22850005283645192,
+        "hour_sin": 0.10667133869273743,
+        "transaction_type_CASH_IN": 0.7013793273225144,
+        "transaction_type_CASH_OUT": 0.39670080902598004,
+        "transaction_type_DEBIT": 0.0035278189827213555,
+        "transaction_type_PAYMENT": 0.8839292730794839,
+        "transaction_type_TRANSFER": 0.38404257832531025
+      },
+      "mean_absolute_by_group": {
+        "amount": 0.516690362260134,
+        "hour": 0.3536162248454062,
+        "transaction_type_and_destination": 2.3020379072005817
+      },
+      "mean_signed_by_group": {
+        "amount": -0.35874790057779593,
+        "hour": -0.29627577748526307,
+        "transaction_type_and_destination": -1.7751671866397198
+      },
+      "rows": 20570
+    },
+    "fraud": {
+      "mean_absolute_by_feature": {
+        "amount": 1.111505369816727,
+        "amount_log1p": 0.3584175512677655,
+        "destination_category_customer": 0.04821372349795542,
+        "destination_category_merchant": 0.005626587637520411,
+        "hour_cos": 0.11514436266826171,
+        "hour_of_day": 1.0641905105705454,
+        "hour_sin": 0.3586575591673241,
+        "transaction_type_CASH_IN": 0.19758240321749135,
+        "transaction_type_CASH_OUT": 0.5679054114640805,
+        "transaction_type_DEBIT": 0.001812718719603461,
+        "transaction_type_PAYMENT": 0.2947537412507492,
+        "transaction_type_TRANSFER": 0.665950829418082
+      },
+      "mean_absolute_by_group": {
+        "amount": 1.4620494980708156,
+        "hour": 1.47548953026141,
+        "transaction_type_and_destination": 1.359372270159554
+      },
+      "mean_signed_by_group": {
+        "amount": 1.0468874554868721,
+        "hour": 1.0401011106018958,
+        "transaction_type_and_destination": 1.359372270159554
+      },
+      "rows": 570
+    },
+    "legitimate": {
+      "mean_absolute_by_feature": {
+        "amount": 0.3714928026460903,
+        "amount_log1p": 0.14969863197340166,
+        "destination_category_customer": 0.264956161667314,
+        "destination_category_merchant": 0.04850834569232487,
+        "hour_cos": 0.04675767662209647,
+        "hour_of_day": 0.2280102912781302,
+        "hour_sin": 0.106523660610652,
+        "transaction_type_CASH_IN": 0.7016745806239538,
+        "transaction_type_CASH_OUT": 0.39660047351047195,
+        "transaction_type_DEBIT": 0.0035288241278319268,
+        "transaction_type_PAYMENT": 0.8842745630417217,
+        "transaction_type_TRANSFER": 0.3838773642522271
+      },
+      "mean_absolute_by_group": {
+        "amount": 0.5161363286951418,
+        "hour": 0.35295874406024785,
+        "transaction_type_and_destination": 2.3025903622239703
+      },
+      "mean_signed_by_group": {
+        "amount": -0.35957168186672556,
+        "hour": -0.29705896942093435,
+        "transaction_type_and_destination": -1.7770042028635809
+      },
+      "rows": 20000
+    },
+    "slices": {
+      "amount_at_simulator_cap": {
+        "mean_absolute_by_feature": {
+          "amount": 2.454254508043151,
+          "amount_log1p": 0.4928850649724639,
+          "destination_category_customer": 0.043512069114677185,
+          "destination_category_merchant": 0.005836692072826678,
+          "hour_cos": 0.07402668161476805,
+          "hour_of_day": 0.32052317029982835,
+          "hour_sin": 0.06932258654495398,
+          "transaction_type_CASH_IN": 0.1685141146007807,
+          "transaction_type_CASH_OUT": 0.5347036537371429,
+          "transaction_type_DEBIT": 0.001666987722282484,
+          "transaction_type_PAYMENT": 0.17951164813431317,
+          "transaction_type_TRANSFER": 0.3062038904633356
+        },
+        "mean_absolute_by_group": {
+          "amount": 2.94713963741878,
+          "hour": 0.4633614761535387,
+          "transaction_type_and_destination": 0.19437440970924513
+        },
+        "mean_signed_by_group": {
+          "amount": 2.94713963741878,
+          "hour": -0.4409296093643274,
+          "transaction_type_and_destination": 0.19437440970924513
+        },
+        "rows": 26
+      },
+      "amount_below_simulator_cap": {
+        "mean_absolute_by_feature": {
+          "amount": 0.37023858668895615,
+          "amount_log1p": 0.1495428403717164,
+          "destination_category_customer": 0.26500858226870916,
+          "destination_category_merchant": 0.04851779275072625,
+          "hour_cos": 0.04677566351990774,
+          "hour_of_day": 0.2284254714665095,
+          "hour_sin": 0.1067016084899102,
+          "transaction_type_CASH_IN": 0.7018111950819967,
+          "transaction_type_CASH_OUT": 0.3965889627693193,
+          "transaction_type_DEBIT": 0.003529327118377492,
+          "transaction_type_PAYMENT": 0.8845001777926496,
+          "transaction_type_TRANSFER": 0.38410566373401295
+        },
+        "mean_absolute_by_group": {
+          "amount": 0.5147205720431354,
+          "hour": 0.35352728033436503,
+          "transaction_type_and_destination": 2.3037460913542334
+        },
+        "mean_signed_by_group": {
+          "amount": -0.3614272014780038,
+          "hour": -0.2961585408468362,
+          "transaction_type_and_destination": -1.7767634280458307
+        },
+        "rows": 20544
+      },
+      "regime_normal": {
+        "mean_absolute_by_feature": {
+          "amount": 0.3718212870666544,
+          "amount_log1p": 0.149709002952319,
+          "destination_category_customer": 0.26479163904429,
+          "destination_category_merchant": 0.0484750712443996,
+          "hour_cos": 0.046670630358885745,
+          "hour_of_day": 0.22531788914037174,
+          "hour_sin": 0.10660319462087824,
+          "transaction_type_CASH_IN": 0.7006564059959733,
+          "transaction_type_CASH_OUT": 0.3964599685883496,
+          "transaction_type_DEBIT": 0.003530661340690455,
+          "transaction_type_PAYMENT": 0.8834523304100822,
+          "transaction_type_TRANSFER": 0.3839142716798939
+        },
+        "mean_absolute_by_group": {
+          "amount": 0.5164669902981599,
+          "hour": 0.35030565192418806,
+          "transaction_type_and_destination": 2.3006560336453012
+        },
+        "mean_signed_by_group": {
+          "amount": -0.35900319708878414,
+          "hour": -0.3005063893989253,
+          "transaction_type_and_destination": -1.7744564111706456
+        },
+        "rows": 20385
+      },
+      "regime_sparse": {
+        "mean_absolute_by_feature": {
+          "amount": 0.4460605862679925,
+          "amount_log1p": 0.2288489124978205,
+          "destination_category_customer": 0.2913703671485591,
+          "destination_category_merchant": 0.05424586577762592,
+          "hour_cos": 0.13657878736292867,
+          "hour_of_day": 2.476299062628369,
+          "hour_sin": 0.15480656738538529,
+          "transaction_type_CASH_IN": 1.2120324542999892,
+          "transaction_type_CASH_OUT": 0.5668243315494912,
+          "transaction_type_DEBIT": 0.0015200500435299071,
+          "transaction_type_PAYMENT": 1.2208293707488922,
+          "transaction_type_TRANSFER": 0.4746751095404762
+        },
+        "mean_absolute_by_group": {
+          "amount": 0.6744746005629209,
+          "hour": 2.692120225542239,
+          "transaction_type_and_destination": 3.278158027307799
+        },
+        "mean_signed_by_group": {
+          "amount": -0.17841297773596043,
+          "hour": 2.692120225542239,
+          "transaction_type_and_destination": -2.2772407906900978
+        },
+        "rows": 185
+      },
+      "type_cash_out": {
+        "mean_absolute_by_feature": {
+          "amount": 0.4992044785156782,
+          "amount_log1p": 0.18230954278369332,
+          "destination_category_customer": 0.045902375833724765,
+          "destination_category_merchant": 0.00502205519154521,
+          "hour_cos": 0.060210562281219196,
+          "hour_of_day": 0.29197678372551794,
+          "hour_sin": 0.1321312361891704,
+          "transaction_type_CASH_IN": 0.18044086925860547,
+          "transaction_type_CASH_OUT": 0.3561370358515653,
+          "transaction_type_DEBIT": 0.001844100660531477,
+          "transaction_type_PAYMENT": 0.20667142549587425,
+          "transaction_type_TRANSFER": 0.2731257378511272
+        },
+        "mean_absolute_by_group": {
+          "amount": 0.6726817253878703,
+          "hour": 0.4533007991939874,
+          "transaction_type_and_destination": 0.5281407833171968
+        },
+        "mean_signed_by_group": {
+          "amount": -0.6381021664013237,
+          "hour": -0.400850936451866,
+          "transaction_type_and_destination": 0.5281407833171968
+        },
+        "rows": 7359
+      },
+      "type_transfer": {
+        "mean_absolute_by_feature": {
+          "amount": 0.7451327577801428,
+          "amount_log1p": 0.18687811844874935,
+          "destination_category_customer": 0.04317858928980602,
+          "destination_category_merchant": 0.005319062726131241,
+          "hour_cos": 0.07650331776060264,
+          "hour_of_day": 0.30691094760852794,
+          "hour_sin": 0.11351296464826328,
+          "transaction_type_CASH_IN": 0.1773500282054662,
+          "transaction_type_CASH_OUT": 0.3003342515203067,
+          "transaction_type_DEBIT": 0.0016936565303378977,
+          "transaction_type_PAYMENT": 0.1931767023485734,
+          "transaction_type_TRANSFER": 0.802410017542066
+        },
+        "mean_absolute_by_group": {
+          "amount": 0.9253391845119738,
+          "hour": 0.46236920933052666,
+          "transaction_type_and_destination": 0.9227938192894295
+        },
+        "mean_signed_by_group": {
+          "amount": 0.7474772160848722,
+          "hour": -0.35869147034676646,
+          "transaction_type_and_destination": 0.9227938192894295
+        },
+        "rows": 1940
+      }
+    }
+  }
+}

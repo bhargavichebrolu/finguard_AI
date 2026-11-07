@@ -26,7 +26,7 @@ The plotting functions share one pattern. Each takes saved results and an output
 | `plot_confusion_matrix` | `metrics`, `title`, `path` | One confusion matrix with counts. |
 | `plot_regime_comparison` | `selection`, `out_dir` | PR-AUC lift and recall, sparse against normal, by family. |
 | `plot_compute_cost` | `selection`, `out_dir` | Training and single-row time by family. |
-| `plot_temporal_drift` | `drift`, `out_dir` | Daily rows and fraud rate, with partition boundaries. |
+| `plot_temporal_drift` | `drift`, `out_dir` | Daily rows and fraud rate, with partition boundaries. Uses `_chronological` to order partitions by first step, because saved JSON stores keys alphabetically. |
 | `plot_sparse_by_hour` | `drift`, `out_dir` | Share of sparse steps per hour, per partition. |
 | `plot_shap_summary` | `shap_report`, `out_dir` | Importance by group and by column. |
 | `plot_shap_dependence` | `sample_path`, `shap_report`, `out_dir` | Amount and hour contributions against their values. Its nested helper `group_values` sums a group's columns. |
@@ -87,6 +87,8 @@ All return Markdown text, read only from their arguments, and are used by `expor
 |---|---|
 | `render_drift_tables` | Prevalence by partition, sparse and normal steps, decomposition, counterfactual, feature drift. |
 | `render_matrix_tables` | Baselines, and the 24-cell matrix by PR-AUC, recall and training time. Its nested helper `pivot` builds one table. |
+| `render_search_tables` | The range of each family's hyperparameter search, and every sensitivity run beside the run it changed, so no recorded experiment goes unreported. Its helper `_sensitivity_reference` finds that unchanged run. |
+| `render_lightgbm_diagnostic` | The LightGBM diagnostic, stated as outside selection. |
 | `render_comparison_table` | Each family's best run with all requested metrics and costs. |
 | `render_stability_table` | Seed variation, rolling folds, paired gap to the top, gate outcome. |
 | `render_threshold_tables` | All threshold rules, checks on unseen steps, and reliability. Its nested helper `row` builds one table row. |

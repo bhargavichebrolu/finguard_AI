@@ -11,6 +11,7 @@ FinGuard AI is a demonstration platform using synthetic data. It has no authenti
 | Model binaries stay out of Git | `artifacts/models/*`, `*.joblib` and `*.cbm` are ignored. |
 | Dependencies are pinned and checked | `uv.lock` and `package-lock.json` are committed. `npm audit` last reported 0 vulnerabilities. |
 | Dataset files are verified | SHA-256 and a structural check run before use. |
+| Model files are verified before opening | `load_model_artifact` checks the file's SHA-256 against committed metadata, because joblib files can execute code when opened. Only load model files from a trusted source. |
 
 There is no Python dependency scanning yet; it should be added with CI in Phase 5.
 

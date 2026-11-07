@@ -246,8 +246,15 @@ def plot_regime_comparison(selection: dict[str, Any], out_dir: Path) -> Path:
     _style_axis(right, "Recall at the shared capped threshold")
     for axis in (left, right):
         axis.set_xticks(positions, names, rotation=20, ha="right", fontsize=8)
-    left.legend(frameon=False, fontsize=9, labelcolor=_INK)
-    figure.subplots_adjust(top=0.88, wspace=0.2)
+    left.legend(
+        frameon=False,
+        fontsize=9,
+        labelcolor=_INK,
+        loc="lower left",
+        bbox_to_anchor=(0, 1.0),
+        ncol=2,
+    )
+    figure.subplots_adjust(top=0.84, wspace=0.2)
     return _save(
         figure,
         "Sparse and normal steps on validation, by family",
@@ -278,6 +285,11 @@ def plot_compute_cost(selection: dict[str, Any], out_dir: Path) -> Path:
     )
 
 
+def _chronological(partitions: dict[str, dict[str, Any]]) -> list[tuple[str, dict[str, Any]]]:
+    """Order partitions by time, because saved JSON stores its keys alphabetically."""
+    return sorted(partitions.items(), key=lambda item: item[1]["first_step"])
+
+
 def plot_temporal_drift(drift: dict[str, Any], out_dir: Path) -> Path:
     """Draw daily volume and prevalence across the whole simulation, by partition."""
     profile = drift["daily_profile"]
@@ -291,20 +303,21 @@ def plot_temporal_drift(drift: dict[str, Any], out_dir: Path) -> Path:
     _style_axis(lower, "Fraud rate, % (log scale)", "Simulated day")
     upper.set_yscale("log")
     lower.set_yscale("log")
-    for name, summary in drift["partitions"].items():
+    # Validation is short, so its label would overprint the next one on the same line.
+    for position, (name, summary) in enumerate(_chronological(drift["partitions"])):
         first = next(item["day"] for item in profile if item["last_step"] >= summary["first_step"])
         if summary["first_step"] > profile[0]["first_step"]:
             for axis in (upper, lower):
                 axis.axvline(first, color=_MUTED, linewidth=0.8, linestyle="--")
         upper.text(
             first,
-            1.02,
+            1.02 + 0.09 * (position % 2),
             f"{name}: {summary['prevalence']:.3%} fraud",
             transform=upper.get_xaxis_transform(),
             color=_INK,
             fontsize=8,
         )
-    figure.subplots_adjust(top=0.86, hspace=0.1)
+    figure.subplots_adjust(top=0.84, hspace=0.1)
     return _save(
         figure,
         "Fraud rate rises late in the simulation because legitimate volume collapses",
@@ -317,9 +330,10 @@ def plot_sparse_by_hour(drift: dict[str, Any], out_dir: Path) -> Path:
     hours = np.arange(24)
     colors = {"train": _PRIMARY, "validation": _SECONDARY, "test": _TERTIARY}
     figure, axis = plt.subplots(figsize=(10, 3.6))
-    for name, shares in drift["sparse_share_by_hour"].items():
+    for name, color in colors.items():
+        shares = drift["sparse_share_by_hour"][name]
         values = [100 * share if share is not None else np.nan for share in shares]
-        axis.plot(hours, values, color=colors[name], linewidth=2, marker="o", ms=4, label=name)
+        axis.plot(hours, values, color=color, linewidth=2, marker="o", ms=4, label=name)
     _style_axis(axis, "Steps that are sparse (%)", "hour_of_day (step modulo 24)")
     axis.set_xticks(hours[::2])
     axis.legend(frameon=False, fontsize=9, labelcolor=_INK)
@@ -356,7 +370,14 @@ def plot_shap_summary(shap_report: dict[str, Any], out_dir: Path) -> Path:
         label="Legitimate rows",
     )
     left.set_yticks(positions, [GROUP_LABELS[name] for name in groups], fontsize=9)
-    left.legend(frameon=False, fontsize=9, labelcolor=_INK)
+    left.legend(
+        frameon=False,
+        fontsize=9,
+        labelcolor=_INK,
+        loc="lower left",
+        bbox_to_anchor=(0, 1.0),
+        ncol=2,
+    )
     right.barh(
         np.arange(len(features)),
         [summary["all_rows"]["mean_absolute_by_feature"][name] for name in features],
@@ -372,7 +393,7 @@ def plot_shap_summary(shap_report: dict[str, Any], out_dir: Path) -> Path:
         axis.grid(axis="y", visible=False)
         axis.grid(axis="x", color=_GRID, linewidth=0.8)
         axis.invert_yaxis()
-    figure.subplots_adjust(top=0.88, wspace=0.42)
+    figure.subplots_adjust(top=0.84, wspace=0.62)
     return _save(
         figure, "What the selected model relies on (validation)", out_dir / "shap_global.png"
     )
@@ -564,7 +585,7 @@ def write_runs_csv(runs: dict[str, dict[str, Any]], path: Path) -> Path:
 def render_drift_tables(drift: dict[str, Any]) -> str:
     """Render the prevalence, decomposition and regime tables."""
     rows, regime_rows = [], []
-    for name, item in drift["partitions"].items():
+    for name, item in _chronological(drift["partitions"]):
         rows.append(
             [
                 name,
@@ -701,6 +722,149 @@ def render_matrix_tables(runs: dict[str, dict[str, Any]], baselines: dict[str, A
             "#### Training time in seconds, including resampling\n\n"
             + pivot(lambda run: run["training"]["total_seconds"], 1),
         ]
+    )
+
+
+def _sensitivity_reference(
+    run: dict[str, Any], runs: dict[str, dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Find the run a sensitivity run should be compared with: the same spec, unchanged."""
+    spec = run["spec"]
+    for other in runs.values():
+        candidate = other["spec"]
+        same_model = (candidate["family"], candidate["strategy"], candidate["seed"]) == (
+            spec["family"],
+            spec["strategy"],
+            spec["seed"],
+        )
+        if not same_model or other["status"] != "ok":
+            continue
+        if run["stage"] == "sensitivity_ratio" and other["stage"] == "matrix":
+            return other
+        if (
+            run["stage"] == "sensitivity_features"
+            and other["stage"] in ("matrix", "tuning")
+            and not candidate["dropped_features"]
+            and candidate["hyperparameters"] == spec["hyperparameters"]
+        ):
+            return other
+    return None
+
+
+def render_search_tables(runs: dict[str, dict[str, Any]]) -> str:
+    """Render the range of the hyperparameter search, and every sensitivity run."""
+    search = []
+    for family in MODEL_FAMILIES:
+        tried = [
+            run
+            for run in runs.values()
+            if run["spec"]["family"] == family and run["stage"] == "tuning"
+        ]
+        ok = [run["evaluation"]["ranking"]["pr_auc"] for run in tried if run["status"] == "ok"]
+        search.append(
+            [
+                FAMILY_LABELS[family],
+                STRATEGY_LABELS[tried[0]["spec"]["strategy"]] if tried else "not run",
+                _count(len(tried)),
+                _count(len(tried) - len(ok)),
+                _fmt(min(ok)) if ok else "n/a",
+                _fmt(max(ok)) if ok else "n/a",
+            ]
+        )
+    sensitivity = []
+    for run in runs.values():
+        if run["stage"] not in ("sensitivity_ratio", "sensitivity_features"):
+            continue
+        spec = run["spec"]
+        change = (
+            f"Oversampling ratio {spec['target_ratio']}"
+            if run["stage"] == "sensitivity_ratio"
+            else "Without " + ", ".join(spec["dropped_features"])
+        )
+        reference = _sensitivity_reference(run, runs)
+        ok = run["status"] == "ok"
+        sensitivity.append(
+            [
+                change,
+                FAMILY_LABELS[spec["family"]],
+                STRATEGY_LABELS[spec["strategy"]],
+                _fmt(reference["evaluation"]["ranking"]["pr_auc"]) if reference else "n/a",
+                _fmt(run["evaluation"]["ranking"]["pr_auc"]) if ok else "failed",
+                _fmt(run["evaluation"]["ranking"]["roc_auc"]) if ok else "failed",
+                _fmt(run["evaluation"]["at_fpr_cap"]["recall"]) if ok else "failed",
+            ]
+        )
+    sensitivity.sort(key=lambda row: (row[1], row[2], row[0]))
+    return "\n\n".join(
+        [
+            "#### Hyperparameter search on validation\n\n"
+            + _table(
+                [
+                    "Model",
+                    "Strategy",
+                    "Settings tried",
+                    "Failed",
+                    "Lowest PR-AUC",
+                    "Highest PR-AUC",
+                ],
+                search,
+                "llrrrr",
+            ),
+            "#### Sensitivity runs on validation\n\n"
+            + _table(
+                [
+                    "Change",
+                    "Model",
+                    "Strategy",
+                    "PR-AUC before",
+                    "PR-AUC after",
+                    "ROC-AUC after",
+                    "Recall at 0.1% FPR after",
+                ],
+                sensitivity,
+                "lllrrrr",
+            ),
+        ]
+    )
+
+
+def render_lightgbm_diagnostic(diagnostic: dict[str, Any]) -> str:
+    """Render the diagnostic of LightGBM's collapse, marked as outside selection."""
+    rows = []
+    for cell in diagnostic["cells"]:
+        strategy, settings = STRATEGY_LABELS[cell["strategy"]], cell["settings"]
+        if cell["status"] != "ok":
+            rows.append([strategy, settings, f"failed: {cell['error']}", "", "", "", "", ""])
+            continue
+        rows.append(
+            [
+                strategy,
+                settings,
+                f"{cell['trees_built']} of {cell['trees_requested']}",
+                f"{cell['largest_split_gain']:.2e}",
+                _count(cell["distinct_scores"]),
+                _fmt(cell["pr_auc"]),
+                _fmt(cell["roc_auc"]),
+                _fmt(cell["recall_at_fpr_cap"]),
+            ]
+        )
+    return (
+        "#### LightGBM diagnostic on validation\n\n"
+        "These fits ran after selection and were not eligible for it.\n\n"
+        + _table(
+            [
+                "Strategy",
+                "Settings",
+                "Trees built",
+                "Largest split gain",
+                "Distinct scores",
+                "PR-AUC",
+                "ROC-AUC",
+                "Recall at 0.1% FPR",
+            ],
+            rows,
+            "llrrrrrr",
+        )
     )
 
 

@@ -177,7 +177,7 @@ def evaluate_frozen_model(
     report = {
         "scope": "Test partition. Evaluated once, after the model and threshold were frozen.",
         "evaluated_at_commit": source_commit,
-        "frozen_at_commit": model.metadata["source_commit"],
+        "model_fitted_at_commit": model.metadata["source_commit"],
         "model_version": model.metadata["model_version"],
         "model_sha256": model.metadata["model_sha256"],
         "family": model.metadata["family"],

@@ -97,6 +97,15 @@ The authorisation asks for a comparison of six families across four imbalance st
 - **Calls:** `ParameterSampler`, `CandidateSpec`.
 - **Used by:** `run_tuning`.
 
+### `run_lightgbm_diagnostic`
+- **Purpose:** find out why LightGBM collapsed in the matrix on the original distribution and with class weighting.
+- **Parameters / types:** `data: ExperimentData`, `config: dict`, `tuned_hyperparameters: dict`.
+- **Returns / type:** `dict`: the settings tried and one result per strategy and setting, marked `eligible_for_selection: False`.
+- **Internal processing:** fits each of the two strategies under four settings on training rows, and scores validation.
+- **Error handling:** a crash in one fit is recorded as that cell's result, because a crash is itself evidence.
+- **Calls:** `fit_candidate`, `score_rows`, `ranking_metrics`, `threshold_for_fpr_cap`, `threshold_metrics`.
+- **Used by:** `diagnose_lightgbm.py`. It does not use `RunStore`, so these fits cannot enter selection.
+
 ### `run_tuning`
 - **Purpose:** search hyperparameters for each family.
 - **Parameters / types:** `data`, `config`, `store`.

@@ -31,8 +31,10 @@ from app.ml.reporting import (
     plot_threshold_behaviour,
     render_comparison_table,
     render_drift_tables,
+    render_lightgbm_diagnostic,
     render_matrix_tables,
     render_results_markdown,
+    render_search_tables,
     render_shap_tables,
     render_stability_table,
     render_test_tables,
@@ -110,6 +112,7 @@ def main() -> None:
     shap_report = _load(results / "shap_summary.json")
     test = _load(results / "test_evaluation.json")
     metadata = _load(args.metadata)
+    diagnostic = _load(results / "lightgbm_diagnostic.json") if runs is not None else None
 
     sections: dict[str, str] = {}
     written: list[Path] = []
@@ -121,6 +124,9 @@ def main() -> None:
         if baselines is not None:
             sections["Imbalance matrix"] = render_matrix_tables(runs, baselines)
             written.append(plot_imbalance_matrix(runs, figures))
+        sections["Search and sensitivity"] = render_search_tables(runs)
+    if diagnostic is not None:
+        sections["Search and sensitivity"] += "\n\n" + render_lightgbm_diagnostic(diagnostic)
     if selection is not None:
         sections["Model comparison"] = render_comparison_table(selection)
         sections["Stability and selection gates"] = render_stability_table(selection)

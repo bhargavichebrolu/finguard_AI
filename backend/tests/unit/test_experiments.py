@@ -10,6 +10,7 @@ from tests.conftest import small_experiment_config, write_partition
 import app.ml.experiments as experiments
 from app.ml.candidates import CandidateSpec
 from app.ml.evaluation import build_slices
+from app.ml.experiment_stages import ExperimentData, run_lightgbm_diagnostic
 from app.ml.experiments import (
     RunStore,
     TestPartitionAccessError,
@@ -168,6 +169,29 @@ def test_evaluate_candidate_reports_natural_evaluation_rows(model_partition, lat
     assert record["evaluation"]["ranking"]["rows"] == len(later_partition.labels)
     assert record["evaluation"]["ranking"]["fraud_rows"] == int(later_partition.labels.sum())
     assert record["scores_sha256"] == scores_digest(scores)
+
+
+def test_lightgbm_diagnostic_is_outside_selection_and_records_crashes(
+    monkeypatch, model_partition, later_partition
+):
+    config = small_experiment_config()
+    config["baseline_hyperparameters"]["lightgbm"] = {"n_estimators": 3, "num_leaves": 7}
+    data = ExperimentData(model_partition, later_partition, {})
+    tuned = {"n_estimators": 2, "num_leaves": 3}
+
+    report = run_lightgbm_diagnostic(data, config, tuned)
+    assert report["eligible_for_selection"] is False
+    assert len(report["cells"]) == 8
+    assert {cell["status"] for cell in report["cells"]} == {"ok"}
+    assert report["settings"]["tuned, boost_from_average off"]["boost_from_average"] is False
+
+    def crash(*_args, **_kwargs):
+        raise ValueError("boom")
+
+    monkeypatch.setattr("app.ml.experiment_stages.fit_candidate", crash)
+    crashed = run_lightgbm_diagnostic(data, config, tuned)
+    assert {cell["status"] for cell in crashed["cells"]} == {"failed"}
+    assert crashed["cells"][0]["error"] == "ValueError"
 
 
 def test_store_saves_and_resumes(tmp_path):

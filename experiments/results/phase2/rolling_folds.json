@@ -1,0 +1,55 @@
+{
+  "folds": [
+    {
+      "evaluation_end_step": 234,
+      "evaluation_first_step": 203,
+      "fit_end_step": 202,
+      "fit_first_step": 1,
+      "fit_fraud_rows": 2264,
+      "fit_rows": 2432094,
+      "transaction_type_rate": {
+        "brier": 0.0006059792464815428,
+        "fraud_rows": 385,
+        "pr_auc": 0.002497779554779727,
+        "pr_auc_lift": 4.115309155759561,
+        "prevalence": 0.0006069482170699063,
+        "roc_auc": 0.8475033859782477,
+        "rows": 634321
+      }
+    },
+    {
+      "evaluation_end_step": 279,
+      "evaluation_first_step": 235,
+      "fit_end_step": 234,
+      "fit_first_step": 1,
+      "fit_fraud_rows": 2649,
+      "fit_rows": 3066415,
+      "transaction_type_rate": {
+        "brier": 0.0007431743935513476,
+        "fraud_rows": 522,
+        "pr_auc": 0.0031479217822481986,
+        "pr_auc_lift": 4.224064774666189,
+        "prevalence": 0.0007452352059390392,
+        "roc_auc": 0.8515865203278052,
+        "rows": 700450
+      }
+    },
+    {
+      "evaluation_end_step": 322,
+      "evaluation_first_step": 280,
+      "fit_end_step": 279,
+      "fit_first_step": 1,
+      "fit_fraud_rows": 3171,
+      "fit_rows": 3766865,
+      "transaction_type_rate": {
+        "brier": 0.0006911221839525829,
+        "fraud_rows": 462,
+        "pr_auc": 0.002877391800144197,
+        "pr_auc_lift": 4.153147604382156,
+        "prevalence": 0.0006928219447601967,
+        "roc_auc": 0.8501690487052356,
+        "rows": 666838
+      }
+    }
+  ]
+}

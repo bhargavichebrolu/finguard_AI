@@ -1,0 +1,574 @@
+{
+  "cutoff_sensitivity": {
+    "2000": {
+      "test": {
+        "normal": {
+          "prevalence": 0.0010087795343851963,
+          "share_of_partition_fraud": 0.22344139650872819,
+          "steps": 92
+        },
+        "sparse": {
+          "prevalence": 0.04610464599804566,
+          "share_of_partition_fraud": 0.7765586034912718,
+          "steps": 274
+        }
+      },
+      "train": {
+        "normal": {
+          "prevalence": 0.00045393501084362497,
+          "share_of_partition_fraud": 0.550784475639967,
+          "steps": 172
+        },
+        "sparse": {
+          "prevalence": 0.06379236211546731,
+          "share_of_partition_fraud": 0.44921552436003304,
+          "steps": 150
+        }
+      },
+      "validation": {
+        "normal": {
+          "prevalence": 0.0004081409694172551,
+          "share_of_partition_fraud": 0.6947368421052632,
+          "steps": 39
+        },
+        "sparse": {
+          "prevalence": 0.05958904109589041,
+          "share_of_partition_fraud": 0.30526315789473685,
+          "steps": 16
+        }
+      }
+    },
+    "500": {
+      "test": {
+        "normal": {
+          "prevalence": 0.0015024501983191998,
+          "share_of_partition_fraud": 0.3546134663341646,
+          "steps": 140
+        },
+        "sparse": {
+          "prevalence": 0.27857911733046287,
+          "share_of_partition_fraud": 0.6453865336658354,
+          "steps": 226
+        }
+      },
+      "train": {
+        "normal": {
+          "prevalence": 0.0005062502609682855,
+          "share_of_partition_fraud": 0.6173960913845307,
+          "steps": 194
+        },
+        "sparse": {
+          "prevalence": 0.45012953367875647,
+          "share_of_partition_fraud": 0.38260390861546933,
+          "steps": 128
+        }
+      },
+      "validation": {
+        "normal": {
+          "prevalence": 0.00044616834939299516,
+          "share_of_partition_fraud": 0.7614035087719299,
+          "steps": 42
+        },
+        "sparse": {
+          "prevalence": 0.30493273542600896,
+          "share_of_partition_fraud": 0.23859649122807017,
+          "steps": 13
+        }
+      }
+    }
+  },
+  "daily_profile": [
+    {
+      "day": 0,
+      "first_step": 1,
+      "fraud_rows": 271,
+      "last_step": 24,
+      "prevalence": 0.00047191578654082243,
+      "rows": 574255
+    },
+    {
+      "day": 1,
+      "first_step": 25,
+      "fraud_rows": 309,
+      "last_step": 48,
+      "prevalence": 0.0006787658323777892,
+      "rows": 455238
+    },
+    {
+      "day": 2,
+      "first_step": 49,
+      "fraud_rows": 310,
+      "last_step": 72,
+      "prevalence": 0.2897196261682243,
+      "rows": 1070
+    },
+    {
+      "day": 3,
+      "first_step": 73,
+      "fraud_rows": 262,
+      "last_step": 96,
+      "prevalence": 0.009277620396600567,
+      "rows": 28240
+    },
+    {
+      "day": 4,
+      "first_step": 97,
+      "fraud_rows": 252,
+      "last_step": 120,
+      "prevalence": 0.025743181121667177,
+      "rows": 9789
+    },
+    {
+      "day": 5,
+      "first_step": 121,
+      "fraud_rows": 228,
+      "last_step": 144,
+      "prevalence": 0.0005170009410324146,
+      "rows": 441005
+    },
+    {
+      "day": 6,
+      "first_step": 145,
+      "fraud_rows": 272,
+      "last_step": 168,
+      "prevalence": 0.0006467213368110456,
+      "rows": 420583
+    },
+    {
+      "day": 7,
+      "first_step": 169,
+      "fraud_rows": 278,
+      "last_step": 192,
+      "prevalence": 0.0006182765208379204,
+      "rows": 449637
+    },
+    {
+      "day": 8,
+      "first_step": 193,
+      "fraud_rows": 255,
+      "last_step": 216,
+      "prevalence": 0.0006101660848154786,
+      "rows": 417919
+    },
+    {
+      "day": 9,
+      "first_step": 217,
+      "fraud_rows": 282,
+      "last_step": 240,
+      "prevalence": 0.000717657687462622,
+      "rows": 392945
+    },
+    {
+      "day": 10,
+      "first_step": 241,
+      "fraud_rows": 262,
+      "last_step": 264,
+      "prevalence": 0.0006270057603162789,
+      "rows": 417859
+    },
+    {
+      "day": 11,
+      "first_step": 265,
+      "fraud_rows": 298,
+      "last_step": 288,
+      "prevalence": 0.0008519738346827684,
+      "rows": 349776
+    },
+    {
+      "day": 12,
+      "first_step": 289,
+      "fraud_rows": 242,
+      "last_step": 312,
+      "prevalence": 0.0005646514210782976,
+      "rows": 428583
+    },
+    {
+      "day": 13,
+      "first_step": 313,
+      "fraud_rows": 246,
+      "last_step": 336,
+      "prevalence": 0.0006182830831716414,
+      "rows": 397876
+    },
+    {
+      "day": 14,
+      "first_step": 337,
+      "fraud_rows": 250,
+      "last_step": 360,
+      "prevalence": 0.0006230032745052108,
+      "rows": 401282
+    },
+    {
+      "day": 15,
+      "first_step": 361,
+      "fraud_rows": 252,
+      "last_step": 384,
+      "prevalence": 0.0006709372354190961,
+      "rows": 375594
+    },
+    {
+      "day": 16,
+      "first_step": 385,
+      "fraud_rows": 320,
+      "last_step": 408,
+      "prevalence": 0.0007515865522376141,
+      "rows": 425766
+    },
+    {
+      "day": 17,
+      "first_step": 409,
+      "fraud_rows": 268,
+      "last_step": 432,
+      "prevalence": 0.012762512500595267,
+      "rows": 20999
+    },
+    {
+      "day": 18,
+      "first_step": 433,
+      "fraud_rows": 256,
+      "last_step": 456,
+      "prevalence": 0.02265486725663717,
+      "rows": 11300
+    },
+    {
+      "day": 19,
+      "first_step": 457,
+      "fraud_rows": 236,
+      "last_step": 480,
+      "prevalence": 0.01196329903178385,
+      "rows": 19727
+    },
+    {
+      "day": 20,
+      "first_step": 481,
+      "fraud_rows": 272,
+      "last_step": 504,
+      "prevalence": 0.01106005774000732,
+      "rows": 24593
+    },
+    {
+      "day": 21,
+      "first_step": 505,
+      "fraud_rows": 256,
+      "last_step": 528,
+      "prevalence": 0.0047906881000056144,
+      "rows": 53437
+    },
+    {
+      "day": 22,
+      "first_step": 529,
+      "fraud_rows": 216,
+      "last_step": 552,
+      "prevalence": 0.004234297812279464,
+      "rows": 51012
+    },
+    {
+      "day": 23,
+      "first_step": 553,
+      "fraud_rows": 280,
+      "last_step": 576,
+      "prevalence": 0.008560335075972973,
+      "rows": 32709
+    },
+    {
+      "day": 24,
+      "first_step": 577,
+      "fraud_rows": 240,
+      "last_step": 600,
+      "prevalence": 0.004148445197310425,
+      "rows": 57853
+    },
+    {
+      "day": 25,
+      "first_step": 601,
+      "fraud_rows": 272,
+      "last_step": 624,
+      "prevalence": 0.019589485055815627,
+      "rows": 13885
+    },
+    {
+      "day": 26,
+      "first_step": 625,
+      "fraud_rows": 280,
+      "last_step": 648,
+      "prevalence": 0.03264164140825367,
+      "rows": 8578
+    },
+    {
+      "day": 27,
+      "first_step": 649,
+      "fraud_rows": 248,
+      "last_step": 672,
+      "prevalence": 0.016915626492053748,
+      "rows": 14661
+    },
+    {
+      "day": 28,
+      "first_step": 673,
+      "fraud_rows": 260,
+      "last_step": 696,
+      "prevalence": 0.004736746219712151,
+      "rows": 54890
+    },
+    {
+      "day": 29,
+      "first_step": 697,
+      "fraud_rows": 268,
+      "last_step": 720,
+      "prevalence": 0.023744130415522282,
+      "rows": 11287
+    },
+    {
+      "day": 30,
+      "first_step": 721,
+      "fraud_rows": 272,
+      "last_step": 743,
+      "prevalence": 1.0,
+      "rows": 272
+    }
+  ],
+  "decomposition": {
+    "train_to_test": {
+      "regime_mix_effect": 0.003169137703243472,
+      "total_change": 0.0033762788405954955,
+      "within_regime_rate_effect": 0.00020714113735202438
+    },
+    "train_to_validation": {
+      "regime_mix_effect": -9.311283862586397e-05,
+      "total_change": -0.00023369243883887287,
+      "within_regime_rate_effect": -0.00014057960021300885
+    },
+    "validation_to_test": {
+      "regime_mix_effect": 0.002741272481752498,
+      "total_change": 0.0036099712794343685,
+      "within_regime_rate_effect": 0.0008686987976818712
+    }
+  },
+  "feature_drift_train_to_validation": {
+    "all_rows": {
+      "amount_log1p": 0.015179283548768751,
+      "hour_of_day": 0.08601618478008129,
+      "transaction_type": 0.00040502366040534354
+    },
+    "fraud": {
+      "amount_log1p": 0.028865200354412972,
+      "hour_of_day": 0.14726088699761108,
+      "transaction_type": 2.7351450686900183e-05
+    },
+    "legitimate": {
+      "amount_log1p": 0.015222625169219772,
+      "hour_of_day": 0.10529632375282168,
+      "transaction_type": 0.00040966218018378633
+    }
+  },
+  "partitions": {
+    "test": {
+      "first_step": 378,
+      "fraud_per_step": 10.956284153005464,
+      "fraud_rows": 4010,
+      "last_step": 743,
+      "legitimate_per_step": 2600.3661202185795,
+      "legitimate_rows": 951734,
+      "prevalence": 0.004195684199953125,
+      "regimes": {
+        "normal": {
+          "first_step": 378,
+          "fraud_per_step": 9.983333333333333,
+          "fraud_rows": 1198,
+          "last_step": 715,
+          "legitimate_per_step": 7740.0,
+          "legitimate_rows": 928800,
+          "prevalence": 0.0012881748132791684,
+          "rows": 929998,
+          "share_of_partition_fraud": 0.29875311720698255,
+          "share_of_partition_rows": 0.9730618240867848,
+          "steps": 120
+        },
+        "sparse": {
+          "first_step": 386,
+          "fraud_per_step": 11.43089430894309,
+          "fraud_rows": 2812,
+          "last_step": 743,
+          "legitimate_per_step": 93.22764227642277,
+          "legitimate_rows": 22934,
+          "prevalence": 0.10922084984075196,
+          "rows": 25746,
+          "share_of_partition_fraud": 0.7012468827930175,
+          "share_of_partition_rows": 0.026938175913215255,
+          "steps": 246
+        }
+      },
+      "rows": 955744,
+      "steps": 366
+    },
+    "train": {
+      "first_step": 1,
+      "fraud_per_step": 11.282608695652174,
+      "fraud_rows": 3633,
+      "last_step": 322,
+      "legitimate_per_step": 13757.981366459628,
+      "legitimate_rows": 4430070,
+      "prevalence": 0.0008194053593576295,
+      "regimes": {
+        "normal": {
+          "first_step": 1,
+          "fraud_per_step": 11.73224043715847,
+          "fraud_rows": 2147,
+          "last_step": 322,
+          "legitimate_per_step": 24161.743169398906,
+          "legitimate_rows": 4421599,
+          "prevalence": 0.00048533527919550535,
+          "rows": 4423746,
+          "share_of_partition_fraud": 0.590971648775117,
+          "share_of_partition_rows": 0.9977542474089942,
+          "steps": 183
+        },
+        "sparse": {
+          "first_step": 3,
+          "fraud_per_step": 10.690647482014388,
+          "fraud_rows": 1486,
+          "last_step": 320,
+          "legitimate_per_step": 60.94244604316547,
+          "legitimate_rows": 8471,
+          "prevalence": 0.149241739479763,
+          "rows": 9957,
+          "share_of_partition_fraud": 0.409028351224883,
+          "share_of_partition_rows": 0.0022457525910057575,
+          "steps": 139
+        }
+      },
+      "rows": 4433703,
+      "steps": 322
+    },
+    "validation": {
+      "first_step": 323,
+      "fraud_per_step": 10.363636363636363,
+      "fraud_rows": 570,
+      "last_step": 377,
+      "legitimate_per_step": 17683.69090909091,
+      "legitimate_rows": 972603,
+      "prevalence": 0.0005857129205187567,
+      "regimes": {
+        "normal": {
+          "first_step": 323,
+          "fraud_per_step": 10.25,
+          "fraud_rows": 410,
+          "last_step": 377,
+          "legitimate_per_step": 24282.1,
+          "legitimate_rows": 971284,
+          "prevalence": 0.0004219435336638901,
+          "rows": 971694,
+          "share_of_partition_fraud": 0.7192982456140351,
+          "share_of_partition_rows": 0.9984802291062329,
+          "steps": 40
+        },
+        "sparse": {
+          "first_step": 337,
+          "fraud_per_step": 10.666666666666666,
+          "fraud_rows": 160,
+          "last_step": 368,
+          "legitimate_per_step": 87.93333333333334,
+          "legitimate_rows": 1319,
+          "prevalence": 0.10818120351588911,
+          "rows": 1479,
+          "share_of_partition_fraud": 0.2807017543859649,
+          "share_of_partition_rows": 0.0015197708937670898,
+          "steps": 15
+        }
+      },
+      "rows": 973173,
+      "steps": 55
+    }
+  },
+  "regime_definition": {
+    "available_at_serving": false,
+    "note": "Analysis slice only. Never a model feature.",
+    "rule": "A step is sparse if it has fewer than 1000 rows; else normal.",
+    "uses_labels": false
+  },
+  "scope": "Per-step row and label counts from the Phase 1 EDA report. No feature value from the test partition was read, and no model has seen it.",
+  "sparse_share_by_hour": {
+    "test": [
+      0.8,
+      0.9333333333333333,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.8,
+      0.7333333333333333,
+      0.5333333333333333,
+      0.6,
+      0.4666666666666667,
+      0.4,
+      0.4,
+      0.6666666666666666,
+      0.4666666666666667,
+      0.6666666666666666,
+      0.375,
+      0.375,
+      0.375,
+      0.5625,
+      0.5,
+      0.5625
+    ],
+    "train": [
+      0.07692307692307693,
+      0.21428571428571427,
+      0.9285714285714286,
+      1.0,
+      1.0,
+      1.0,
+      0.9285714285714286,
+      0.9285714285714286,
+      0.9285714285714286,
+      0.21428571428571427,
+      0.21428571428571427,
+      0.23076923076923078,
+      0.23076923076923078,
+      0.23076923076923078,
+      0.23076923076923078,
+      0.23076923076923078,
+      0.23076923076923078,
+      0.23076923076923078,
+      0.23076923076923078,
+      0.23076923076923078,
+      0.23076923076923078,
+      0.15384615384615385,
+      0.15384615384615385,
+      0.07692307692307693
+    ],
+    "validation": [
+      0.0,
+      0.5,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "test_prevalence_at_reference_volume": {
+    "at_train_legitimate_volume": 0.0007957247269921348,
+    "at_validation_legitimate_volume": 0.000619186358074929
+  }
+}

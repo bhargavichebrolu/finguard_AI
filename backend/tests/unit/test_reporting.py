@@ -6,13 +6,16 @@ import numpy as np
 import pytest
 
 from app.ml.reporting import (
+    _chronological,
     _fmt,
     _matrix_values,
     _table,
     inject_generated_results,
     plot_confusion_matrix,
     plot_imbalance_matrix,
+    render_lightgbm_diagnostic,
     render_results_markdown,
+    render_search_tables,
     write_runs_csv,
 )
 
@@ -97,6 +100,61 @@ def test_all_runs_csv_keeps_failures_and_exact_values(tmp_path):
     assert rows["bad-run"]["status"] == "failed"
     assert rows["bad-run"]["pr_auc"] == ""
     assert "boom" in rows["bad-run"]["error"]
+
+
+def test_partitions_are_reported_in_time_order_not_key_order():
+    partitions = {
+        "test": {"first_step": 378},
+        "train": {"first_step": 1},
+        "validation": {"first_step": 323},
+    }
+    assert [name for name, _ in _chronological(partitions)] == ["train", "validation", "test"]
+
+
+def _sensitivity_runs():
+    reference = _run(family="catboost", strategy="class_weight", pr_auc=0.35)
+    reference["stage"] = "tuning"
+    dropped = _run(family="catboost", strategy="class_weight", pr_auc=0.16)
+    dropped["stage"] = "sensitivity_features"
+    dropped["spec"]["dropped_features"] = ["hour_of_day", "hour_sin", "hour_cos"]
+    failed = _run(family="lightgbm", strategy="smote", status="failed")
+    failed["stage"] = "sensitivity_ratio"
+    failed["spec"]["target_ratio"] = 0.3
+    return {"reference": reference, "dropped": dropped, "failed": failed}
+
+
+def test_sensitivity_runs_are_all_reported_beside_what_they_changed():
+    text = render_search_tables(_sensitivity_runs())
+    change = "Without hour_of_day, hour_sin, hour_cos"
+    assert f"| {change} | CatBoost | Class weight | 0.3500 | 0.1600 |" in text
+    assert "| Oversampling ratio 0.3 | LightGBM | SMOTE | n/a | failed |" in text
+
+
+def test_search_table_counts_failed_settings():
+    runs = {"good": _run(pr_auc=0.3), "bad": _run(status="failed")}
+    for run in runs.values():
+        run["stage"] = "tuning"
+    assert "| XGBoost | Original | 2 | 1 | 0.3000 | 0.3000 |" in render_search_tables(runs)
+
+
+def test_lightgbm_diagnostic_states_it_was_outside_selection_and_shows_crashes():
+    ok = {
+        "strategy": "class_weight",
+        "settings": "tuned",
+        "status": "ok",
+        "trees_built": 5,
+        "trees_requested": 200,
+        "largest_split_gain": 6.8e15,
+        "distinct_scores": 2,
+        "pr_auc": 0.0006,
+        "roc_auc": 0.5,
+        "recall_at_fpr_cap": 0.0,
+    }
+    crash = {"strategy": "original", "settings": "x", "status": "failed", "error": "ValueError"}
+    text = render_lightgbm_diagnostic({"cells": [ok, crash]})
+    assert "not eligible" in text
+    assert "| Class weight | tuned | 5 of 200 | 6.80e+15 | 2 | 0.0006 | 0.5000 | 0.0000 |" in text
+    assert "failed: ValueError" in text
 
 
 def test_undefined_values_show_as_not_available_not_zero():
