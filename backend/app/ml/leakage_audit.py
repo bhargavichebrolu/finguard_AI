@@ -117,9 +117,7 @@ def measure_training_signal(
         for column in LEAKY_BALANCE_COLUMNS
     }
     origin_error = (train["oldbalanceOrg"] - train["amount"] - train["newbalanceOrig"]).abs()
-    destination_error = (
-        train["oldbalanceDest"] + train["amount"] - train["newbalanceDest"]
-    ).abs()
+    destination_error = (train["oldbalanceDest"] + train["amount"] - train["newbalanceDest"]).abs()
     balance_signal["derived_origin_balance_error"] = _separation(
         label_values, origin_error.to_numpy()
     )

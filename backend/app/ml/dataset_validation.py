@@ -190,9 +190,7 @@ def _collect_findings(
 def _compare_to_expected(tally: _ValidationTally, expected: ExpectedProfile) -> list[str]:
     errors: list[str] = []
     if not expected.min_rows <= tally.rows <= expected.max_rows:
-        errors.append(
-            f"Row count {tally.rows} is outside {expected.min_rows}-{expected.max_rows}"
-        )
+        errors.append(f"Row count {tally.rows} is outside {expected.min_rows}-{expected.max_rows}")
     if tally.fraud_count != expected.fraud_count:
         errors.append(f"Fraud count {tally.fraud_count} differs from {expected.fraud_count}")
     if len(tally.type_counts) != expected.transaction_type_count:
