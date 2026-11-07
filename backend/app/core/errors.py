@@ -56,13 +56,13 @@ class PermissionDeniedError(AppError):
 class InvalidInputError(AppError):
     """The request is well formed but its content is not acceptable."""
 
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = 422
 
 
 class PayloadTooLargeError(AppError):
     """An upload exceeds the configured limit."""
 
-    status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    status_code = 413
 
 
 class RateLimitedError(AppError):
@@ -105,7 +105,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, error: RequestValidationError
     ) -> JSONResponse:
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             content={
                 "detail": "The request is not valid.",
                 "errors": _safe_validation_errors(error),
