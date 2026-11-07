@@ -17,6 +17,7 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.database.session import session_scope
+from app.services.batch_service import recover_interrupted_jobs
 from app.services.model_service import load_verified_model, register_active_model
 
 logger = logging.getLogger("finguard.startup")
@@ -29,6 +30,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     model = load_verified_model(settings)
     with session_scope() as session:
         register_active_model(session, model)
+        recovered = recover_interrupted_jobs(session, settings.upload_tmp_dir)
+    if recovered:
+        logger.warning("Marked %d interrupted batch jobs as failed", recovered)
     app.state.model = model
     logger.info("Model %s verified and loaded", model.version)
     yield

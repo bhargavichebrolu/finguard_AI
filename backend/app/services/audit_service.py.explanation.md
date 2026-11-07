@@ -44,8 +44,14 @@ Input: who did what to which record. Output: rows in `audit_logs`.
 
 ## I. Example
 ```python
-record_event(session, user.id, "investigation.status_changed", "investigation", item.id,
-             {"from": "NEW", "to": "UNDER_REVIEW"})
+record_event(
+    session,
+    user.id,
+    "investigation.status_changed",
+    "investigation",
+    item.id,
+    {"from": "NEW", "to": "UNDER_REVIEW"},
+)
 ```
 
 ## J. Maintenance Notes

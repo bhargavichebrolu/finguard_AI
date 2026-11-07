@@ -21,7 +21,7 @@ It is the entry point for `uvicorn`. It also records the start-up rule from the 
 - **Parameters / types:** `app: FastAPI`. **Returns / type:** an async iterator.
 - **Internal processing:** verifies and loads the model, records it in `model_versions`, recovers batch jobs interrupted by an earlier shutdown, and stores the model on `app.state`.
 - **Error handling:** any exception stops the application, so it can never run without a verified model.
-- **Calls:** `load_verified_model`, `register_active_model`. **Used by:** FastAPI.
+- **Calls:** `load_verified_model`, `register_active_model`, `recover_interrupted_jobs`. **Used by:** FastAPI.
 
 ### `create_app`
 - **Purpose:** build and configure the application.
