@@ -11,6 +11,7 @@ from app.ml.splitting import (
     compute_boundaries,
     count_rows_per_step,
     partition_masks,
+    rolling_origin_folds,
 )
 
 
@@ -93,3 +94,23 @@ def test_config_missing_key_raises(tmp_path):
     path.write_text(json.dumps({"version": "x"}))
     with pytest.raises(KeyError):
         SplitConfig.from_json(path)
+
+
+def test_rolling_folds_move_forward_in_time():
+    # 100 equal steps: anchors 0.5, 0.75 and 1.0 end at steps 50, 75 and 100.
+    folds = rolling_origin_folds(uniform_counts(100, 1000), (0.5, 0.75, 1.0))
+    assert [fold["fit_end_step"] for fold in folds] == [50, 75]
+    assert [fold["evaluation_first_step"] for fold in folds] == [51, 76]
+    assert [fold["evaluation_end_step"] for fold in folds] == [75, 100]
+    assert all(fold["fit_first_step"] == 1 for fold in folds)
+
+
+@pytest.mark.parametrize("anchors", [(0.5,), (0.75, 0.5), (0.5, 0.5, 1.0), (0.0, 1.0), (0.5, 1.5)])
+def test_invalid_rolling_anchors_are_rejected(anchors):
+    with pytest.raises(ValueError):
+        rolling_origin_folds(uniform_counts(100, 1000), anchors)
+
+
+def test_rolling_anchors_too_close_for_a_new_step_are_rejected():
+    with pytest.raises(ValueError):
+        rolling_origin_folds(uniform_counts(10, 1000), (0.5, 0.51))

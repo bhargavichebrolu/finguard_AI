@@ -61,6 +61,10 @@ PROCESSED_RULE_FLAG_COLUMN = "is_flagged_fraud"
 PROCESSED_STEP_COLUMN = "step"
 PROCESSED_ROW_COLUMN = "source_row"
 
+# The simulator caps fraud amounts here. Never a feature; used only to report how much a result
+# depends on this artefact of the simulation.
+SIMULATOR_AMOUNT_CAP = 10_000_000.0
+
 
 @dataclass(frozen=True)
 class FeatureSpec:

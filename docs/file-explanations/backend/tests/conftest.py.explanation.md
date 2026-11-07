@@ -9,8 +9,8 @@ Provides shared pytest fixtures: a small synthetic PaySim-shaped dataset, a stan
 Tests must run in CI and on any laptop without a 494 MB download. One hand-built fixture also means each test can corrupt known values and predict the exact result.
 
 ## C. Dependencies
-- **Libraries:** `pandas`, `pytest`, `importlib`, `sys`, `pathlib`, `types`, `collections.abc`.
-- **Internal modules:** `app.ml.schema`, `app.ml.splitting`.
+- **Libraries:** `numpy`, `pandas`, `pytest`, `importlib`, `sys`, `pathlib`, `types`, `typing`, `collections.abc`.
+- **Internal modules:** `app.ml.dataset_preparation`, `app.ml.features`, `app.ml.preprocessing`, `app.ml.schema`, `app.ml.splitting`.
 - **External services / database:** none.
 - **Depended on by:** all test modules, automatically through pytest.
 
@@ -54,6 +54,36 @@ Tests must run in CI and on any laptop without a 494 MB download. One hand-built
 - **Internal processing:** builds a module spec from the path, registers it in `sys.modules` and executes it. Registration under a unique name avoids clashes with real modules.
 - **Error handling:** import errors propagate.
 - **Calls:** `importlib.util.spec_from_file_location`. **Used by:** `load_script`.
+
+### `build_model_partition`
+- **Purpose:** build a synthetic partition for Phase 2 tests, in which fraud has larger amounts and occurs in two types.
+- **Parameters / types:** `rows`, `first_step`, `last_step`, `seed`: ints; `fraud_rate: float`.
+- **Returns / type:** `PartitionData`.
+- **Internal processing:** seeded random inputs passed through `engineer_features`.
+- **Error handling:** none needed.
+- **Calls:** `engineer_features`, `compact_features`.
+- **Used by:** `model_partition`, `later_partition`, Phase 2 tests.
+
+### `write_partition`
+- **Purpose:** save a partition as the real pipeline would.
+- **Parameters / types:** `partition: PartitionData`; `directory: Path`; `name: str`.
+- **Returns / type:** `Path`.
+- **Internal processing:** adds the tracking columns and writes Parquet.
+- **Error handling:** none needed.
+- **Calls:** pandas `to_parquet`.
+- **Used by:** Phase 2 tests.
+
+### `small_experiment_config`
+- **Purpose:** provide a complete experiment config with very small models.
+- **Parameters / types:** none.
+- **Returns / type:** `dict`.
+- **Internal processing:** direct construction.
+- **Error handling:** none needed.
+- **Calls:** nothing.
+- **Used by:** Phase 2 tests.
+
+### `model_partition`, `later_partition`, `experiment_config`
+Fixtures returning a synthetic earlier partition, a synthetic later partition, and the small config.
 
 ## E. Classes Explained
 None.

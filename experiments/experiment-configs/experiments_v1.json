@@ -1,0 +1,75 @@
+{
+  "version": "experiments_v1",
+  "primary_seed": 42,
+  "stability_seeds": [42, 7, 2024],
+  "threads": 8,
+  "oversampling": {
+    "target_minority_ratio": 0.1,
+    "k_neighbors": 5
+  },
+  "timing": {
+    "single_row_samples": 100
+  },
+  "baseline_hyperparameters": {
+    "logistic_regression": {"C": 1.0, "max_iter": 1000},
+    "decision_tree": {"max_depth": 12, "min_samples_leaf": 50},
+    "random_forest": {"n_estimators": 100, "max_depth": 14, "min_samples_leaf": 50, "max_samples": 0.25},
+    "xgboost": {"n_estimators": 300, "max_depth": 6, "learning_rate": 0.1, "subsample": 0.8, "colsample_bytree": 0.8},
+    "lightgbm": {"n_estimators": 300, "num_leaves": 63, "learning_rate": 0.1, "subsample": 0.8, "subsample_freq": 1, "colsample_bytree": 0.8},
+    "catboost": {"iterations": 300, "depth": 6, "learning_rate": 0.1}
+  },
+  "tuning": {
+    "logistic_regression": {
+      "samples": 4,
+      "grid": {"C": [0.01, 0.1, 1.0, 10.0]}
+    },
+    "decision_tree": {
+      "samples": 12,
+      "grid": {"max_depth": [6, 8, 12, 16, 20], "min_samples_leaf": [10, 50, 200, 1000]}
+    },
+    "random_forest": {
+      "samples": 8,
+      "grid": {"n_estimators": [100, 200], "max_depth": [10, 14, 18], "min_samples_leaf": [20, 50, 200], "max_samples": [0.1, 0.25, 0.5]}
+    },
+    "xgboost": {
+      "samples": 16,
+      "grid": {"n_estimators": [200, 400, 800], "max_depth": [3, 4, 6, 8], "learning_rate": [0.03, 0.05, 0.1], "min_child_weight": [1, 5, 20], "reg_lambda": [1.0, 5.0]}
+    },
+    "lightgbm": {
+      "samples": 16,
+      "grid": {"n_estimators": [200, 400, 800], "num_leaves": [15, 31, 63, 127], "learning_rate": [0.03, 0.05, 0.1], "min_child_samples": [20, 100, 500], "reg_lambda": [0.0, 1.0, 5.0]}
+    },
+    "catboost": {
+      "samples": 10,
+      "grid": {"iterations": [300, 600], "depth": [4, 6, 8], "learning_rate": [0.05, 0.1], "l2_leaf_reg": [1.0, 3.0, 10.0]}
+    }
+  },
+  "sensitivity": {
+    "oversampling_family": "lightgbm",
+    "oversampling_ratios": [0.02, 0.3]
+  },
+  "rolling_origin": {
+    "row_share_anchors": [0.55, 0.7, 0.85, 1.0]
+  },
+  "threshold": {
+    "operational_fpr_cap": 0.001,
+    "alternative_fpr_caps": [0.0001, 0.0005, 0.005, 0.01]
+  },
+  "selection": {
+    "max_seed_coefficient_of_variation": 0.1,
+    "recall_tie_margin": 0.01
+  },
+  "regimes": {
+    "sparse_step_max_rows": 1000,
+    "sensitivity_cutoffs": [500, 2000]
+  },
+  "bootstrap": {
+    "replicates": 2000,
+    "threshold_replicates": 300,
+    "seed": 42
+  },
+  "shap": {
+    "legitimate_sample_rows": 20000,
+    "seed": 42
+  }
+}

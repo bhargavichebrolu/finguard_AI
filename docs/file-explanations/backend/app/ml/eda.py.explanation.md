@@ -10,7 +10,7 @@ PRD 4.5 requires EDA. Using a tested module rather than a notebook makes results
 
 ## C. Dependencies
 - **Libraries:** `matplotlib`, `numpy`, `pandas`, `pathlib`, `typing`.
-- **Internal modules:** `app.ml.features` (`HOURS_PER_DAY`), `app.ml.pipeline_io`, `app.ml.schema`, `app.ml.splitting`.
+- **Internal modules:** `app.ml.features` (`HOURS_PER_DAY`), `app.ml.pipeline_io`, `app.ml.regimes` (`SPARSE_STEP_MAX_ROWS`), `app.ml.schema` (`SIMULATOR_AMOUNT_CAP`), `app.ml.splitting`.
 - **External services / database:** none.
 - **Depended on by:** `scripts/run_eda.py`, `test_data_pipeline.py`.
 
@@ -35,7 +35,7 @@ PRD 4.5 requires EDA. Using a tested module rather than a notebook makes results
 - **Purpose:** summarise each partition from per-step counts.
 - **Parameters / types:** `rows_per_step: pd.Series`, `fraud_per_step: pd.Series`, `boundaries: SplitBoundaries`.
 - **Returns / type:** `dict[str, dict[str, Any]]`.
-- **Internal processing:** computes rows, fraud, prevalence, means per step, and low-volume figures using `_LOW_VOLUME_ROWS_PER_STEP`.
+- **Internal processing:** computes rows, fraud, prevalence, means per step, and low-volume figures using `SPARSE_STEP_MAX_ROWS` from `regimes.py`, so that EDA and Phase 2 share one definition.
 - **Error handling:** none; boundaries guarantee non-empty partitions.
 - **Calls:** `partition_masks`. **Used by:** `compute_eda`.
 

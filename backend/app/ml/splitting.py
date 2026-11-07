@@ -97,6 +97,40 @@ def compute_boundaries(rows_per_step: pd.Series, config: SplitConfig) -> SplitBo
     )
 
 
+def rolling_origin_folds(
+    rows_per_step: pd.Series, row_share_anchors: tuple[float, ...]
+) -> list[dict[str, int]]:
+    """Return forward-in-time folds inside one partition, from row counts alone.
+
+    Each anchor ends a fit window, and the next anchor ends the window evaluated. Rows are always
+    fitted on earlier steps and evaluated on later ones, which a random k-fold would not respect.
+    """
+    if len(row_share_anchors) < 2 or list(row_share_anchors) != sorted(set(row_share_anchors)):
+        raise ValueError(f"Need at least two increasing anchors, got {row_share_anchors}")
+    if not 0 < row_share_anchors[0] or row_share_anchors[-1] > 1:
+        raise ValueError(f"Anchors must lie in (0, 1], got {row_share_anchors}")
+
+    ordered = rows_per_step.sort_index()
+    cumulative_share = ordered.cumsum() / ordered.sum()
+    last_steps = [
+        int(cumulative_share[cumulative_share <= anchor + _SHARE_TOLERANCE].index.max())
+        for anchor in row_share_anchors
+    ]
+    folds = []
+    for fit_end, evaluation_end in zip(last_steps, last_steps[1:], strict=False):
+        if evaluation_end <= fit_end:
+            raise ValueError(f"Anchors {row_share_anchors} give an empty evaluation window")
+        folds.append(
+            {
+                "fit_first_step": int(ordered.index.min()),
+                "fit_end_step": fit_end,
+                "evaluation_first_step": fit_end + 1,
+                "evaluation_end_step": evaluation_end,
+            }
+        )
+    return folds
+
+
 def partition_masks(steps: pd.Series, boundaries: SplitBoundaries) -> dict[str, pd.Series]:
     """Return one boolean mask per partition; every row is in exactly one."""
     return {

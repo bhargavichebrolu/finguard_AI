@@ -62,6 +62,19 @@ The audit peaks highest because ROC-AUC needs all training rows in memory for ra
 
 **To verify a reproduction**, rerun the pipeline and run `git diff artifacts/metadata/`. An empty diff means your partitions match exactly. Library versions are recorded in the metadata, so a dependency upgrade also shows there.
 
+## Running the experiments
+
+See [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md#how-to-reproduce) for the commands, which run in order and need the data pipeline's outputs.
+
+| Output | Location | In Git? |
+|---|---|---|
+| Per-run validation scores | `experiments/scores/` | No |
+| SHAP values for charts | `experiments/results/phase2/shap_sample.npz` | No |
+| Selected model binary | `artifacts/models/fraud_detector_v1/model.joblib` | No |
+| Run records, selection, thresholds, SHAP summary, test results, tables | `experiments/results/phase2/` | Yes |
+| Charts | `experiments/figures/models/` | Yes |
+| Model metadata and metrics bundle | `artifacts/metadata/model_v1*.json` | Yes |
+
 ## Frontend
 
 ```powershell
@@ -87,6 +100,7 @@ These declarative files are documented here rather than in individual explanatio
 | `frontend/package-lock.json` | Generated exact Node versions | Commit it; never edit by hand |
 | `frontend/tsconfig.json` | Strict TypeScript settings | Do not relax strictness to silence an error |
 | `experiments/experiment-configs/split_v1.json` | Split fractions | Do not edit. Add a new version instead |
+| `experiments/experiment-configs/experiments_v1.json` | Seeds, threads, model settings, search budgets, threshold objective, selection limits | Do not edit after results exist. Add a new version instead |
 | `.gitignore` | Excludes secrets, data, model binaries and build output | Review before adding any new data location |
 | `.env.example` | Placeholder configuration only | Never put a real value here |
 

@@ -1,6 +1,6 @@
 # Project Connections
 
-How FinGuard AI fits together, from raw data to the screen. **Each section states whether it describes implemented code or a plan.** Current state: Phase 1 is implemented, and Phases 2 to 6 are planned.
+How FinGuard AI fits together, from raw data to the screen. **Each section states whether it describes implemented code or a plan.** Current state: Phase 1 is implemented, the Phase 2 experiment code is implemented, and Phases 3 to 6 are planned. Results are recorded in [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md).
 
 ## 1. Project introduction
 FinGuard AI analyses simulated mobile-money transactions, predicts a fraud probability, explains it and supports investigation through a dashboard. It uses the synthetic PaySim dataset and is for research and demonstration only. The point of the project is the connected system rather than any one model.
@@ -22,16 +22,19 @@ Feature engineering                         [implemented] app/ml/features.py
 Chronological dataset splitting             [implemented] app/ml/splitting.py, scripts/prepare_dataset.py
     |
     v
-Model training and experiments              [planned: Phase 2]
+Model training and experiments              [implemented] app/ml/experiments.py, experiment_stages.py, scripts/train_models.py
     |
     v
-Model evaluation                            [planned: Phase 2]
+Model evaluation                            [implemented] app/ml/evaluation.py
     |
     v
-Model selection                             [planned: Phase 2]
+Model selection                             [implemented] app/ml/selection.py, scripts/evaluate_models.py
     |
     v
-Model artefact persistence                  [planned: Phase 2]
+Model artefact persistence                  [implemented] app/ml/model_artifacts.py
+    |
+    v
+Final test evaluation, once, after freeze   [implemented] app/ml/final_evaluation.py, scripts/evaluate_final_test.py
     |
     v
 FastAPI model loading                       [planned: Phase 3]
@@ -69,19 +72,22 @@ finguard-ai/
 |   |-- processed/                 Parquet partitions (Git-ignored)
 |   |-- sample/                    empty until a demo sample is needed
 |-- experiments/
-|   |-- experiment-configs/        split_v1.json
+|   |-- experiment-configs/        split_v1.json, experiments_v1.json
 |   |-- results/                   validation, EDA and audit JSON
+|   |-- results/phase2/            runs, selection, thresholds, SHAP and test results
 |   |-- figures/eda/               four PNG charts
+|   |-- figures/models/            experiment charts
+|   |-- scores/                    per-run validation scores (Git-ignored)
 |   |-- notebooks/                 empty; analysis lives in tested modules
 |-- artifacts/
-|   |-- metadata/                  preprocessing metadata, feature dictionary
-|   |-- models/                    empty until Phase 2 (binaries Git-ignored)
+|   |-- metadata/                  preprocessing metadata, feature dictionary, model metadata and metrics
+|   |-- models/fraud_detector_v1/  the selected model (binary Git-ignored)
 |-- backend/
 |   |-- pyproject.toml, uv.lock
 |   |-- app/ml/                    data pipeline code
 |   |-- app/{api,core,services,models,repositories,database,security,utils}/  empty until Phase 3
 |   |-- migrations/                empty until Phase 3
-|   |-- tests/{unit,integration}/  89 tests
+|   |-- tests/{unit,integration}/  unit and integration tests
 |   |-- tests/api/                 empty until Phase 3
 |-- frontend/
 |   |-- package.json, vite.config.ts, tsconfig.json, index.html
@@ -116,11 +122,30 @@ Each has a full document in [docs/file-explanations/](docs/file-explanations/).
 | `backend/app/ml/dataset_preparation.py` | Parquet partitions and metadata; `load_partition` |
 | `backend/app/ml/leakage_audit.py` | Schema and file checks; training-only signal measures |
 | `backend/app/ml/eda.py` | Statistics and charts |
+| `backend/app/ml/regimes.py` | Label-independent definition of sparse and normal steps |
+| `backend/app/ml/drift.py` | Prevalence, regime and feature drift analysis |
+| `backend/app/ml/preprocessing.py` | The matrix every model family receives; used in training and serving |
+| `backend/app/ml/imbalance.py` | SMOTE and ADASYN producing valid rows |
+| `backend/app/ml/candidates.py` | Model families and the description of one experiment |
+| `backend/app/ml/evaluation.py` | Metrics, threshold rules, step bootstrap |
+| `backend/app/ml/experiments.py` | Fit, time and evaluate one candidate; test partition guard; run storage |
+| `backend/app/ml/experiment_stages.py` | Baselines, matrix, tuning, sensitivity, stability |
+| `backend/app/ml/selection.py` | The pre-registered selection rule, threshold analysis, freeze |
+| `backend/app/ml/model_artifacts.py` | Save and independently load the model |
+| `backend/app/ml/explainability.py` | SHAP explanations |
+| `backend/app/ml/final_evaluation.py` | The only code that reads the test partition |
+| `backend/app/ml/reporting.py` | Charts and tables from saved results |
 | `scripts/download_dataset.py` | Places the CSV |
 | `scripts/validate_dataset.py` | Runs validation |
 | `scripts/prepare_dataset.py` | Builds partitions |
 | `scripts/run_eda.py` | Runs EDA |
 | `scripts/audit_leakage.py` | Runs the audit |
+| `scripts/analyse_temporal_drift.py` | Runs the drift analysis, without test feature values |
+| `scripts/train_models.py` | Runs the experiment stages |
+| `scripts/evaluate_models.py` | Selects and freezes the model and threshold |
+| `scripts/explain_model.py` | Produces SHAP results on validation |
+| `scripts/evaluate_final_test.py` | Runs the one test evaluation, after checking the freeze is committed |
+| `scripts/export_metrics.py` | Generates charts, tables and the metrics bundle |
 | `scripts/check_explanations.py` | Enforces the documentation rule |
 | `backend/tests/conftest.py` | Synthetic fixture and shared helpers |
 | `backend/tests/unit/test_schema.py` | Schema rules |
@@ -130,6 +155,8 @@ Each has a full document in [docs/file-explanations/](docs/file-explanations/).
 | `backend/tests/unit/test_scripts.py` | Documentation checker and dataset placement |
 | `backend/tests/integration/test_data_pipeline.py` | Stages together, tamper tests |
 | `backend/tests/integration/test_real_data.py` | Real outputs versus published figures |
+| `backend/tests/integration/test_phase2_pipeline.py` | The whole Phase 2 flow, with no test file on disk until the freeze |
+| `backend/tests/unit/test_regimes.py`, `test_preprocessing.py`, `test_imbalance.py`, `test_candidates.py`, `test_evaluation.py`, `test_experiments.py`, `test_selection.py`, `test_drift.py`, `test_model_artifacts.py`, `test_explainability.py`, `test_reporting.py` | One Phase 2 module each |
 | `frontend/index.html`, `frontend/src/main.tsx` | Page and React mount |
 | `frontend/src/App.tsx` | Placeholder root component |
 | `frontend/src/styles/tokens.css` | PRD colour tokens |
@@ -139,7 +166,7 @@ Each has a full document in [docs/file-explanations/](docs/file-explanations/).
 Docstring-only `__init__.py` files are exempt from the explanation rule, as they have no behaviour.
 
 ## 6. Machine learning pipeline
-**Implemented:** data preparation up to clean partitions. **Planned (Phase 2):** Logistic Regression, Decision Tree, Random Forest, XGBoost, LightGBM and CatBoost, each compared under the original distribution, class weighting, SMOTE and ADASYN. Design constraints are in [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md).
+**Implemented:** data preparation, then experiments on Logistic Regression, Decision Tree, Random Forest, XGBoost, LightGBM and CatBoost, each compared under the original distribution, class weighting, SMOTE and ADASYN. Selection and threshold rules are in [ADR 0002](docs/decisions/0002-phase-2-decisions.md), and results are in [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md).
 
 ## 7. Dataset flow (implemented)
 ```
@@ -164,11 +191,24 @@ Features saved beside separate is_fraud, is_flagged_fraud, step and source_row c
 ```
 The Phase 3 API will start at `engineer_features` with the same four inputs.
 
-## 9. Training and evaluation flow (planned: Phase 2)
-Load with `load_partition`. Fit on train, with any oversampling inside the training pipeline only. Compare models and pick a threshold on validation. Evaluate the selected model on test once. Save everything under versioned names. Test results are reported overall and by low-volume regime.
+## 9. Training and evaluation flow (implemented)
+```
+experiments_v1.json, train.parquet, validation.parquet
+  | analyse_temporal_drift.py  --> results/phase2/temporal_drift.json
+  | train_models.py            --> results/phase2/{baselines,runs,rolling_folds}.json, scores/
+  |     baselines, 24-cell matrix, tuning, sensitivity, seeds, rolling folds
+  | evaluate_models.py         --> results/phase2/{selection,threshold_analysis}.json
+  |                            --> artifacts/models/fraud_detector_v1/model.joblib
+  |                            --> artifacts/metadata/model_v1.json (frozen)
+  | explain_model.py           --> results/phase2/shap_summary.json
+  | git commit (the freeze)
+  | evaluate_final_test.py     --> results/phase2/test_evaluation.json (once; reads test.parquet)
+  | export_metrics.py          --> figures/models/, all_runs.csv, ML_EXPERIMENTS.md, model_v1_metrics.json
+```
+Partitions are read through `load_development_partition`, which refuses the test partition. Oversampling happens only inside `fit_candidate`, on the rows of the fold being fitted. Every result is reported overall and for sparse and normal steps.
 
-## 10. Model saving and loading (planned: Phases 2 and 3)
-Save the model, preprocessing pipeline, feature schema version, threshold, metrics and version together. The API verifies the schema version against `FEATURE_SCHEMA_VERSION` at startup and refuses a mismatch.
+## 10. Model saving and loading (implemented; API use planned for Phase 3)
+`save_model_artifact` writes one sklearn pipeline (preprocessing and model together) to `artifacts/models/<version>/model.joblib`, and metadata to `artifacts/metadata/model_v1.json`. The metadata records the feature schema version, preprocessing hash, threshold, score meaning, library versions and the file's SHA-256. `load_model_artifact` checks the schema, columns and hash before opening the file, and imports no experiment code. `LoadedModel.predict_scores` starts from the four prediction inputs. The Phase 3 API will use this directly.
 
 ## 11. FastAPI architecture (planned: Phase 3)
 Routes handle HTTP only, calling services for business logic, repositories for database access, and `app/ml` for inference, with configuration in `app/core` and authentication in `app/security`.
@@ -203,8 +243,8 @@ Every prediction stores its model version and threshold, so old results stay int
 ## 21. Investigation workflow (planned: Phase 3)
 Statuses New, Under Review, Escalated, Closed and False Alarm, with notes and change history. These are workflow labels, not findings.
 
-## 22. Explainability flow (planned: Phases 2 to 4)
-SHAP global importance from Phase 2; per-prediction positive and negative contributions from the API; shown with stated limits. SHAP does not establish causality.
+## 22. Explainability flow (Phase 2 implemented; Phases 3 and 4 planned)
+Implemented: `explainability.py` produces global importance by feature and group, breakdowns by class and regime, and per-prediction positive and negative contributions, with a check that they add up to the score. Planned: the API serves `explain_rows` and `local_explanation`, and the interface shows them with the stated limits. SHAP does not establish causality.
 
 ## 23. Deployment architecture (planned: Phase 6)
 Independently deployed frontend, backend container, managed PostgreSQL and separately stored artefacts. See [DEPLOYMENT.md](DEPLOYMENT.md).
@@ -224,11 +264,17 @@ To be written and verified against a live deployment.
 ## 28. Troubleshooting
 See [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md#troubleshooting).
 
-## 29. How to add another model (planned: Phase 2)
-This will be written when the experiment framework exists. Any new model must use `load_partition` and the same partitions, with no feature changes unless the schema version is bumped.
+## 29. How to add another model (implemented)
+1. Add the family to `MODEL_FAMILIES` and a branch to `build_estimator` in `candidates.py`.
+2. Add it to `TREE_FAMILIES` or a new branch in `explainability.py`, or accept that it has no explanations.
+3. In a **new** config version, add its baseline settings and tuning grid. Add small settings to `small_experiment_config` in `conftest.py`.
+4. Add a colour and label in `reporting.py`.
+5. Run `train_models.py`, then the later stages.
 
-## 30. How to update the model version (planned: Phases 2 and 3)
-This will be written with the artefact format. In outline: train offline, evaluate, save to a new version folder, register it, and activate it without rebuilding the frontend.
+Use the same partitions through `load_development_partition`, and change no features unless the schema version is bumped. Note that the current test partition has been used once, so a model selected later needs a new untouched window, or its test result must be labelled as not independent.
+
+## 30. How to update the model version (saving implemented; activation planned for Phase 3)
+Change `MODEL_VERSION` in `selection.py` and the metadata path, train offline, and run `evaluate_models.py`, which saves to a new version folder with its own metadata. Registration and activation without rebuilding the frontend arrive with the Phase 3 API.
 
 ## Rules connecting everything
 | Rule | Enforced by |
@@ -237,5 +283,9 @@ This will be written with the artefact format. In outline: train offline, evalua
 | Label never reaches features | `PartitionData`, `FORBIDDEN_FEATURE_COLUMNS`, tests |
 | Future data never trains | `partition_masks`, `assert_processed_files_clean`, tests |
 | Test partition stays out of feature decisions | EDA and audit scope, tests |
+| Test partition stays out of selection | `load_development_partition`, source scan tests, `test_phase2_pipeline.py`, `evaluate_final_test.py` commit check |
+| Oversampling touches training rows only | `fit_candidate` as the only caller, no sampler in saved pipelines, tests |
+| Test set is used once | `assert_ready_for_test` |
+| Reports match the results | `reporting.py` renders tables from saved files |
 | Training and serving agree | One `engineer_features`, `test_stored_features_match_a_direct_serving_call` |
 | Documentation stays synchronised | `scripts/check_explanations.py` |

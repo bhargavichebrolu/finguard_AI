@@ -37,6 +37,9 @@ A boundary error would silently put future data in the training set. Temporal le
 | `test_count_rows_per_step_handles_chunks` | `raw_csv` | Counting is correct when steps cross chunk boundaries. |
 | `test_config_loads_from_json` | `tmp_path` | A valid config loads. |
 | `test_config_missing_key_raises` | `tmp_path` | A missing key raises `KeyError`. |
+| `test_rolling_folds_move_forward_in_time` | none | Each fold fits on earlier steps and evaluates on later ones. |
+| `test_invalid_rolling_anchors_are_rejected` | `anchors` | Too few, unordered, repeated or out-of-range anchors raise `ValueError`. |
+| `test_rolling_anchors_too_close_for_a_new_step_are_rejected` | none | An empty evaluation window raises `ValueError`. |
 
 ## E. Classes Explained
 None.

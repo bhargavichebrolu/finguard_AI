@@ -17,14 +17,12 @@ import pandas as pd
 
 from app.ml.features import HOURS_PER_DAY
 from app.ml.pipeline_io import DEFAULT_CHUNK_SIZE
-from app.ml.schema import TARGET_COLUMN, TRANSACTION_TYPES
+from app.ml.regimes import SPARSE_STEP_MAX_ROWS
+from app.ml.schema import SIMULATOR_AMOUNT_CAP, TARGET_COLUMN, TRANSACTION_TYPES
 from app.ml.splitting import PARTITIONS, SplitBoundaries, partition_masks
 
 _FRAUD_ELIGIBLE_TYPES = ("TRANSFER", "CASH_OUT")
-_SIMULATOR_AMOUNT_CAP = 10_000_000.0
 _LOG10_AMOUNT_EDGES = np.linspace(-1.0, 8.5, 77)
-# Descriptive cut-off for "sparse" steps. It is reported only and never used by a model.
-_LOW_VOLUME_ROWS_PER_STEP = 1_000
 
 # Primary blue is from PRD section 7.2. The orange is chart-only so that the PRD's reserved
 # status colours keep their meaning. The pair passes colour-vision-deficiency separation checks.
@@ -73,7 +71,7 @@ def compute_eda(
             class_amounts = eligible.loc[eligible[TARGET_COLUMN] == label, "amount"].to_numpy()
             positive = class_amounts[class_amounts > 0]
             amount_histogram[label] += np.histogram(np.log10(positive), _LOG10_AMOUNT_EDGES)[0]
-            at_cap[label] += int((class_amounts == _SIMULATOR_AMOUNT_CAP).sum())
+            at_cap[label] += int((class_amounts == SIMULATOR_AMOUNT_CAP).sum())
             whole_number[label] += int((class_amounts == np.round(class_amounts)).sum())
             eligible_rows[label] += class_amounts.size
 
@@ -129,7 +127,7 @@ def _partition_summary(
         rows = int(rows_per_step[masks[name]].sum())
         fraud = int(fraud_per_step[masks[name]].sum())
         selected = steps[masks[name]]
-        is_low_volume = masks[name] & (rows_per_step < _LOW_VOLUME_ROWS_PER_STEP)
+        is_low_volume = masks[name] & (rows_per_step < SPARSE_STEP_MAX_ROWS)
         low_volume_rows = int(rows_per_step[is_low_volume].sum())
         low_volume_fraud = int(fraud_per_step[is_low_volume].sum())
         summary[name] = {

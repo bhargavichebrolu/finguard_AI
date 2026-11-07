@@ -12,7 +12,7 @@ PRD 5.3 requires earlier data for training and later data for evaluation. Keepin
 - **Libraries:** `json`, `dataclasses`, `pathlib`, `pandas`.
 - **Internal modules:** `app.ml.pipeline_io`.
 - **External services / database:** none.
-- **Depended on by:** `dataset_preparation.py`, `eda.py`, `leakage_audit.py`, three scripts, tests.
+- **Depended on by:** `dataset_preparation.py`, `eda.py`, `leakage_audit.py`, `drift.py`, `experiment_stages.py`, scripts, tests.
 
 ## D. Every Function Explained
 
@@ -33,6 +33,15 @@ PRD 5.3 requires earlier data for training and later data for evaluation. Keepin
 - **Error handling:** raises `ValueError` for invalid fractions, an oversized first step or too few steps.
 - **Calls:** pandas cumulative operations.
 - **Used by:** `prepare_dataset`.
+
+### `rolling_origin_folds`
+- **Purpose:** define forward-in-time folds inside one partition, for Phase 2 stability checks.
+- **Parameters / types:** `rows_per_step: pd.Series`; `row_share_anchors: tuple[float, ...]`.
+- **Returns / type:** `list[dict[str, int]]`, one per fold, with fit and evaluation step ranges.
+- **Internal processing:** each anchor ends a window by cumulative row share. A fold fits up to one anchor and evaluates up to the next, so fitted rows are always earlier.
+- **Error handling:** `ValueError` for fewer than two anchors, non-increasing anchors, anchors outside (0, 1], or an empty evaluation window.
+- **Calls:** pandas cumulative operations.
+- **Used by:** `experiment_stages.run_stability`.
 
 ### `partition_masks`
 - **Purpose:** assign rows to partitions.

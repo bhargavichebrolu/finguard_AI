@@ -6,6 +6,7 @@ environment configuration in Phase 3, because a container has no repository layo
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,14 @@ EDA_FIGURES_DIR = REPO_ROOT / "experiments" / "figures" / "eda"
 PREPROCESSING_METADATA_PATH = REPO_ROOT / "artifacts" / "metadata" / "preprocessing_v1.json"
 FEATURE_DICTIONARY_PATH = REPO_ROOT / "artifacts" / "metadata" / "feature_dictionary_v1.json"
 
+EXPERIMENT_CONFIG_PATH = REPO_ROOT / "experiments" / "experiment-configs" / "experiments_v1.json"
+PHASE2_RESULTS_DIR = REPO_ROOT / "experiments" / "results" / "phase2"
+SCORES_DIR = REPO_ROOT / "experiments" / "scores"
+MODEL_FIGURES_DIR = REPO_ROOT / "experiments" / "figures" / "models"
+MODELS_DIR = REPO_ROOT / "artifacts" / "models"
+MODEL_METADATA_PATH = REPO_ROOT / "artifacts" / "metadata" / "model_v1.json"
+MODEL_METRICS_PATH = REPO_ROOT / "artifacts" / "metadata" / "model_v1_metrics.json"
+
 DEFAULT_CHUNK_SIZE = 500_000
 _HASH_READ_BYTES = 1024 * 1024
 
@@ -32,6 +41,31 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, indent=2, sort_keys=True)
     path.write_text(text + "\n", encoding="utf-8", newline="\n")
+
+
+def current_commit(repo_root: Path = REPO_ROOT) -> str:
+    """Return the current Git commit hash, recorded so results can be traced to their code."""
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True, check=True
+    )
+    return result.stdout.strip()
+
+
+def uncommitted_paths(paths: list[Path], repo_root: Path = REPO_ROOT) -> list[str]:
+    """Return those of the given files that are untracked or differ from the last commit."""
+    problems = []
+    for path in paths:
+        relative = path.resolve().relative_to(repo_root.resolve()).as_posix()
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--", relative],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        if status.stdout.strip() or not path.exists():
+            problems.append(relative)
+    return problems
 
 
 def sha256_file(path: Path) -> str:

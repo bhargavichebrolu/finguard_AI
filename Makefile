@@ -3,7 +3,7 @@
 
 UV_RUN = uv run --project backend
 
-.PHONY: setup data validate prepare eda audit test test-fast lint docs-check frontend-build
+.PHONY: setup data validate prepare eda audit drift train select explain final-test export test test-fast lint docs-check frontend-build
 
 setup:
 	uv sync --project backend
@@ -22,6 +22,24 @@ eda:
 
 audit:
 	$(UV_RUN) python scripts/audit_leakage.py
+
+drift:
+	$(UV_RUN) python scripts/analyse_temporal_drift.py
+
+train:
+	$(UV_RUN) python scripts/train_models.py
+
+select:
+	$(UV_RUN) python scripts/evaluate_models.py
+
+explain:
+	$(UV_RUN) python scripts/explain_model.py
+
+final-test:
+	$(UV_RUN) python scripts/evaluate_final_test.py
+
+export:
+	$(UV_RUN) python scripts/export_metrics.py
 
 test:
 	$(UV_RUN) pytest backend/tests --rootdir backend -c backend/pyproject.toml

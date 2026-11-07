@@ -12,7 +12,7 @@ Leakage rules only hold if there is one definition of them. Validation, feature 
 - **Libraries:** `dataclasses` (standard library).
 - **Internal modules:** none. This is the bottom of the dependency graph on purpose.
 - **External services / database:** none.
-- **Depended on by:** `features.py`, `dataset_validation.py`, `dataset_preparation.py`, `leakage_audit.py`, `eda.py`, `scripts/prepare_dataset.py`, and the tests.
+- **Depended on by:** `features.py`, `dataset_validation.py`, `dataset_preparation.py`, `leakage_audit.py`, `eda.py`, `preprocessing.py`, `imbalance.py`, `evaluation.py`, `drift.py`, `selection.py`, `model_artifacts.py`, `scripts/prepare_dataset.py`, and the tests. `SIMULATOR_AMOUNT_CAP` is never a feature; Phase 2 uses it to report how far results depend on the simulator's fraud amount cap.
 
 ## D. Every Function Explained
 
