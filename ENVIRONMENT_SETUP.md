@@ -66,6 +66,8 @@ The audit peaks highest because ROC-AUC needs all training rows in memory for ra
 
 See [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md#how-to-reproduce) for the commands, which run in order and need the data pipeline's outputs.
 
+On the development machine, using 8 threads, recorded fitting time across all 125 runs was 68 minutes, and the selection step took over 10 minutes. Phase 2 peak memory was not measured. Per-run scores take about 400 MB of disk, and the selected model file is 57.5 KB.
+
 | Output | Location | In Git? |
 |---|---|---|
 | Per-run validation scores | `experiments/scores/` | No |

@@ -216,3 +216,60 @@ These fits ran after selection and were not eligible for it.
 | strongest true alert | CASH_OUT, 3,244,067.25, hour 5 | 0.9928 | amount +3.65, hour_of_day +3.15, transaction_type_CASH_OUT +1.54 | none |
 
 Largest additivity error across explained rows: 5.36e-07.
+
+### Final test evaluation
+
+| Measure | Test, frozen threshold |
+| --- | ---: |
+| Rows / fraud | 955,744 / 4,010 |
+| Fraud rate (random ranking PR-AUC) | 0.420% |
+| PR-AUC (95% interval, steps resampled) | 0.4242 (0.3858 to 0.4676) |
+| PR-AUC of the transaction type baseline | 0.0170 |
+| ROC-AUC | 0.9524 |
+| Accuracy (not a useful measure here) | 0.9949 |
+| Precision | 0.4066 |
+| Recall | 0.4586 |
+| F1 | 0.4310 |
+| Balanced accuracy | 0.7279 |
+| False positive rate | 0.282% |
+| False negative rate | 54.1% |
+| TP / FP / FN / TN | 1,839 / 2,684 / 2,171 / 949,050 |
+| Existing rule: recall / precision | 0.0032 / 1.0000 |
+
+#### Sparse and normal steps, frozen threshold
+
+| Regime | Window | Rows | Fraud | Fraud rate | PR-AUC | ROC-AUC | Precision | Recall | FPR |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| normal | validation | 971,694 | 410 | 0.042% | 0.1700 | 0.9255 | 0.1064 | 0.2000 | 0.071% |
+| normal | test | 929,998 | 1,198 | 0.129% | 0.2095 | 0.9268 | 0.2266 | 0.2187 | 0.096% |
+| sparse | validation | 1,479 | 160 | 10.818% | 0.8191 | 0.9718 | 0.4540 | 0.9563 | 13.950% |
+| sparse | test | 25,746 | 2,812 | 10.922% | 0.6182 | 0.9189 | 0.4684 | 0.5608 | 7.805% |
+
+#### Prior shift check
+
+| Measure | Validation | Test | Expected if only the fraud rate changed |
+| --- | ---: | ---: | ---: |
+| Fraud rate | 0.059% | 0.420% |  |
+| Recall | 0.4123 | 0.4586 | same as validation |
+| False positive rate | 0.090% | 0.282% | same as validation |
+| Precision | 0.2121 | 0.4066 | 0.6593 |
+| PR-AUC | 0.3499 | 0.4242 (0.2559 at validation's fraud rate) |  |
+
+#### Test slices
+
+| Slice | Rows | Fraud | PR-AUC | Precision | Recall |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| amount at simulator cap | 213 | 193 | 0.9826 | 1.0000 | 0.7461 |
+| amount below simulator cap | 955,531 | 3,817 | 0.3994 | 0.3871 | 0.4441 |
+| regime normal | 929,998 | 1,198 | 0.2095 | 0.2266 | 0.2187 |
+| regime sparse | 25,746 | 2,812 | 0.6182 | 0.4684 | 0.5608 |
+| type cash out | 324,885 | 2,005 | 0.5402 | 0.5068 | 0.5566 |
+| type transfer | 83,192 | 2,005 | 0.2737 | 0.3177 | 0.3606 |
+
+#### Feature drift, train to test (PSI)
+
+| Rows | Amount | Type | Hour |
+| --- | ---: | ---: | ---: |
+| all_rows | 0.0024 | 0.0011 | 0.1250 |
+| legitimate | 0.0026 | 0.0011 | 0.1242 |
+| fraud | 0.0114 | 0.0000 | 0.0293 |

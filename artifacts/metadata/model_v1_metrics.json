@@ -32,7 +32,89 @@
   "model_version": "fraud_detector_v1",
   "score_semantics": "Model output trained on the natural class distribution. It is estimated on the training period's fraud rate, so it is not a calibrated probability for other periods.",
   "strategy": "original",
-  "test": null,
+  "test": {
+    "at_frozen_threshold": {
+      "accuracy": 0.9949201878327251,
+      "alert_rate": 0.00473243881206683,
+      "alerts": 4523,
+      "balanced_accuracy": 0.7278916877836111,
+      "f1": 0.4310324622055549,
+      "false_negative_rate": 0.5413965087281796,
+      "false_negatives": 2171,
+      "false_positive_rate": 0.0028201157045981335,
+      "false_positives": 2684,
+      "precision": 0.4065885474242759,
+      "recall": 0.45860349127182043,
+      "threshold": 0.02841914258897305,
+      "true_negatives": 949050,
+      "true_positives": 1839
+    },
+    "ranking": {
+      "brier": 0.0031109307728873193,
+      "fraud_rows": 4010,
+      "pr_auc": 0.42419631690733467,
+      "pr_auc_lift": 101.10301364246476,
+      "prevalence": 0.004195684199953125,
+      "roc_auc": 0.952358545932072,
+      "rows": 955744
+    },
+    "regimes": {
+      "normal": {
+        "at_frozen_threshold": {
+          "accuracy": 0.9980322538328039,
+          "alert_rate": 0.0012430134258353243,
+          "alerts": 1156,
+          "balanced_accuracy": 0.608867648708226,
+          "f1": 0.22259983007646558,
+          "false_negative_rate": 0.7813021702838063,
+          "false_negatives": 936,
+          "false_positive_rate": 0.0009625322997416021,
+          "false_positives": 894,
+          "precision": 0.22664359861591696,
+          "recall": 0.21869782971619364,
+          "threshold": 0.02841914258897305,
+          "true_negatives": 927906,
+          "true_positives": 262
+        },
+        "ranking": {
+          "brier": 0.0011086818683734804,
+          "fraud_rows": 1198,
+          "pr_auc": 0.20945220070517095,
+          "pr_auc_lift": 162.5960999594387,
+          "prevalence": 0.0012881748132791684,
+          "roc_auc": 0.9268235190289874,
+          "rows": 929998
+        }
+      },
+      "sparse": {
+        "at_frozen_threshold": {
+          "accuracy": 0.8825060203526761,
+          "alert_rate": 0.13077759651984774,
+          "alerts": 3367,
+          "balanced_accuracy": 0.7413803770632061,
+          "f1": 0.5104385822948697,
+          "false_negative_rate": 0.4391891891891892,
+          "false_negatives": 1235,
+          "false_positive_rate": 0.07805005668439871,
+          "false_positives": 1790,
+          "precision": 0.46836946836946836,
+          "recall": 0.5608108108108109,
+          "threshold": 0.02841914258897305,
+          "true_negatives": 21144,
+          "true_positives": 1577
+        },
+        "ranking": {
+          "brier": 0.07543624253782406,
+          "fraud_rows": 2812,
+          "pr_auc": 0.6181763846834281,
+          "pr_auc_lift": 5.659875248954317,
+          "prevalence": 0.10922084984075196,
+          "roc_auc": 0.9189013271555051,
+          "rows": 25746
+        }
+      }
+    }
+  },
   "threshold": {
     "chosen_on": "validation partition",
     "objective": "Highest recall with a false positive rate of at most 0.001 on validation. A false positive rate does not depend on prevalence, whereas precision and F1 do.",

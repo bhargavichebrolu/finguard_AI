@@ -212,12 +212,14 @@ def plot_confusion_matrix(metrics: dict[str, Any], title: str, path: Path) -> Pa
     )
     colormap = matplotlib.colors.LinearSegmentedColormap.from_list("blue", _SEQUENTIAL)
     figure, axis = plt.subplots(figsize=(5, 3.6))
-    axis.imshow(np.log10(cells + 1), cmap=colormap, aspect="auto")
-    limit = np.log10(cells.max() + 1) / 2
+    shades = np.log10(cells + 1)
+    axis.imshow(shades, cmap=colormap, aspect="auto")
+    # imshow stretches the shades from the smallest cell to the largest, so the midpoint is theirs.
+    limit = (shades.min() + shades.max()) / 2
     for row in range(2):
         for column in range(2):
             count = cells[row, column]
-            color = "white" if np.log10(count + 1) > limit else _INK
+            color = "white" if shades[row, column] > limit else _INK
             axis.text(column, row, f"{count:,}", ha="center", va="center", color=color, fontsize=12)
     axis.set_xticks([0, 1], ["Predicted legitimate", "Predicted fraud"], fontsize=9)
     axis.set_yticks([0, 1], ["Actual legitimate", "Actual fraud"], fontsize=9)

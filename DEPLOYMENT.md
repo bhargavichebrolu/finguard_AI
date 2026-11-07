@@ -22,4 +22,4 @@ The frontend and backend deploy independently, and the design stays portable bet
 
 ## Open question for Phase 6
 
-Where artefacts live depends on the chosen host. Options include a release asset, object storage, or copying them into the image at build time. The selected model's size, known after Phase 2, will inform the choice.
+Where artefacts live depends on the chosen host. Options include a release asset, object storage, or copying them into the image at build time. The selected model file is 57.5 KB, so size does not limit the choice. It needs `xgboost` in the API image.

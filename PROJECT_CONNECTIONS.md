@@ -1,6 +1,6 @@
 # Project Connections
 
-How FinGuard AI fits together, from raw data to the screen. **Each section states whether it describes implemented code or a plan.** Current state: Phase 1 is implemented, the Phase 2 experiment code is implemented, and Phases 3 to 6 are planned. Results are recorded in [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md).
+How FinGuard AI fits together, from raw data to the screen. **Each section states whether it describes implemented code or a plan.** Current state: Phases 1 and 2 are implemented, with the model frozen and evaluated, and Phases 3 to 6 are planned. Results are recorded in [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md).
 
 ## 1. Project introduction
 FinGuard AI analyses simulated mobile-money transactions, predicts a fraud probability, explains it and supports investigation through a dashboard. It uses the synthetic PaySim dataset and is for research and demonstration only. The point of the project is the connected system rather than any one model.

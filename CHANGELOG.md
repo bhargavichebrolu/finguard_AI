@@ -1,5 +1,34 @@
 # Changelog
 
+## Phase 2: Machine learning experiments (2026-11-07)
+
+### Added
+- Six model families and four imbalance strategies, with oversampling confined to training folds.
+- A selection rule and threshold objective, committed before any candidate was scored.
+- Temporal drift analysis, a label-independent definition of sparse steps, threshold analysis, TreeSHAP explanations, and a single guarded test evaluation.
+- Hash-verified model loading that imports no training code.
+- 322 backend tests: 301 on synthetic data and 21 on real outputs. All passed, none skipped.
+
+### Results
+- 125 runs recorded on validation, none failed.
+- Selected: XGBoost on the original distribution, threshold 0.02842. XGBoost, LightGBM and CatBoost were statistically tied on validation.
+- Test, evaluated once: PR-AUC 0.4242, ROC-AUC 0.9524, precision 40.7%, recall 45.9%, false positive rate 0.282%.
+- Recall was 56.1% in sparse steps and 21.9% in normal steps.
+
+### Fixed
+- `evaluate_final_test.py` recorded the wrong commit as the freeze, found on review before test was opened. The field was renamed and the tests now check Git history.
+- Generated tables left out the sensitivity runs and listed partitions alphabetically.
+- Chart label collisions and unreadable text in confusion matrices.
+- `KeyError`s in reports for empty slices, found by testing on real outputs.
+
+### Known limitations
+- The false positive rate on test was 2.8 times the 0.1% cap set on validation.
+- Validation overstated results in sparse steps (recall 95.6% against 56.1% on test). The likely cause, reliance on hour, is not confirmed.
+- LightGBM's matrix results on the original distribution and class weighting reflect a numerical divergence, not those strategies. See `ML_EXPERIMENTS.md`.
+- Scores are not calibrated probabilities.
+- Phase 2 peak memory was not measured.
+- PaySim has no untouched window left, so a revised model could not be fairly measured on it.
+
 ## Phase 1: Foundation and data engineering (2026-11-06)
 
 ### Added
