@@ -1,7 +1,9 @@
 """Enforce the PRD section 12 documentation rule. Exits 1 if any explanation is missing or stale.
 
-Every authored source file needs docs/file-explanations/<source path>.explanation.md with
-sections A to K, and every function, class and method in the source must be named in it.
+Every authored source and configuration file needs an explanation with sections A to K, and
+every function, class and method in the source must be named in it. From Phase 3 the document
+sits beside its source as <file>.explanation.md; Phase 1 and 2 documents remain in
+docs/file-explanations/<source path>.explanation.md. Either location is accepted, but not both.
 Relative links in project documents must also resolve. This catches missing and out-of-date
 documents. Reviewers still judge whether the text is good.
 """
@@ -13,10 +15,30 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EXPLANATIONS_DIR = REPO_ROOT / "docs" / "file-explanations"
-SOURCE_DIRECTORIES = ("backend/app", "backend/tests", "scripts", "frontend/src", "frontend/tests")
-SOURCE_FILES = ("frontend/vite.config.ts", "frontend/index.html", "Makefile")
-SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".css"}
-IGNORED_PARTS = {"__pycache__", "node_modules", "dist", ".venv"}
+SOURCE_DIRECTORIES = (
+    "backend/app",
+    "backend/migrations",
+    "backend/tests",
+    "docker",
+    "scripts",
+    "frontend/src",
+    "frontend/tests",
+)
+SOURCE_FILES = (
+    "frontend/vite.config.ts",
+    "frontend/index.html",
+    "Makefile",
+    "docker-compose.yml",
+    ".env.example",
+    ".gitattributes",
+    ".gitignore",
+    "backend/Dockerfile",
+    "backend/.dockerignore",
+    "backend/alembic.ini",
+    "backend/pyproject.toml",
+)
+SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".css", ".sql", ".mako"}
+IGNORED_PARTS = {"__pycache__", "node_modules", "dist", ".venv", ".pytest_cache", ".ruff_cache"}
 EXPLANATION_SUFFIX = ".explanation.md"
 MINIMUM_WORDS = 80
 REQUIRED_SECTIONS = (
@@ -95,6 +117,17 @@ def explanation_path(source: Path, explanations_dir: Path) -> Path:
     return explanations_dir / source.parent / (source.name + EXPLANATION_SUFFIX)
 
 
+def sibling_path(source: Path) -> Path:
+    """Return where a document beside its source file lives."""
+    return source.with_name(source.name + EXPLANATION_SUFFIX)
+
+
+def locate_explanation(root: Path, source: Path, explanations_dir: Path) -> Path:
+    """Return the sibling document if there is one, otherwise the mirrored location."""
+    sibling = root / sibling_path(source)
+    return sibling if sibling.is_file() else explanation_path(source, explanations_dir)
+
+
 def check_explanation(source_path: Path, explanation: Path, label: str) -> list[str]:
     """Return every problem with one source file's explanation document."""
     if not explanation.is_file():
@@ -122,22 +155,50 @@ def check_explanation(source_path: Path, explanation: Path, label: str) -> list[
 
 
 def find_orphans(root: Path, explanations_dir: Path, sources: list[Path]) -> list[str]:
-    """Find explanation documents whose source file no longer exists."""
-    expected = {explanation_path(source, explanations_dir) for source in sources}
-    if not explanations_dir.is_dir():
-        return []
-    return [
+    """Find documents whose source no longer exists, and sources documented in both places."""
+    mirrored = {explanation_path(source, explanations_dir) for source in sources}
+    siblings = {root / sibling_path(source) for source in sources}
+    problems = [
         f"Orphan explanation: {path.relative_to(root).as_posix()}"
-        for path in sorted(explanations_dir.rglob(f"*{EXPLANATION_SUFFIX}"))
-        if path not in expected
+        for path in sibling_documents(root, explanations_dir)
+        if path not in siblings
     ]
+    if explanations_dir.is_dir():
+        problems.extend(
+            f"Orphan explanation: {path.relative_to(root).as_posix()}"
+            for path in sorted(explanations_dir.rglob(f"*{EXPLANATION_SUFFIX}"))
+            if path not in mirrored
+        )
+    problems.extend(
+        f"{source.as_posix()}: documented in both the sibling and mirrored locations"
+        for source in sources
+        if (root / sibling_path(source)).is_file()
+        and explanation_path(source, explanations_dir).is_file()
+    )
+    return problems
+
+
+def sibling_documents(root: Path, explanations_dir: Path) -> list[Path]:
+    """List explanation documents outside the mirrored folder and dependency folders."""
+    found = []
+    for path in root.rglob(f"*{EXPLANATION_SUFFIX}"):
+        if IGNORED_PARTS & set(path.parts) or explanations_dir in path.parents:
+            continue
+        found.append(path)
+    return sorted(found)
 
 
 def find_broken_links(root: Path, explanations_dir: Path) -> list[str]:
     """Find relative Markdown links that point at a missing file."""
-    documents = [*root.glob("*.md"), *(root / "docs").rglob("*.md")]
+    documents = sorted(
+        {
+            *root.glob("*.md"),
+            *(root / "docs").rglob("*.md"),
+            *sibling_documents(root, explanations_dir),
+        }
+    )
     problems: list[str] = []
-    for document in sorted(documents):
+    for document in documents:
         for target in _MARKDOWN_LINK.findall(document.read_text(encoding="utf-8")):
             if target.startswith(("http://", "https://", "#", "mailto:")):
                 continue
@@ -154,7 +215,7 @@ def run_check(root: Path, explanations_dir: Path) -> tuple[list[Path], list[str]
     for source in sources:
         problems.extend(
             check_explanation(
-                root / source, explanation_path(source, explanations_dir), source.as_posix()
+                root / source, locate_explanation(root, source, explanations_dir), source.as_posix()
             )
         )
     problems.extend(find_orphans(root, explanations_dir, sources))

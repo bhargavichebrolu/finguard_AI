@@ -16,6 +16,48 @@ Tests must run in CI and on any laptop without a 494 MB download. One hand-built
 
 ## D. Every Function Explained
 
+### `configure_test_environment`
+- **Purpose:** point the application settings at the test database before anything reads them.
+- **Parameters / types:** none. **Returns / type:** `str | None`, the test database address.
+- **Internal processing:** reads `TEST_DATABASE_URL` from the environment or `.env`, and sets `DATABASE_URL`, `APP_ENV` and a test signing key. Without a test database it sets an address that nothing listens on, so tests that do not need a database can still import the application.
+- **Error handling:** none needed.
+- **Calls:** `dotenv_values`. **Used by:** the module body.
+
+### `require_test_database_name`
+- **Purpose:** refuse any database not clearly meant for tests, because the fixtures delete rows.
+- **Parameters / types:** `url: str`. **Returns / type:** `None`.
+- **Internal processing:** the database name must end in `_test`.
+- **Error handling:** raises `RuntimeError`.
+- **Calls:** `make_url`. **Used by:** `db_engine`, `test_migrations.py`.
+
+### `alembic_config`
+- **Purpose:** build an Alembic configuration that works from any folder.
+- **Parameters / types:** none. **Returns / type:** `Config`.
+- **Internal processing:** uses absolute paths to `alembic.ini` and `migrations/`.
+- **Error handling:** none needed.
+- **Calls:** `Config`. **Used by:** `db_engine`, `test_migrations.py`.
+
+### `db_engine`
+- **Purpose:** session-wide engine for a migrated test database.
+- **Parameters / types:** none. **Returns / type:** an iterator yielding `Engine`.
+- **Internal processing:** checks the name, runs migrations, and disposes of the engine at the end.
+- **Error handling:** skips if no test database is configured.
+- **Calls:** `require_test_database_name`, `alembic_config`. **Used by:** database tests.
+
+### `empty_all_tables`
+- **Purpose:** remove all rows, so tests do not affect each other.
+- **Parameters / types:** `engine: Engine`. **Returns / type:** `None`.
+- **Internal processing:** runs `TRUNCATE` on every table in the model metadata.
+- **Error handling:** database errors propagate.
+- **Calls:** `Base.metadata`. **Used by:** `db_session`, `test_migrations.py`.
+
+### `db_session`
+- **Purpose:** provide a session on an empty database.
+- **Parameters / types:** `db_engine: Engine`. **Returns / type:** an iterator yielding `Session`.
+- **Internal processing:** empties the tables, then opens a session.
+- **Error handling:** the session closes when the test ends, discarding uncommitted changes.
+- **Calls:** `empty_all_tables`. **Used by:** database tests.
+
 ### `build_raw_frame`
 - **Purpose:** create the fixture data.
 - **Parameters / types:** none. **Returns / type:** `pd.DataFrame` of 600 rows over 30 steps with all 11 raw columns.

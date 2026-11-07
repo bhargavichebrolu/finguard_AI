@@ -1,0 +1,7 @@
+# The frozen metadata files are verified by SHA-256 when the API starts, so their bytes must not
+# change on checkout. Without this, Windows Git settings could rewrite their line endings.
+artifacts/metadata/*.json -text
+
+# Run inside Linux containers, so they must keep LF line endings.
+docker/** text eol=lf
+*.sh text eol=lf

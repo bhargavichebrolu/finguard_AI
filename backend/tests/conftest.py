@@ -1,6 +1,11 @@
-"""Shared fixtures: a small, hand-built PaySim-shaped CSV so tests never need the real file."""
+"""Shared fixtures: a small, hand-built PaySim-shaped CSV so tests never need the real file.
+
+Database fixtures use TEST_DATABASE_URL only. They delete rows, so they refuse any database whose
+name does not end in _test. The environment is set before anything can read the settings.
+"""
 
 import importlib.util
+import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -10,16 +15,80 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
+from alembic import command
+from alembic.config import Config
+from dotenv import dotenv_values
+from sqlalchemy import Engine, create_engine, make_url, text
+from sqlalchemy.orm import Session
 
+from app.database.base import Base
 from app.ml.dataset_preparation import PartitionData
 from app.ml.features import engineer_features
 from app.ml.preprocessing import compact_features
 from app.ml.schema import RAW_COLUMNS, TRANSACTION_TYPES
 from app.ml.splitting import SplitConfig
+from app.models import records  # noqa: F401  (importing registers the tables on Base.metadata)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_DIR = REPO_ROOT / "backend"
 FIXTURE_STEPS = 30
 FIXTURE_ROWS_PER_STEP = 20
+_UNUSED_DATABASE_URL = "postgresql+psycopg://unused:unused@127.0.0.1:1/unused_test"
+
+
+def configure_test_environment() -> str | None:
+    """Point the settings at the test database, and return its address if there is one."""
+    url = os.environ.get("TEST_DATABASE_URL") or dotenv_values(REPO_ROOT / ".env").get(
+        "TEST_DATABASE_URL"
+    )
+    os.environ["APP_ENV"] = "test"
+    os.environ["DATABASE_URL"] = url or _UNUSED_DATABASE_URL
+    os.environ["SECRET_KEY"] = "test-only-signing-key-" + "x" * 32
+    return url
+
+
+TEST_DATABASE_URL = configure_test_environment()
+
+
+def require_test_database_name(url: str) -> None:
+    """Refuse to touch a database that is not clearly a test database."""
+    name = make_url(url).database or ""
+    if not name.endswith("_test"):
+        raise RuntimeError(f"Refusing to run tests against the database named {name!r}")
+
+
+def alembic_config() -> Config:
+    """Return an Alembic configuration that works from any folder."""
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+    return config
+
+
+@pytest.fixture(scope="session")
+def db_engine() -> Engine:
+    """Return an engine for the migrated test database, or skip if none is configured."""
+    if not TEST_DATABASE_URL:
+        pytest.skip("TEST_DATABASE_URL is not set")
+    require_test_database_name(TEST_DATABASE_URL)
+    command.upgrade(alembic_config(), "head")
+    engine = create_engine(TEST_DATABASE_URL, connect_args={"connect_timeout": 5})
+    yield engine
+    engine.dispose()
+
+
+def empty_all_tables(engine: Engine) -> None:
+    """Delete every row in the application tables."""
+    names = ", ".join(f'"{table.name}"' for table in Base.metadata.sorted_tables)
+    with engine.begin() as connection:
+        connection.execute(text(f"TRUNCATE {names} CASCADE"))
+
+
+@pytest.fixture
+def db_session(db_engine: Engine) -> Session:
+    """Return a session on an empty test database."""
+    empty_all_tables(db_engine)
+    with Session(db_engine, expire_on_commit=False) as session:
+        yield session
 
 
 def build_raw_frame() -> pd.DataFrame:

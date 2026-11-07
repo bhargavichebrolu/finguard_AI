@@ -1,0 +1,12 @@
+# Keep the build small, and keep local environments, tests and temporary uploads out of the image.
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+tests
+tmp
+catboost_info
+.env
+.env.*
+*.md

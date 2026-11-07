@@ -1,14 +1,27 @@
 [project]
 name = "finguard-backend"
 version = "0.1.0"
-description = "FinGuard AI: fraud detection data pipeline, ML training and (from Phase 3) FastAPI service."
+description = "FinGuard AI: fraud detection data pipeline, ML training and FastAPI service."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
-# Runtime dependencies are limited to what the shared feature code imports.
-# FastAPI, SQLAlchemy, Alembic and friends are added in Phase 3 when code first uses them.
+# Everything the API image needs. scikit-learn, xgboost and joblib are here because loading the
+# frozen model needs them; uv.lock pins them to the versions recorded in its metadata.
 dependencies = [
     "numpy>=2.0,<3",
     "pandas>=2.2,<3",
+    "scikit-learn>=1.5",
+    "xgboost>=2.1",
+    "joblib>=1.4",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "pydantic[email]>=2.8",
+    "pydantic-settings>=2.4",
+    "sqlalchemy>=2.0.30",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
+    "python-multipart>=0.0.18",
+    "argon2-cffi>=23.1",
+    "pyjwt>=2.9",
 ]
 
 [dependency-groups]
@@ -16,19 +29,17 @@ dependencies = [
 training = [
     "pyarrow>=17",
     "matplotlib>=3.9",
-    "scikit-learn>=1.5",
     "imbalanced-learn>=0.12",
-    "xgboost>=2.1",
     "lightgbm>=4.5",
     "catboost>=1.2.7",
     "shap>=0.46",
     # Floor stops the resolver backtracking to numba 0.53, which has no Python 3.11 build.
     "numba>=0.61",
-    "joblib>=1.4",
 ]
 dev = [
     "pytest>=8",
     "ruff>=0.6",
+    "httpx>=0.27",
 ]
 
 [build-system]
@@ -46,6 +57,7 @@ testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 markers = [
     "real_data: needs the full PaySim CSV and pipeline outputs; skipped when they are absent",
+    "database: needs PostgreSQL through TEST_DATABASE_URL; skipped when it is not set",
 ]
 
 [tool.ruff]

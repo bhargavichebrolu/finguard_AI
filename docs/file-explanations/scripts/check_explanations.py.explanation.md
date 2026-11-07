@@ -3,7 +3,7 @@
 Source: [scripts/check_explanations.py](../../../scripts/check_explanations.py)
 
 ## A. File Purpose
-Verifies PRD section 12: every authored source file has an explanation document with sections A to K, and that document names every function, class and method in the source.
+Verifies PRD section 12: every authored source and configuration file has an explanation document with sections A to K, and that document names every function, class and method in the source. From Phase 3 it accepts a document beside its source as well as the Phase 1 and 2 mirrored location, and reports a source documented in both.
 
 ## B. Why This File Exists
 Documentation drifts unless something fails when it does. This script turns the most checkable part of the rule into a command, which Phase 5 will add to CI. It cannot judge whether the writing is good; that still needs a reviewer.
@@ -58,6 +58,27 @@ Documentation drifts unless something fails when it does. This script turns the 
 - **Error handling:** none needed.
 - **Calls:** none. **Used by:** `run_check`, `find_orphans`.
 
+### `sibling_path`
+- **Purpose:** map a source path to a document beside it.
+- **Parameters / types:** `source: Path`. **Returns / type:** `Path`.
+- **Internal processing:** appends `.explanation.md` to the file name.
+- **Error handling:** none needed.
+- **Calls:** none. **Used by:** `locate_explanation`, `find_orphans`.
+
+### `locate_explanation`
+- **Purpose:** decide which document applies to a source.
+- **Parameters / types:** `root: Path`, `source: Path`, `explanations_dir: Path`. **Returns / type:** `Path`.
+- **Internal processing:** prefers an existing sibling, otherwise returns the mirrored path, which is then reported if it is missing.
+- **Error handling:** none needed.
+- **Calls:** `sibling_path`, `explanation_path`. **Used by:** `run_check`.
+
+### `sibling_documents`
+- **Purpose:** list documents outside the mirrored folder.
+- **Parameters / types:** `root: Path`, `explanations_dir: Path`. **Returns / type:** `list[Path]`.
+- **Internal processing:** searches the whole tree, skipping `IGNORED_PARTS` and the mirrored folder.
+- **Error handling:** none needed.
+- **Calls:** `pathlib`. **Used by:** `find_orphans`, `find_broken_links`.
+
 ### `check_explanation`
 - **Purpose:** check one document.
 - **Parameters / types:** `source_path: Path`, `explanation: Path`, `label: str`. **Returns / type:** `list[str]` of problems.
@@ -66,16 +87,16 @@ Documentation drifts unless something fails when it does. This script turns the 
 - **Calls:** `python_definition_names`, `typescript_definition_names`. **Used by:** `run_check`.
 
 ### `find_orphans`
-- **Purpose:** find documents whose source was deleted or renamed.
+- **Purpose:** find documents whose source was deleted or renamed, and sources documented twice.
 - **Parameters / types:** `root: Path`, `explanations_dir: Path`, `sources: list[Path]`. **Returns / type:** `list[str]`.
-- **Internal processing:** compares all existing documents with expected ones.
-- **Error handling:** a missing folder returns an empty list.
-- **Calls:** `explanation_path`. **Used by:** `run_check`.
+- **Internal processing:** compares existing documents in both locations with expected ones, then reports any source with both a sibling and a mirrored document, since the two could disagree.
+- **Error handling:** a missing mirrored folder is skipped.
+- **Calls:** `explanation_path`, `sibling_path`, `sibling_documents`. **Used by:** `run_check`.
 
 ### `find_broken_links`
 - **Purpose:** catch relative links that point at nothing, since PRD 12.1 section K requires usable related-file paths.
 - **Parameters / types:** `root: Path`, `explanations_dir: Path`. **Returns / type:** `list[str]`.
-- **Internal processing:** reads root-level and `docs/` Markdown, extracts link targets with `_MARKDOWN_LINK`, and skips web links and same-page anchors.
+- **Internal processing:** reads root-level, `docs/` and sibling explanation Markdown, extracts link targets with `_MARKDOWN_LINK`, and skips web links and same-page anchors.
 - **Error handling:** problems are returned, not raised.
 - **Calls:** `re`, `pathlib`. **Used by:** `run_check`, tests.
 
@@ -84,7 +105,7 @@ Documentation drifts unless something fails when it does. This script turns the 
 - **Parameters / types:** `root: Path`, `explanations_dir: Path`. **Returns / type:** `tuple[list[Path], list[str]]`.
 - **Internal processing:** combines the functions above. Taking paths as arguments is what makes it testable.
 - **Error handling:** none beyond those functions.
-- **Calls:** `find_source_files`, `check_explanation`, `explanation_path`, `find_orphans`, `find_broken_links`. **Used by:** `main`, tests.
+- **Calls:** `find_source_files`, `check_explanation`, `locate_explanation`, `find_orphans`, `find_broken_links`. **Used by:** `main`, tests.
 
 ### `main`
 - **Purpose:** command-line entry point.
@@ -103,8 +124,8 @@ Find source files, check each document, look for orphans, print the results, exi
 Input: the repository tree. Output: one line per problem, a total, and an exit code.
 
 ## H. Important Technical Concepts
-- **Mirrored paths:** the PRD's tree includes `docs/file-explanations/`, so documents mirror the source tree there rather than sitting beside each source file. This avoids name collisions (such as `__init__.py`) and keeps source folders uncluttered. See `docs/decisions/0001-phase-1-decisions.md`.
-- **Scope:** Python, TypeScript and CSS sources, `frontend/index.html`, `frontend/vite.config.ts` and the `Makefile`. Declarative configuration, lockfiles, generated output and data are documented centrally instead, as PRD 12.2 allows for generated files. Treating config as central is a project decision recorded in that same document.
+- **Two locations:** Phases 1 and 2 mirrored the source tree under `docs/file-explanations/` (`docs/decisions/0001-phase-1-decisions.md`). The Phase 3 authorisation asked for a sibling document, so new files use that (`docs/decisions/0003-phase-3-decisions.md`). Existing documents were not moved.
+- **Scope:** Python, TypeScript, CSS, SQL and migration-template sources, plus the listed configuration files. Lockfiles, generated output and data are not authored by hand and are not covered. Frontend configuration such as `package.json` is outside `SOURCE_FILES` because Phase 3 makes no frontend changes.
 - **A name check is not a quality check:** it proves a function is mentioned, not that the explanation is correct.
 
 ## I. Example

@@ -3,14 +3,14 @@
 Source: [backend/tests/unit/test_scripts.py](../../../../../backend/tests/unit/test_scripts.py)
 
 ## A. File Purpose
-Tests the logic that lives in `scripts/`: the documentation checker and dataset placement.
+Tests the logic that lives in `scripts/`: the documentation checker, dataset placement and `.env` generation, plus static checks that the environment template and Compose file hold no credentials.
 
 ## B. Why This File Exists
 A broken documentation checker would pass silently and give false confidence. A faulty download script could overwrite data. Both need proof that they catch or refuse the right things.
 
 ## C. Dependencies
 - **Libraries:** `pytest`, `pathlib`.
-- **Internal modules:** `scripts/check_explanations.py` and `scripts/download_dataset.py`, loaded through the `load_script` fixture.
+- **Internal modules:** `scripts/check_explanations.py`, `scripts/download_dataset.py` and `scripts/generate_env.py`, loaded through the `load_script` fixture.
 - **External services / database:** none; the Kaggle CLI lookup is replaced by a stub.
 - **Depended on by:** none; run by pytest.
 
@@ -28,6 +28,17 @@ A broken documentation checker would pass silently and give false confidence. A 
 |---|---|
 | `test_checker_accepts_a_complete_explanation` | A correct document produces no problems. |
 | `test_checker_reports_a_missing_explanation` | A source without a document is reported. |
+| `test_checker_accepts_a_sibling_explanation` | A document beside its source satisfies the rule. |
+| `test_checker_checks_the_content_of_a_sibling_explanation` | A sibling gets the same content checks as a mirrored document. |
+| `test_checker_reports_a_source_documented_in_both_places` | Two documents for one source are reported, since they could disagree. |
+| `test_checker_reports_an_orphan_sibling` | A sibling whose source is gone is reported. |
+| `test_checker_covers_configuration_files` | A listed configuration file without a document is reported. |
+| `test_generate_env_fills_every_secret_without_placeholders` | A generated `.env` has no placeholder left and uses the chosen ports. |
+| `test_generate_env_creates_different_secrets_each_time` | Secrets are random, not fixed. |
+| `test_generate_env_refuses_to_overwrite` | An existing `.env` is left untouched. |
+| `test_generate_env_refuses_a_file_git_would_track` | Nothing is written if Git would not ignore the file. |
+| `test_env_template_contains_only_placeholders` | `.env.example` holds no real secret. |
+| `test_compose_sets_scram_at_initialisation_and_stores_no_credentials` | The Compose file sets SCRAM at initialisation, never enables `trust`, requires the password from the environment, and binds to this computer only. |
 | `test_checker_reports_an_undocumented_function` | A function added later without documentation is reported. |
 | `test_checker_reports_a_missing_section` | A missing required section is named. |
 | `test_checker_reports_a_thin_explanation` | Headings without content fail the word count. |

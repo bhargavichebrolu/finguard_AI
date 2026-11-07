@@ -83,6 +83,107 @@ def test_checker_reports_orphan_documents(tmp_path, load_script):
     assert problems[0].endswith("scripts/deleted.py.explanation.md")
 
 
+def test_checker_accepts_a_sibling_explanation(tmp_path, load_script):
+    checker = load_script("check_explanations")
+    root, docs = make_repo(tmp_path, "def run():\n    return 1\n", None)
+    sibling = root / "scripts" / "tool.py.explanation.md"
+    sibling.write_text(COMPLETE_SECTIONS + "\n`run`\n", encoding="utf-8")
+    assert checker.run_check(root, docs)[1] == []
+
+
+def test_checker_checks_the_content_of_a_sibling_explanation(tmp_path, load_script):
+    checker = load_script("check_explanations")
+    root, docs = make_repo(tmp_path, "def run():\n    return 1\n", None)
+    sibling = root / "scripts" / "tool.py.explanation.md"
+    sibling.write_text(COMPLETE_SECTIONS, encoding="utf-8")
+    assert checker.run_check(root, docs)[1] == ["scripts/tool.py: 'run' is not explained"]
+
+
+def test_checker_reports_a_source_documented_in_both_places(tmp_path, load_script):
+    checker = load_script("check_explanations")
+    text = COMPLETE_SECTIONS + "\n`run`\n"
+    root, docs = make_repo(tmp_path, "def run():\n    return 1\n", text)
+    (root / "scripts" / "tool.py.explanation.md").write_text(text, encoding="utf-8")
+    _, problems = checker.run_check(root, docs)
+    assert problems == ["scripts/tool.py: documented in both the sibling and mirrored locations"]
+
+
+def test_checker_reports_an_orphan_sibling(tmp_path, load_script):
+    checker = load_script("check_explanations")
+    root, docs = make_repo(tmp_path, "VALUE = 1\n", COMPLETE_SECTIONS)
+    (root / "scripts" / "gone.py.explanation.md").write_text("old", encoding="utf-8")
+    _, problems = checker.run_check(root, docs)
+    assert problems == ["Orphan explanation: scripts/gone.py.explanation.md"]
+
+
+def test_checker_covers_configuration_files(tmp_path, load_script):
+    checker = load_script("check_explanations")
+    (tmp_path / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    _, problems = checker.run_check(tmp_path, tmp_path / "docs" / "file-explanations")
+    assert problems == [
+        "docker-compose.yml: explanation missing (docker-compose.yml.explanation.md)"
+    ]
+
+
+def test_generate_env_fills_every_secret_without_placeholders(load_script):
+    generator = load_script("generate_env")
+    template = (generator.REPO_ROOT / ".env.example").read_text(encoding="utf-8")
+    rendered = generator.render_env(template, 55432, 8010)
+    assert "change-me" not in rendered
+    assert "replace-with" not in rendered
+    assert "POSTGRES_HOST_PORT=55432" in rendered
+    assert "API_HOST_PORT=8010" in rendered
+    assert "@127.0.0.1:55432/finguard_test" in rendered
+
+
+def test_generate_env_creates_different_secrets_each_time(load_script):
+    generator = load_script("generate_env")
+    template = (generator.REPO_ROOT / ".env.example").read_text(encoding="utf-8")
+    assert generator.render_env(template, 1, 2) != generator.render_env(template, 1, 2)
+
+
+def test_generate_env_refuses_to_overwrite(tmp_path, monkeypatch, load_script):
+    generator = load_script("generate_env")
+    existing = tmp_path / ".env"
+    existing.write_text("KEEP=1\n", encoding="utf-8")
+    monkeypatch.setattr(generator, "ENV_PATH", existing)
+    monkeypatch.setattr("sys.argv", ["generate_env.py"])
+    assert generator.main() == 1
+    assert existing.read_text(encoding="utf-8") == "KEEP=1\n"
+
+
+def test_generate_env_refuses_a_file_git_would_track(tmp_path, monkeypatch, load_script):
+    generator = load_script("generate_env")
+    monkeypatch.setattr(generator, "ENV_PATH", tmp_path / ".env")
+    monkeypatch.setattr(generator, "is_git_ignored", lambda path, root: False)
+    monkeypatch.setattr("sys.argv", ["generate_env.py"])
+    assert generator.main() == 1
+    assert not (tmp_path / ".env").exists()
+
+
+def test_env_template_contains_only_placeholders():
+    repo_root = Path(__file__).resolve().parents[3]
+    values = {}
+    for line in (repo_root / ".env.example").read_text(encoding="utf-8").splitlines():
+        if "=" in line and not line.startswith("#"):
+            name, value = line.split("=", 1)
+            values[name] = value
+    assert values["POSTGRES_PASSWORD"] == "change-me"
+    assert values["APP_DB_PASSWORD"] == "change-me"
+    assert values["SECRET_KEY"].startswith("replace-with")
+    assert ":change-me@" in values["DATABASE_URL"]
+
+
+def test_compose_sets_scram_at_initialisation_and_stores_no_credentials():
+    repo_root = Path(__file__).resolve().parents[3]
+    text = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")
+    assert 'POSTGRES_INITDB_ARGS: "--auth-local=scram-sha-256 --auth-host=scram-sha-256"' in text
+    assert "POSTGRES_HOST_AUTH_METHOD" not in text
+    assert "POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?" in text
+    assert "127.0.0.1:${POSTGRES_HOST_PORT" in text
+
+
 def test_checker_reports_broken_links_and_accepts_valid_ones(tmp_path, load_script):
     checker = load_script("check_explanations")
     (tmp_path / "docs").mkdir()
