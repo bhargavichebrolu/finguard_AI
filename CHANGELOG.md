@@ -16,7 +16,7 @@
 - Recall was 56.1% in sparse steps and 21.9% in normal steps.
 
 ### Fixed
-- `evaluate_final_test.py` recorded the wrong commit as the freeze, found on review before test was opened. The field was renamed and the tests now check Git history.
+- `final_evaluation.py` labelled the commit the model was fitted from as the freeze commit, found on review before test was opened. The field was renamed and the tests now check Git history.
 - Generated tables left out the sensitivity runs and listed partitions alphabetically.
 - Chart label collisions and unreadable text in confusion matrices.
 - `KeyError`s in reports for empty slices, found by testing on real outputs.
