@@ -9,7 +9,7 @@ Gives short names to the project's setup, pipeline, test, lint and build command
 The PRD's repository structure requires it, and it gives every developer the same entry points. Each recipe is one plain command, so developers without `make` can copy it directly.
 
 ## C. Dependencies
-- **Tools:** `make`, `uv`, `npm`.
+- **Tools:** `make`, `uv`, `npm`, `docker compose`.
 - **Internal files:** `scripts/*.py`, `backend/pyproject.toml`, `frontend/package.json`.
 - **External services / database:** none.
 - **Depended on by:** developers; CI may use it from Phase 5.
@@ -25,8 +25,16 @@ A Makefile has targets rather than functions. Each takes no parameters and retur
 | `prepare` | `scripts/prepare_dataset.py` |
 | `eda` | `scripts/run_eda.py` |
 | `audit` | `scripts/audit_leakage.py` |
+| `drift`, `train`, `select`, `explain`, `diagnose`, `final-test`, `export` | The Phase 2 scripts of the same names. `final-test` must not be run again: the test partition has been used. |
+| `env` | `scripts/generate_env.py`, with the API on port 8010. |
+| `db-up` | Starts PostgreSQL and waits until it is healthy. |
+| `stack` | Builds and starts the database, migrations and API. |
+| `migrate` | `alembic upgrade head` on the host. |
+| `serve` | Runs the API on the host, port 8010. |
+| `admin` | Creates the first administrator: `make admin EMAIL=you@example.com`. |
 | `test` | The whole backend test suite. |
-| `test-fast` | All tests except those marked `real_data`. |
+| `test-phase3` | The suite without the one test that rereads the test partition. |
+| `test-fast` | All tests except those needing real data or a database. |
 | `lint` | `ruff check` on `backend` and `scripts`. |
 | `docs-check` | `scripts/check_explanations.py` |
 | `frontend-build` | Type-checks and builds the frontend. |
@@ -50,7 +58,7 @@ make test-fast
 ```
 
 ## J. Maintenance Notes
-Keep recipes as single commands that can be pasted. Add targets for Phase 2 (`train`, `evaluate`) and Phase 3 (`migrate`, `serve`) when those commands exist.
+Keep recipes as single commands that can be pasted. Recipes with `cd backend &&` need a POSIX shell, which `make` provides.
 
 ## K. Related Files
 - `ENVIRONMENT_SETUP.md` and `TESTING_GUIDE.md`: the same commands, written out.

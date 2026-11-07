@@ -1,5 +1,38 @@
 # Changelog
 
+## Phase 3: Backend and database (2026-11-07)
+
+### Added
+- FastAPI service with prediction, transaction explorer, CSV batch, investigation, model, report, settings, user and audit endpoints, documented at `/docs`.
+- Verified model loading: version, hash and threshold pinned in code, library versions and preprocessing hash checked, and the file hash checked before opening. Nothing trains.
+- `model_score` (uncalibrated) and `FLAG_FOR_REVIEW` wording throughout. Each prediction records its model version, threshold and high risk boundary.
+- PostgreSQL 17 through SQLAlchemy and Alembic, with 12 tables, CHECK constraints that refuse contradictory predictions, and labels stored separately from predictions.
+- Argon2id passwords, signed tokens checked against the database on each request, four roles, rate limits, audit logging, safe errors and security headers.
+- Docker Compose stack: SCRAM authentication from first initialisation, a non-superuser application role, and an API image without training libraries that mounts the model read-only.
+- `scripts/generate_env.py` and `scripts/create_admin.py`.
+- Explanation documents beside every new source and configuration file, and checker support for both locations.
+- 625 backend tests passed, 0 failed, 0 skipped: 321 unit, 75 integration and 229 API tests. 253 of them run on real PostgreSQL. One Phase 2 test that rereads the test partition was deselected.
+
+### Verified
+- **Database authentication:** correct, wrong and missing passwords behaved as expected from Windows, from another container, and inside the database container. All rules were SCRAM before and after recreating the container on the same volume, and a marker row survived.
+- **End to end in Docker:** login, prediction, CSV batch, investigation update, metrics and summary all worked over HTTP. The container and Windows gave identical scores.
+- **Phase 2 metrics:** served unchanged, with the shortfalls stated. Test false positive rate was 0.282% against the 0.1% target, recall was 45.9% overall and 21.9% in normal steps.
+
+### Fixed
+- Database connections from Windows could hang indefinitely, because `localhost` tries IPv6 first and Compose publishes IPv4 only. Addresses now use `127.0.0.1`, and migrations have a connection timeout.
+- Investigation history was ordered by transaction start time, which put simultaneous changes out of order. Rows are now stamped with `clock_timestamp()` after the lock is held.
+- Flags-by-day grouping used true division in SQLAlchemy 2, which split each day.
+- Two route-coverage tests checked nothing, because they walked a route list that was empty in this FastAPI version. They now walk the OpenAPI schema and require a minimum number of routes.
+- `.env.example.explanation.md` matched `.env.*` in `.gitignore` and had never been committed. It now has an exception, and a test fails if any explanation document is ignored.
+
+### Known limitations
+- Rate limits and batch recovery assume one API process. A restart interrupts batch jobs, which must be uploaded again.
+- The API image is 1.92 GB, 469 MB of it NVIDIA libraries required by XGBoost's Linux wheel and unused by this model.
+- PRD 6.8's full model comparison, curves and experiment history are saved but not served by the API.
+- No Content Security Policy, no token revocation list, and client addresses behind a proxy are not yet trusted correctly.
+- Phase 1 and 2 explanation documents remain in `docs/file-explanations/`, and Phase 3 documents sit beside their files.
+- The frontend is unchanged and has no automated tests.
+
 ## Phase 2: Machine learning experiments (2026-11-07)
 
 ### Added

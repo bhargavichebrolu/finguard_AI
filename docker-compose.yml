@@ -30,6 +30,7 @@ services:
 
   migrate:
     build: ./backend
+    image: finguard-api:local
     command: ["alembic", "upgrade", "head"]
     environment: &api-environment
       APP_ENV: ${APP_ENV:-development}
@@ -48,6 +49,7 @@ services:
 
   api:
     build: ./backend
+    image: finguard-api:local
     restart: unless-stopped
     environment: *api-environment
     volumes:

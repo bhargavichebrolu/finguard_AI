@@ -175,6 +175,23 @@ def test_env_template_contains_only_placeholders():
     assert ":change-me@" in values["DATABASE_URL"]
 
 
+def test_no_explanation_document_is_ignored_by_git():
+    import shutil
+    import subprocess
+
+    if shutil.which("git") is None:
+        pytest.skip("git is not available")
+    repo_root = Path(__file__).resolve().parents[3]
+    ignored = subprocess.run(
+        ["git", "ls-files", "--others", "--ignored", "--exclude-standard"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+    assert [name for name in ignored if name.endswith(".explanation.md")] == []
+
+
 def test_compose_sets_scram_at_initialisation_and_stores_no_credentials():
     repo_root = Path(__file__).resolve().parents[3]
     text = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")

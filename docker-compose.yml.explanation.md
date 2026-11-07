@@ -23,7 +23,7 @@ No functions: this is declarative configuration. The settings that matter:
 - `${VAR:?message}` makes Compose stop if a credential is missing, instead of starting with an empty value.
 
 ### `migrate` service
-Runs `alembic upgrade head` once, after the database is healthy. Keeping this separate means the API never changes the schema on start-up.
+Runs `alembic upgrade head` once, after the database is healthy. It shares the `finguard-api:local` image with `api`, so the image is built once. Keeping this separate means the API never changes the schema on start-up.
 
 ### `api` service
 Starts only after `migrate` succeeds. `./artifacts` is mounted read-only, so the running API cannot alter the frozen model. Its environment is shared with `migrate` through the `&api-environment` YAML anchor.

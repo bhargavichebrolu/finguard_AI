@@ -9,13 +9,15 @@ An end-to-end machine learning application for monitoring simulated financial tr
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Foundation and data engineering | Complete |
-| 2 | Machine learning experiments | Complete, awaiting review |
-| 3 | Backend and database | Not started |
+| 2 | Machine learning experiments | Complete |
+| 3 | Backend and database | Complete, awaiting review |
 | 4 | React frontend | Not started (toolchain only) |
 | 5 | Integration and quality assurance | Not started |
 | 6 | Deployment and portfolio release | Not started |
 
-**What works today:** dataset validation, EDA, feature engineering, a leakage audit, chronological partitioning, model experiments and a frozen model that can be loaded and verified, all from the command line. There is no API or usable interface yet.
+**What works today:** the data pipeline and experiments from the command line, and a FastAPI service backed by PostgreSQL. The service runs locally in Docker. It verifies and loads the frozen model, scores single transactions and CSV batches, stores predictions and investigations, and serves the saved evaluation. There is no user interface yet, apart from the interactive API documentation at `/docs`.
+
+`model_score` is not a calibrated probability, and `FLAG_FOR_REVIEW` is a request for human review.
 
 ## Key findings so far
 
@@ -40,7 +42,15 @@ uv run --project backend python scripts/audit_leakage.py
 uv run --project backend pytest backend/tests --rootdir backend -c backend/pyproject.toml
 ```
 
-Full instructions are in [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md).
+To run the API, with Docker Desktop installed:
+
+```powershell
+uv run --project backend python scripts/generate_env.py --api-port 8010
+docker compose up -d --build --wait
+uv run --project backend python scripts/create_admin.py --email you@example.com
+```
+
+Then open `http://127.0.0.1:8010/docs`. Full instructions are in [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md).
 
 ## Documentation index
 
@@ -50,8 +60,8 @@ Full instructions are in [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md).
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Components, boundaries and design rules |
 | [DATASET_DOCUMENTATION.md](DATASET_DOCUMENTATION.md) | Dataset, data dictionary, feature dictionary, leakage audit, EDA |
 | [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md) | Experimental design and results |
-| [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Database design (planned) |
-| [API_DOCUMENTATION.md](API_DOCUMENTATION.md) | API contract (planned) |
+| [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Tables, constraints, roles and migrations |
+| [API_DOCUMENTATION.md](API_DOCUMENTATION.md) | Endpoints, roles, inputs, errors and score meaning |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment plan |
 | [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) | Local setup and configuration |
 | [TESTING_GUIDE.md](TESTING_GUIDE.md) | How to run tests, and what they cover |
@@ -60,4 +70,4 @@ Full instructions are in [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md).
 | [CHANGELOG.md](CHANGELOG.md) | Project history |
 | [docs/PRD.md](docs/PRD.md) | Product requirements (the specification) |
 | [docs/decisions/](docs/decisions/) | Architecture decision records |
-| [docs/file-explanations/](docs/file-explanations/) | One explanation document per source file |
+| [docs/file-explanations/](docs/file-explanations/) | Explanation documents for Phase 1 and 2 files. From Phase 3, each file's document sits beside it. |

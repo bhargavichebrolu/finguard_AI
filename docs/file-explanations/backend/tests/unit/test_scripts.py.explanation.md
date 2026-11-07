@@ -38,6 +38,7 @@ A broken documentation checker would pass silently and give false confidence. A 
 | `test_generate_env_refuses_to_overwrite` | An existing `.env` is left untouched. |
 | `test_generate_env_refuses_a_file_git_would_track` | Nothing is written if Git would not ignore the file. |
 | `test_env_template_contains_only_placeholders` | `.env.example` holds no real secret. |
+| `test_no_explanation_document_is_ignored_by_git` | Every explanation document can be committed. The checker reads files on disk, so an ignored document would otherwise pass unnoticed. |
 | `test_compose_sets_scram_at_initialisation_and_stores_no_credentials` | The Compose file sets SCRAM at initialisation, never enables `trust`, requires the password from the environment, and binds to this computer only. |
 | `test_checker_reports_an_undocumented_function` | A function added later without documentation is reported. |
 | `test_checker_reports_a_missing_section` | A missing required section is named. |

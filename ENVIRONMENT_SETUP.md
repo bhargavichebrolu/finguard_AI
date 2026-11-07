@@ -10,7 +10,7 @@ Commands were verified on Windows 11 using PowerShell, from the repository root,
 | Node.js and npm | 24.22.1 and 11.19.1 | Frontend |
 | Git | 2.56 | Version control |
 | make | not installed here | Optional. Each `Makefile` recipe is one command that can be run directly. |
-| Docker or PostgreSQL | not installed here | **Required from Phase 3** |
+| Docker Desktop | 4.98.0 (Engine 29.9.2, Compose v5.6.1), WSL 2 | PostgreSQL and the API containers |
 
 Disk space beyond the dataset: about 1.05 GB for the Python environment and 123 MB for processed partitions.
 
@@ -20,7 +20,7 @@ Disk space beyond the dataset: about 1.05 GB for the Python environment and 123 
 uv sync --project backend
 ```
 
-This creates `backend/.venv` with runtime, training and development dependencies, pinned by `backend/uv.lock`. To install runtime dependencies alone, as the future API image will:
+This creates `backend/.venv` with runtime, training and development dependencies, pinned by `backend/uv.lock`. To install runtime dependencies alone, as the API image does:
 
 ```powershell
 uv sync --project backend --no-default-groups
@@ -77,6 +77,37 @@ On the development machine, using 8 threads, recorded fitting time across all 12
 | Charts | `experiments/figures/models/` | Yes |
 | Model metadata and metrics bundle | `artifacts/metadata/model_v1*.json` | Yes |
 
+## Backend and database
+
+Docker Desktop installs per user under `%LOCALAPPDATA%\Programs\DockerDesktop`. A terminal opened before installation will not find `docker` until it is restarted.
+
+```powershell
+# 1. Create .env with new random secrets. Ports default to 5432 and 8000.
+uv run --project backend python scripts/generate_env.py --api-port 8010
+
+# 2. Start PostgreSQL. The first start creates the volume with SCRAM authentication.
+docker compose up -d --wait db
+
+# 3. Either run everything in Docker: migrations, then the API
+docker compose up -d --build --wait
+
+#    or run the API on Windows against the same database
+cd backend; uv run alembic upgrade head; uv run uvicorn app.main:app --port 8010; cd ..
+
+# 4. Create the first administrator. The password is prompted for and not shown.
+uv run --project backend python scripts/create_admin.py --email you@example.com
+```
+
+Then open `http://127.0.0.1:8010/docs`, use **Authorize** with your email and password, and try the endpoints.
+
+The API refuses to start if the frozen model file is missing, altered or under different library versions. `model.joblib` is not in Git, so a fresh clone needs it placed at `artifacts/models/fraud_detector_v1/model.joblib` (see `DEPLOYMENT.md`).
+
+| Item | Value on the development computer |
+|---|---|
+| API image | `finguard-api:local`, 1.92 GB, of which 469 MB is NVIDIA libraries pulled in by XGBoost's Linux wheel |
+| API port | 8010, because 8000 was in use by another project |
+| Data volume | `finguard_finguard_pgdata`, kept by `docker compose down` and deleted by `docker compose down -v` |
+
 ## Frontend
 
 ```powershell
@@ -88,11 +119,11 @@ npm run build   # type-check and production bundle
 
 ## Environment variables
 
-Copy `.env.example` to `.env` and fill it in. `.env` is ignored by Git. Phase 1 code reads none of these variables; they document what Phases 3 and 4 will use.
+Run `scripts/generate_env.py` rather than copying `.env.example` by hand. It fills every secret with a random value and refuses to overwrite an existing `.env`. Each variable is described in [.env.example.explanation.md](.env.example.explanation.md). Use `127.0.0.1`, not `localhost`, in database addresses.
 
 ## Configuration files
 
-These declarative files are documented here rather than in individual explanation documents ([why](docs/decisions/0001-phase-1-decisions.md)).
+From Phase 3, configuration files that are authored by hand have their own explanation documents beside them, for example `docker-compose.yml.explanation.md` ([why](docs/decisions/0003-phase-3-decisions.md)). The frontend configuration below is still described only here, because Phase 3 made no frontend changes.
 
 | File | Purpose | Maintenance |
 |---|---|---|
@@ -116,3 +147,8 @@ These declarative files are documented here rather than in individual explanatio
 | `FileNotFoundError` for `preprocessing_v1.json` | EDA or audit run before preparation | Run `scripts/prepare_dataset.py` first |
 | `exit code 255` in PowerShell around `uv` | PowerShell treats uv's progress on stderr as an error | Read the actual output; the command probably succeeded |
 | `make` not recognised | Not installed on Windows by default | Run the recipe's command directly |
+| `docker: command not found` | Terminal started before Docker Desktop was installed | Restart the terminal or editor |
+| Database connection hangs | `localhost` tries IPv6 first, and Compose publishes IPv4 only | Use `127.0.0.1` in `DATABASE_URL` |
+| `port is already allocated` | Another service uses the port | Change `POSTGRES_HOST_PORT` or `API_HOST_PORT` in `.env` |
+| API exits with `ModelArtifactError` | Model file missing, altered or wrong library versions | Restore the frozen file. Do not edit the metadata or pins. |
+| Password changes in `.env` have no effect | The volume kept the old password | Change it with `ALTER ROLE`, or recreate the volume (deletes data) |

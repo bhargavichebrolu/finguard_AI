@@ -3,7 +3,7 @@
 
 UV_RUN = uv run --project backend
 
-.PHONY: setup data validate prepare eda audit drift train select explain diagnose final-test export test test-fast lint docs-check frontend-build
+.PHONY: setup data validate prepare eda audit drift train select explain diagnose final-test export env db-up stack migrate serve admin test test-fast test-phase3 lint docs-check frontend-build
 
 setup:
 	uv sync --project backend
@@ -44,11 +44,32 @@ final-test:
 export:
 	$(UV_RUN) python scripts/export_metrics.py
 
+env:
+	$(UV_RUN) python scripts/generate_env.py --api-port 8010
+
+db-up:
+	docker compose up -d --wait db
+
+stack:
+	docker compose up -d --build --wait
+
+migrate:
+	cd backend && uv run alembic upgrade head
+
+serve:
+	cd backend && uv run uvicorn app.main:app --port 8010
+
+admin:
+	$(UV_RUN) python scripts/create_admin.py --email $(EMAIL)
+
 test:
 	$(UV_RUN) pytest backend/tests --rootdir backend -c backend/pyproject.toml
 
+test-phase3:
+	$(UV_RUN) pytest backend/tests --rootdir backend -c backend/pyproject.toml --deselect tests/integration/test_real_models.py::test_test_results_can_be_recalculated_from_the_saved_model
+
 test-fast:
-	$(UV_RUN) pytest backend/tests --rootdir backend -c backend/pyproject.toml -m "not real_data"
+	$(UV_RUN) pytest backend/tests --rootdir backend -c backend/pyproject.toml -m "not real_data and not database"
 
 lint:
 	$(UV_RUN) ruff check backend scripts --config backend/pyproject.toml

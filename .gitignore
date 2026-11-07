@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# The template's explanation holds no values, and would otherwise match .env.* above.
+!.env.example.explanation.md
 *.pem
 *.key
 
