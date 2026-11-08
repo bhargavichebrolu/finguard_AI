@@ -19,6 +19,8 @@ Every test should start from the same clean state.
 No functions.
 
 ## E. Classes Explained
+### `TestResizeObserver`
+A do-nothing stand-in for `ResizeObserver`, which jsdom lacks and Recharts' responsive container needs. It is installed only when missing, and only in unit tests. Browsers provide the real one, and the Playwright tests check chart rendering.
 None.
 
 ## F. Execution Flow

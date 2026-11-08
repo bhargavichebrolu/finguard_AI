@@ -7,6 +7,16 @@ import { afterAll, afterEach, beforeAll } from "vitest";
 
 import { server, state } from "./server";
 
+// jsdom has no ResizeObserver, which Recharts' ResponsiveContainer needs. Browsers have one, and
+// the Playwright tests check real chart rendering. Here charts get a zero size and tests read
+// the table views instead.
+class TestResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??= TestResizeObserver as unknown as typeof ResizeObserver;
+
 // Requests are sent to the page's own origin, as in the browser.
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 

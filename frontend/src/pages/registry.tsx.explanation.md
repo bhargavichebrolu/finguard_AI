@@ -26,7 +26,7 @@ None.
 Imported at start-up.
 
 ## G. Input and Output
-Output: `PAGES`, an array of `PageDefinition`.
+Output: `PAGES`, an array of `PageDefinition`. Current entries, in order: Dashboard (`/dashboard`, `view_summary`), Transaction Analysis (`/analyse`, `predict`), Explainable AI (`/explainability`, `view_models`), System Information (`/system`, `view_system_status`). Later milestones add the remaining PRD 7.4 pages in their places.
 
 ## H. Important Technical Concepts
 - **`PageDefinition`** is an interface with `path`, `label`, `icon`, `permission` and `element`.

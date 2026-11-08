@@ -4,7 +4,15 @@
  *
  * Figures in these fixtures are test inputs only. The application never contains them.
  */
-import type { CurrentUser, ModelMetrics, SystemStatus } from "../../src/services/endpoints";
+import type {
+  CurrentUser,
+  FeatureImportance,
+  ModelMetrics,
+  Prediction,
+  SummaryReport,
+  SystemStatus,
+  TransactionSummary,
+} from "../../src/services/endpoints";
 
 const EVERY_ROLE = [
   "predict",
@@ -102,5 +110,96 @@ export function statusFixture(): SystemStatus {
     model_version: "fraud_detector_v1",
     model_sha256: "a".repeat(64),
     threshold: 0.03,
+  };
+}
+
+export function predictionFixture(): Prediction {
+  return {
+    transaction_id: "33333333-3333-4333-8333-333333333333",
+    external_transaction_id: "FIX-1",
+    prediction_id: "44444444-4444-4444-8444-444444444444",
+    amount: 9000000,
+    transaction_type: "TRANSFER",
+    step: 5,
+    destination_category: "customer",
+    model_score: 0.8377037048339844,
+    score_type: "uncalibrated_model_score",
+    score_is_calibrated: false,
+    score_note: "Fixture note: scores rank transactions for review.",
+    risk_score: 83.77037048339844,
+    risk_level: "HIGH",
+    prediction: "FLAG_FOR_REVIEW",
+    model_version: "fraud_detector_v1",
+    threshold_used: 0.03,
+    high_risk_boundary_used: 0.3,
+    is_demo: false,
+    investigation_id: "55555555-5555-4555-8555-555555555555",
+    investigation_status: "NEW",
+    explanation: {
+      method: "xgboost_tree_shap",
+      output_scale: "log_odds",
+      base_value: -6.5,
+      by_group: { amount: 1.2, hour: 2.1, transaction_type_and_destination: 5.1 },
+      by_feature: [
+        { feature: "transaction_type_TRANSFER", contribution: 3.1 },
+        { feature: "hour_of_day", contribution: -0.4 },
+      ],
+      limitations: ["SHAP explains this model's output. It does not establish that a feature causes fraud."],
+    },
+    created_at: "2026-11-08T10:00:00Z",
+  };
+}
+
+export function summaryFixture(options: { empty?: boolean; demo?: boolean } = {}): SummaryReport {
+  const empty = options.empty ?? false;
+  const recent: TransactionSummary = {
+    transaction_id: "33333333-3333-4333-8333-333333333333",
+    external_transaction_id: "FIX-1",
+    amount: 9000000,
+    transaction_type: "TRANSFER",
+    step: 5,
+    destination_category: "customer",
+    model_score: 0.8377,
+    score_is_calibrated: false,
+    risk_score: 83.77,
+    risk_level: "HIGH",
+    prediction: "FLAG_FOR_REVIEW",
+    model_version: "fraud_detector_v1",
+    threshold_used: 0.03,
+    is_demo: options.demo ?? false,
+    batch_job_id: null,
+    investigation_id: null,
+    investigation_status: "NEW",
+    created_at: "2026-11-08T10:00:00Z",
+  };
+  return {
+    scope: options.demo ? "demo_sample_records" : "application_records",
+    is_demo: options.demo ?? false,
+    note: "Fixture note: kept separate.",
+    model_flags: {
+      total_analysed: empty ? 0 : 20,
+      flagged_for_review: empty ? 0 : 7,
+      not_flagged: empty ? 0 : 13,
+      flag_rate: empty ? 0 : 0.35,
+      total_value: empty ? 0 : 1000,
+      flagged_value: empty ? 0 : 600,
+      risk_distribution: empty ? {} : { LOW: 13, MEDIUM: 4, HIGH: 3 },
+      type_distribution: empty ? {} : { TRANSFER: { analysed: 10, flagged: 7 }, PAYMENT: { analysed: 10, flagged: 0 } },
+      flags_by_simulation_day: empty ? [] : [{ day: 0, analysed: 20, flagged: 7 }],
+    },
+    investigation_workflow: { status_counts: empty ? {} : { NEW: 5, CLOSED: 2 } },
+    uploaded_labels: { labelled_rows: empty ? 0 : 4, labelled_fraud_rows: empty ? 0 : 1, labelled_fraud_value: empty ? 0 : 50 },
+    model_performance_notes: [TEST_NOTE_FPR],
+    recent_activity: empty ? [] : [recent],
+  };
+}
+
+export function featureImportanceFixture(): FeatureImportance {
+  return {
+    model_version: "fraud_detector_v1",
+    output_scale: "log_odds",
+    by_group: { amount: 0.5, hour: 0.3, transaction_type_and_destination: 2.1 },
+    by_feature: { transaction_type_TRANSFER: 0.4, amount: 0.3 },
+    limitations: ["Fixture limitation: does not show causes."],
   };
 }

@@ -25,6 +25,15 @@ Returns a metrics response whose notes are clearly labelled test sentences, not 
 ### `statusFixture`
 Returns a healthy system status.
 
+### `predictionFixture`
+Returns a flagged prediction with an explanation, using fixture values only.
+
+### `summaryFixture`
+Returns a summary. `empty` gives a scope with no records, and `demo` marks it as demo.
+
+### `featureImportanceFixture`
+Returns saved-importance data with a labelled fixture limitation.
+
 ## E. Classes Explained
 None.
 

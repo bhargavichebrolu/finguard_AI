@@ -5,3 +5,7 @@ artifacts/metadata/*.json -text
 # Run inside Linux containers, so they must keep LF line endings.
 docker/** text eol=lf
 *.sh text eol=lf
+
+# Compared byte for byte with what the API and generator produce, so line endings must not change.
+frontend/openapi.json -text
+frontend/src/types/api.generated.ts -text

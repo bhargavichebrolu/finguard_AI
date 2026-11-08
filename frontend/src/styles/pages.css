@@ -20,3 +20,84 @@
   width: 100%;
   margin-top: var(--space-5);
 }
+
+.section-title {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: 1.15rem;
+}
+
+.chart-card .chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.chart-card .chart-header h2 {
+  margin: 0;
+}
+
+.chart-area {
+  margin-top: var(--space-3);
+}
+
+.small-button {
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.85rem;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: 0;
+}
+
+.stat-label {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.grid + .grid,
+.grid + .card,
+.notice + .section-title {
+  margin-top: var(--space-5);
+}
+
+.fact-row {
+  display: contents;
+}
+
+.result-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.result-header h2 {
+  margin: 0 var(--space-2) 0 0;
+}
+
+.score {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-grid {
+  align-items: start;
+}
+
+.form-submit {
+  width: 100%;
+  margin-top: var(--space-5);
+}
