@@ -18,9 +18,9 @@ PRD section 10 requires authentication. Tokens let the API confirm who is callin
 
 ### `create_access_token`
 - **Purpose:** issue a token.
-- **Parameters / types:** `user_id: uuid.UUID`, `token_version: int`. **Returns / type:** `str`.
-- **Internal processing:** signs the user ID, token version, issue time and expiry with `SECRET_KEY`.
-- **Error handling:** none needed. **Calls:** `jwt.encode`. **Used by:** `auth_service`, tests.
+- **Parameters / types:** `user_id: uuid.UUID`, `token_version: int`, optional `session_id: uuid.UUID`. **Returns / type:** `str`.
+- **Internal processing:** signs the user ID, token version, issue time and expiry with `SECRET_KEY`, plus `sid` for a browser session token.
+- **Error handling:** none needed. **Calls:** `jwt.encode`. **Used by:** `auth_service`, `sessions.open_session`, tests.
 
 ### `decode_access_token`
 - **Purpose:** verify a token.
@@ -32,7 +32,7 @@ PRD section 10 requires authentication. Tokens let the API confirm who is callin
 ## E. Classes Explained
 
 ### `TokenClaims`
-- **Purpose:** verified values. **Attributes:** `user_id`, `token_version`. **Methods:** none. **Inheritance:** `NamedTuple`.
+- **Purpose:** verified values. **Attributes:** `user_id`, `token_version`, `session_id`, which is `None` for bearer tokens. **Methods:** none. **Inheritance:** `NamedTuple`.
 
 ## F. Execution Flow
 Login calls `create_access_token`. Each later request calls `decode_access_token`, then loads the user.

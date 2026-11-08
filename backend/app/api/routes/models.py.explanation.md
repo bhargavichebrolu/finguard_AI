@@ -25,6 +25,9 @@ These are the PRD 8.2 model endpoints. PRD 6.8 requires every displayed metric t
 ### `read_metrics`
 `GET /api/v1/models/metrics`. Returns validation and test results, the threshold, and `performance_notes`.
 
+### `read_report`
+`GET /api/v1/models/report`. Returns the report verified at start-up, unchanged.
+
 ### `read_feature_importance`
 `GET /api/v1/models/feature-importance`. Returns saved SHAP importance with limitations.
 
@@ -41,7 +44,7 @@ Permission check, then read saved values.
 
 ## H. Important Technical Concepts
 - **No computation.** Nothing is recalculated, so no route can alter or re-derive a Phase 2 result.
-- **Phase 4 gap:** PRD 6.8 also asks for a comparison table of all models, curves and experiment history. Those are in `experiments/results/phase2/` and are not yet served. See `API_DOCUMENTATION.md`.
+- **PRD 6.8 data:** the comparison table, curves and experiment history are served by `read_report`, from a file built only from saved Phase 2 outputs.
 
 ## I. Example
 ```powershell

@@ -37,6 +37,9 @@ The threshold, its objective, where it was chosen and the target. **Inheritance:
 ### `ModelMetricsView`
 The whole response, including `performance_notes` and the score's uncalibrated labelling. **Inheritance:** `BaseModel`.
 
+### `ModelReportView`
+The saved report for the Model Performance page: model version, threshold, source hashes, notes, selection, family comparison, curves, confusion matrices, thresholds, imbalance matrix, experiment history and the LightGBM diagnostic. `extra="allow"` keeps every saved field. **Inheritance:** `BaseModel`.
+
 ### `FeatureImportanceView`
 Saved SHAP importance and its limitations. **Inheritance:** `BaseModel`.
 

@@ -10,18 +10,21 @@ Each protected route should state what it requires in one line, and the checks s
 
 ## C. Dependencies
 - **Libraries:** `fastapi`, `sqlalchemy`.
-- **Internal modules:** `app.core.errors`, `app.core.rate_limit`, `app.database.session`, `app.models.records`, `app.security.permissions`, `app.security.tokens`, `app.services.model_service`.
+- **Internal modules:** `app.core.errors`, `app.core.rate_limit`, `app.database.session`, `app.models.records`, `app.security.permissions`, `app.security.sessions`, `app.security.tokens`, `app.services.model_service`.
 - **External services / database:** reads `users`.
 - **Depended on by:** all protected routes.
 
 ## D. Every Function Explained
 
+### `_load_user`
+Loads the user named by verified claims, and refuses one that is missing, inactive or has a newer token version.
+
 ### `get_current_user`
 - **Purpose:** identify the caller.
-- **Parameters / types:** `db`, `token: str | None`. **Returns / type:** `User`.
-- **Internal processing:** verifies the token, loads the user, and checks they are active and that the token version is current.
-- **Error handling:** every failure raises the same `AuthenticationError`.
-- **Calls:** `decode_access_token`. **Used by:** `check`, routes through `CurrentUser`.
+- **Parameters / types:** `request`, `db`, `token: str | None`. **Returns / type:** `User`.
+- **Internal processing:** a bearer token in the `Authorization` header is checked as in Phase 3. If it names a session, that session must be live. Without a header, the `finguard_session` cookie is used. It must name a live session, and requests that change data must also pass the origin and CSRF checks. The session row is stored on `request.state.user_session` for `/auth/me`.
+- **Error handling:** credential failures raise `AuthenticationError` (401). Origin or CSRF failures raise `PermissionDeniedError` (403).
+- **Calls:** `decode_access_token`, `find_active_session`, `require_allowed_origin`, `require_csrf_token`, `_load_user`. **Used by:** `check`, routes through `CurrentUser`.
 
 ### `require_permission`
 - **Purpose:** build a permission check.
@@ -47,12 +50,13 @@ Returns `request.app.state.model`, set during start-up.
 None. `DbSession`, `CurrentUser` and `ServingModelDep` are annotated type aliases that shorten route signatures.
 
 ## F. Execution Flow
-Token, user, permission, rate limit, then the route.
+Bearer token or session cookie, then for cookies the origin and CSRF checks on changes, then user, permission, rate limit and the route.
 
 ## G. Input and Output
 Input: the `Authorization` header. Output: a `User`, or a 401, 403 or 429 response.
 
 ## H. Important Technical Concepts
+- **Two credentials, one check:** bearer tokens serve API clients and Swagger. Cookies serve the web app. CSRF applies only to cookies, because only cookies are attached by the browser without the page asking.
 - **`auto_error=False`:** FastAPI's default would produce its own error format, and this keeps the project's format.
 - **401 versus 403:** 401 means the caller's identity is not established, and 403 means it is but the role does not allow the action.
 - **Swagger:** `tokenUrl` powers the Authorize button in `/docs`.

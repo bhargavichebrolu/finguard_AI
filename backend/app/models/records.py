@@ -49,6 +49,21 @@ class User(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
+class UserSession(Base):
+    """One browser sign-in. Logging out revokes this row, ending only this session."""
+
+    __tablename__ = "user_sessions"
+
+    id: Mapped[uuid.UUID] = uuid_primary_key()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    csrf_token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = created_at_column()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class ModelVersion(Base):
     """A registered model, copied from the frozen metadata at start-up."""
 

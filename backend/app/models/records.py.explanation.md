@@ -23,6 +23,9 @@ All inherit from `Base`.
 ### `User`
 `email` is unique, and services store it in lower case. `password_hash` holds an Argon2 hash. `token_version` goes up when a password changes, which invalidates older tokens.
 
+### `UserSession`
+One browser sign-in, added in Phase 4: user, CSRF token hash, expiry and revocation time. Logout sets `revoked_at` on this row only.
+
 ### `ModelVersion`
 Filled from the frozen metadata at start-up. `uq_model_versions_single_active` is a partial unique index that allows only one active row.
 

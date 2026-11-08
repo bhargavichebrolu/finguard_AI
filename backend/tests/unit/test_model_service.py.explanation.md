@@ -45,6 +45,9 @@ Nested stand-in for `joblib.load`, which fails the test if the file is ever open
 | `test_changed_threshold_is_refused` | A threshold edit stops loading. |
 | `test_changed_preprocessing_record_is_refused` | The preprocessing hash is enforced. |
 | `test_metrics_for_another_threshold_are_refused` | Results for another threshold cannot be served. |
+| `test_altered_model_report_is_refused` | A changed report stops loading. |
+| `test_missing_model_report_is_refused` | A missing report stops loading. |
+| `test_model_report_is_loaded_with_the_model` | The report names the frozen model and threshold. |
 | `test_missing_model_file_is_refused` | A missing file stops loading. |
 | `test_different_library_version_is_refused` | Other library versions are refused. |
 | `test_metadata_disagreeing_with_the_pins_is_refused` | Each pinned field is enforced on its own. |

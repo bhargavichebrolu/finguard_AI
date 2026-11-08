@@ -21,6 +21,25 @@ _SECURITY_HEADERS = (
     (b"referrer-policy", b"no-referrer"),
 )
 _NO_STORE = (b"cache-control", b"no-store")
+# The API returns data, never pages, so its responses may load nothing at all.
+API_CONTENT_SECURITY_POLICY = b"default-src 'none'; frame-ancestors 'none'"
+# FastAPI's documentation pages load Swagger UI and ReDoc from a CDN and start with inline script.
+DOCS_CONTENT_SECURITY_POLICY = (
+    b"default-src 'none'; "
+    b"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    b"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+    b"font-src https://fonts.gstatic.com; "
+    b"img-src 'self' data: https://fastapi.tiangolo.com https://cdn.redoc.ly; "
+    b"worker-src blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+)
+DOCS_PATHS = ("/docs", "/redoc")
+
+
+def content_security_policy(path: str) -> bytes:
+    """Return the policy for a path: a looser one only for the documentation pages."""
+    if path.startswith(DOCS_PATHS):
+        return DOCS_CONTENT_SECURITY_POLICY
+    return API_CONTENT_SECURITY_POLICY
 
 
 def _declared_size(scope: Scope) -> int | None:
@@ -54,6 +73,7 @@ class RequestContextMiddleware:
                 status_holder["code"] = message["status"]
                 headers = list(message.get("headers", []))
                 headers.extend(_SECURITY_HEADERS)
+                headers.append((b"content-security-policy", content_security_policy(scope["path"])))
                 headers.append((b"x-request-id", request_id.encode()))
                 if scope["path"].startswith("/api/"):
                     headers.append(_NO_STORE)

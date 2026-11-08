@@ -41,6 +41,8 @@ services:
       MODEL_METRICS_PATH: /app/artifacts/metadata/model_v1_metrics.json
       PREPROCESSING_METADATA_PATH: /app/artifacts/metadata/preprocessing_v1.json
       MODEL_ARTIFACT_DIR: /app/artifacts/models
+      MODEL_REPORT_PATH: /app/artifacts/metadata/model_v1_report.json
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
       UPLOAD_TMP_DIR: /tmp/finguard-uploads
     depends_on:
       db:

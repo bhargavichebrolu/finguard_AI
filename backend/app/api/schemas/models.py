@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -110,6 +111,27 @@ class ModelMetricsView(BaseModel):
     validation: ValidationResults
     test: TestResults
     performance_notes: list[str]
+
+
+class ModelReportView(BaseModel):
+    """Saved Phase 2 results for the Model Performance page. Nothing here is recalculated."""
+
+    model_config = ConfigDict(protected_namespaces=(), extra="allow")
+
+    report_version: str
+    model_version: str
+    threshold: float
+    source_files: dict[str, str]
+    notes: list[str]
+    selection: dict[str, Any]
+    families: list[dict[str, Any]]
+    family_validation_curves: dict[str, dict[str, list[float]]]
+    selected_model_curves: dict[str, dict[str, list[float]]]
+    confusion_matrices: dict[str, Any]
+    thresholds: dict[str, Any]
+    imbalance_matrix: list[dict[str, Any]]
+    experiment_history: list[dict[str, Any]]
+    lightgbm_diagnostic: dict[str, Any]
 
 
 class FeatureImportanceView(BaseModel):

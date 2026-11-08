@@ -29,6 +29,7 @@ It is the entry point for `uvicorn`. It also records the start-up rule from the 
 - **Internal processing:** sets logging, error handlers, routes and middleware.
 - **Error handling:** invalid settings raise here.
 - **Calls:** `configure_logging`, `register_exception_handlers`. **Used by:** the module body, tests.
+- **Proxy middleware:** added only when trusted proxies are configured.
 
 ## E. Classes Explained
 None.
@@ -41,7 +42,8 @@ Input: settings and artefacts. Output: a running API, with interactive documenta
 
 ## H. Important Technical Concepts
 - **No migrations at start-up:** schema changes are a controlled step (PRD 11.4), done by the `migrate` service. If the schema is behind, start-up fails when it first touches the database.
-- **`allow_credentials=False`:** the API uses bearer tokens rather than cookies, so browsers need no credential mode.
+- **CORS:** explicit origins only, with credentials allowed and `X-CSRF-Token` permitted, because the web app uses cookie sessions. The app normally calls the API on its own origin through a proxy, so CORS matters mainly for direct development calls.
+- **Proxy trust:** `ProxyHeadersMiddleware` is added only when `TRUSTED_PROXY_IPS` lists proxies. It is outermost, so later steps see the address the proxy reported.
 - **Middleware order:** the last one added is the outermost, so CORS headers also appear on responses from `RequestContextMiddleware`.
 
 ## I. Example

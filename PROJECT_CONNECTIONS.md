@@ -280,10 +280,17 @@ Transaction one-to-one prediction, prediction to at most one investigation, inve
 
 ## 18. Authentication flow (implemented)
 ```
-scripts/create_admin.py  ->  first admin (Argon2id hash)
-POST /auth/login          ->  rate limit, verify, audit, signed token {sub, ver, iat, exp}
-each request              ->  verify token, load user, check active and token_version,
-                              check role permission for the route
+scripts/create_admin.py   ->  first admin (Argon2id hash)
+Web application (Phase 4):
+POST /auth/session (JSON) ->  origin check, rate limit, verify, user_sessions row,
+                              Set-Cookie finguard_session (HttpOnly, SameSite=Strict, /api)
+                              Set-Cookie finguard_csrf (readable, SameSite=Strict, /)
+each request              ->  cookie token -> live session row -> user active, token_version
+                              POST/PATCH/DELETE also: allowed Origin + X-CSRF-Token
+DELETE /auth/session      ->  revoke this row, clear cookies
+API clients and Swagger:
+POST /auth/login (form)   ->  bearer token {sub, ver, iat, exp}, no CSRF needed
+Both                      ->  role permission check for the route
 POST /users (admin)       ->  further accounts. There is no self-registration.
 ```
 Roles: demo, analyst, investigator and admin, from PRD section 2. The table is in `app/security/permissions.py`.

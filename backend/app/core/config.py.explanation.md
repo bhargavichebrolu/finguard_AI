@@ -33,7 +33,7 @@ PRD section 10 requires environment-based configuration and separate development
 ### `_origins_must_be_explicit`
 - **Purpose:** enforce the PRD's CORS restriction.
 - **Parameters / types:** the settings object. **Returns / type:** `Settings`.
-- **Internal processing:** rejects `*` everywhere and `localhost` in production.
+- **Internal processing:** rejects `*` everywhere and `localhost` in production. Also rejects non-Secure session cookies in production, and a wildcard proxy list.
 - **Error handling:** raises `ValueError`.
 - **Calls:** `cors_origins`. **Used by:** pydantic.
 
@@ -43,6 +43,12 @@ PRD section 10 requires environment-based configuration and separate development
 - **Internal processing:** splits, trims and drops blanks.
 - **Error handling:** none needed.
 - **Calls:** none. **Used by:** `_origins_must_be_explicit`, `app/main.py`.
+
+### `cookie_secure`
+Returns `SESSION_COOKIE_SECURE` if set, otherwise true in production only.
+
+### `trusted_proxies`
+Returns `TRUSTED_PROXY_IPS` as a list. It is empty by default, which trusts no proxy.
 
 ### `get_settings`
 - **Purpose:** provide one validated settings object.
@@ -55,7 +61,7 @@ PRD section 10 requires environment-based configuration and separate development
 
 ### `Settings`
 - **Purpose:** the full list of settings, with types and limits.
-- **Attributes:** credentials (`database_url`, `secret_key`) have no default. Model paths default to the repository's `artifacts/` folder and are overridden in Docker. Batch limits, token lifetime, rate limits and `default_high_risk_boundary` have defaults with bounds.
+- **Attributes:** credentials (`database_url`, `secret_key`) have no default. Model paths default to the repository's `artifacts/` folder and are overridden in Docker. Batch limits, token lifetime, rate limits and `default_high_risk_boundary` have defaults with bounds. Phase 4 added `model_report_path`, `session_cookie_secure` and `trusted_proxy_ips`.
 - **Methods:** the validators above, plus `cors_origins`.
 - **Inheritance:** `pydantic_settings.BaseSettings`.
 

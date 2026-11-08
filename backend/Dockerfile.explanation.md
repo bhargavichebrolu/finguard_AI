@@ -26,6 +26,9 @@ No functions. The steps:
 ### Non-root user
 The process runs as `finguard`, which cannot change `/app`.
 
+### Proxy trust
+`--no-proxy-headers` stops Uvicorn trusting `X-Forwarded-For` from 127.0.0.1, which it does by default. Proxy trust is then controlled only by `TRUSTED_PROXY_IPS`.
+
 ### Health check
 Uses Python's standard library, so `curl` is not needed in the image.
 

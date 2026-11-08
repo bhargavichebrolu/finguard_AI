@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
-from app.api.schemas.auth import UserCreate, UserUpdate, UserView
+from app.api.schemas.auth import AssigneeView, UserCreate, UserUpdate, UserView
 from app.api.schemas.common import Limit, Offset, Page
 from app.models.records import User
 from app.security.dependencies import DbSession, require_permission
@@ -28,6 +28,18 @@ def list_users(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/assignable", response_model=list[AssigneeView])
+def list_assignable(
+    _user: Annotated[User, Depends(require_permission(Permission.UPDATE_INVESTIGATIONS))],
+    db: DbSession,
+) -> list[AssigneeView]:
+    """List active investigators and administrators, for assigning an investigation.
+
+    Returns only identifiers, emails and roles, so it reveals far less than the admin user list.
+    """
+    return [AssigneeView.model_validate(user) for user in auth_service.list_assignable(db)]
 
 
 @router.post("", response_model=UserView, status_code=status.HTTP_201_CREATED)

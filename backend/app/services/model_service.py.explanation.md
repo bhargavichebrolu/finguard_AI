@@ -75,6 +75,13 @@ Read-only properties of `ServingModel`, giving access to the loaded model's valu
 - **Error handling:** raises `ModelArtifactError`.
 - **Calls:** none. **Used by:** `load_verified_model`.
 
+### `read_report`
+- **Purpose:** load the performance report.
+- **Parameters / types:** `metadata: dict`, `path: Path`. **Returns / type:** `dict`.
+- **Internal processing:** checks the hash against `MODEL_REPORT_SHA256`, then that the report names this model and threshold.
+- **Error handling:** raises `ModelArtifactError`.
+- **Calls:** `sha256_file`. **Used by:** `load_verified_model`.
+
 ### `load_verified_model`
 - **Purpose:** the single entry point for getting a model.
 - **Parameters / types:** `settings: Settings`. **Returns / type:** `ServingModel`.
@@ -93,7 +100,7 @@ Read-only properties of `ServingModel`, giving access to the loaded model's valu
 
 ### `ServingModel`
 - **Purpose:** the verified model plus its saved results.
-- **Attributes:** `loaded`, `metrics`, `preprocessing`, `_lock`.
+- **Attributes:** `loaded`, `metrics`, `preprocessing`, `report`, `_lock`.
 - **Methods:** `score`, `explain` and the properties above.
 - **Inheritance:** none; a dataclass.
 

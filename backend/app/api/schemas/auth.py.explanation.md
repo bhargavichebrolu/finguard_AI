@@ -10,12 +10,17 @@ PRD 8.2 requires schemas on every endpoint. Separate request and response classe
 
 ## C. Dependencies
 - **Libraries:** `pydantic`, including `EmailStr`, which uses `email-validator`.
-- **Internal modules:** `app.api.schemas.common`, `app.models.enums`.
+- **Internal modules:** `app.api.schemas.common`, `app.models.enums`, `app.models.records`, `app.security.permissions`.
 - **External services / database:** none.
 - **Depended on by:** auth, users and audit routes.
 
 ## D. Every Function Explained
-No functions.
+
+### `current_user_view`
+- **Purpose:** build the signed-in view.
+- **Parameters / types:** `user: User`, `session: UserSession | None`. **Returns / type:** `CurrentUserView`.
+- **Internal processing:** lists permissions from the single role table, and adds the session's expiry.
+- **Error handling:** none needed. **Calls:** `ROLE_PERMISSIONS`. **Used by:** the auth routes.
 
 ## E. Classes Explained
 
@@ -24,6 +29,15 @@ No functions.
 
 ### `UserView`
 Identifier, email, role, active state and creation time. It has no `password_hash` field, so serialising a user cannot expose one. **Inheritance:** `ApiModel`.
+
+### `CurrentUserView`
+`UserView` plus `permissions`, sorted values from `ROLE_PERMISSIONS`, and `session_expires_at`, which is `None` for bearer tokens. **Inheritance:** `UserView`.
+
+### `AssigneeView`
+Identifier, email and role only. **Inheritance:** `ApiModel`.
+
+### `SessionCreate`
+Email and password for a browser sign-in, as JSON, with extra fields refused. **Inheritance:** `BaseModel`.
 
 ### `UserCreate`
 Email, password and role. `extra="forbid"` refuses unknown fields. **Inheritance:** `BaseModel`.

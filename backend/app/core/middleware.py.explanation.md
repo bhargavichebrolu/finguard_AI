@@ -16,6 +16,9 @@ These apply to all routes, so they should not be repeated in each. The size chec
 
 ## D. Every Function Explained
 
+### `content_security_policy`
+Returns the policy for a path. `/docs` and `/redoc` get `DOCS_CONTENT_SECURITY_POLICY`, which allows the CDN and inline start-up script they need. Everything else gets `API_CONTENT_SECURITY_POLICY`, which allows nothing to load.
+
 ### `_declared_size`
 - **Purpose:** read the `Content-Length` header.
 - **Parameters / types:** `scope: Scope`. **Returns / type:** `int | None`.
@@ -56,7 +59,7 @@ Input: ASGI messages. Output: the same messages plus headers, and one JSON log l
 ## H. Important Technical Concepts
 - **Plain ASGI, not `BaseHTTPMiddleware`:** the latter wraps responses in a way that has historically interfered with background tasks, which batch processing depends on.
 - **`Cache-Control: no-store` on `/api/`:** responses can hold sensitive records, so they should not be cached.
-- **No Content Security Policy:** `/docs` loads Swagger UI from a CDN. A policy belongs with the Phase 4 frontend and Phase 6 deployment.
+- **Content Security Policy:** added in Phase 4. JSON responses get the strictest policy. The documentation pages need a CDN and inline script, so they get a narrower allowance. The frontend's own policy is served by the frontend.
 - **Limitation:** the size check relies on `Content-Length`. A chunked upload without one is limited later, by the streaming check in the batch service, after the framework has spooled it to temporary storage.
 
 ## I. Example

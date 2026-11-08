@@ -1,6 +1,6 @@
 # Database Schema
 
-**Status: implemented in Phase 3**, as SQLAlchemy models in `backend/app/models/records.py` and Alembic revision `0001`. PostgreSQL 17 runs locally in Docker. Nothing is deployed.
+**Status: implemented in Phase 3**, as SQLAlchemy models in `backend/app/models/records.py` and Alembic revisions `0001`, plus `0002` from Phase 4. PostgreSQL 17 runs locally in Docker. Nothing is deployed.
 
 ## Tables
 
@@ -20,6 +20,7 @@ The PRD 9.1 tables are marked PRD. The others close gaps the PRD's list left ope
 | `batch_row_errors` | added | id, batch_job_id, row_number, column_name, message |
 | `ground_truth_labels` | added | transaction_id (primary key), is_fraud, source, created_at |
 | `app_settings` | added | key, value, updated_by, updated_at |
+| `user_sessions` | added in Phase 4 (revision `0002`) | id, user_id, csrf_token_hash, created_at, expires_at, revoked_at |
 
 `predictions.fraud_probability` from PRD 9.1 is named `model_score`, as the Phase 3 authorisation requires, because the score is not calibrated. See [ADR 0003](docs/decisions/0003-phase-3-decisions.md).
 
@@ -64,6 +65,7 @@ On `transactions`: created_at, transaction_type, amount, simulation_step, is_dem
 - No uploaded file. CSV files go to a temporary folder and are deleted after processing (PRD 9.2).
 - No rejected values. Row errors record row, column and reason only.
 - No passwords. Argon2id hashes only.
+- No CSRF tokens. SHA-256 hashes only, in `user_sessions`.
 - No note text, email address or password in the audit log.
 
 ## Roles and access

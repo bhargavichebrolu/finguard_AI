@@ -5,7 +5,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
-from app.api.schemas.models import FeatureImportanceView, ModelMetricsView, ModelVersionView
+from app.api.schemas.models import (
+    FeatureImportanceView,
+    ModelMetricsView,
+    ModelReportView,
+    ModelVersionView,
+)
 from app.core.errors import NotFoundError
 from app.models.records import ModelVersion, User
 from app.security.dependencies import DbSession, ServingModelDep, require_permission
@@ -42,6 +47,15 @@ def read_metrics(_user: Viewer, model: ServingModelDep) -> ModelMetricsView:
         source=METRICS_SOURCE,
         performance_notes=performance_notes(model.metrics),
     )
+
+
+@router.get("/report", response_model=ModelReportView)
+def read_report(_user: Viewer, model: ServingModelDep) -> ModelReportView:
+    """Return the saved model comparison, curves, thresholds and experiment history.
+
+    Built from saved Phase 2 outputs and checked against a pinned hash at start-up.
+    """
+    return ModelReportView(**model.report)
 
 
 @router.get("/feature-importance", response_model=FeatureImportanceView)

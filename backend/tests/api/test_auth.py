@@ -20,7 +20,8 @@ pytestmark = pytest.mark.database
 
 LOGIN = "/api/v1/auth/login"
 ME = "/api/v1/auth/me"
-PUBLIC_PATHS = {"/health", LOGIN}
+# Signing in and out must work without a session. Everything else needs one.
+PUBLIC_PATHS = {"/health", LOGIN, "/api/v1/auth/session"}
 FILE_DOWNLOAD_SUFFIXES = ("/export", "/errors")
 
 

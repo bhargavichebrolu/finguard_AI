@@ -19,6 +19,9 @@ PRD 2.3 includes managing permitted users. These routes are an addition to the P
 ### `list_users`
 `GET /api/v1/users`. Takes `limit` and `offset`, and returns `Page[UserView]`. Non-admins get 403.
 
+### `list_assignable`
+`GET /api/v1/users/assignable`. Returns `list[AssigneeView]` for active investigators and admins. Needs `UPDATE_INVESTIGATIONS`, so investigators can choose an assignee without seeing the full user list.
+
 ### `create_user`
 `POST /api/v1/users`. Takes `UserCreate`, and returns `UserView` with status 201. A used email gives 409, and a short password gives 422 without echoing it.
 

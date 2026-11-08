@@ -9,11 +9,22 @@
 | Item | Value |
 |---|---|
 | Local address | `http://127.0.0.1:${API_HOST_PORT}`, which is 8010 on the development computer |
-| Authentication | `Authorization: Bearer <token>` on every route except `/health`, `/docs`, `/openapi.json` and login |
-| Token | `POST /api/v1/auth/login`, form fields `username` (the email) and `password`. Valid for 30 minutes. |
+| Web application | Cookie session: `POST /api/v1/auth/session` with JSON `{email, password}` sets HttpOnly cookies. Requests that change data also need `X-CSRF-Token` and an allowed `Origin`. |
+| API clients and Swagger | `Authorization: Bearer <token>` from `POST /api/v1/auth/login`, form fields `username` (the email) and `password`. No CSRF token needed. |
+| Public routes | `/health`, `/docs`, `/redoc`, `/openapi.json`, `/api/v1/auth/login` and `/api/v1/auth/session` |
+| Lifetime | 30 minutes for both, then sign in again |
 | First account | `scripts/create_admin.py`, since there is no self-registration |
 
-Tokens prove identity only. The role is read from the database on each request, so deactivating an account or changing a role applies immediately. Changing a password invalidates earlier tokens.
+Credentials prove identity only. The role is read from the database on each request, so deactivating an account or changing a role applies immediately. Changing a password ends every session and token.
+
+### Browser sessions
+
+| Cookie | Flags | Purpose |
+|---|---|---|
+| `finguard_session` | HttpOnly, SameSite=Strict, Path=/api, Secure in production | Signed token naming a server-side session |
+| `finguard_csrf` | SameSite=Strict, Path=/, Secure in production, readable by page script | Value to send as `X-CSRF-Token` on POST, PATCH and DELETE |
+
+`DELETE /api/v1/auth/session` signs out, revoking that session only. The web application calls `/api` on its own origin, through a proxy, so the cookies stay first-party (ADR 0004).
 
 ## Roles
 
@@ -35,9 +46,11 @@ PRD 8.2 endpoints, plus additions marked with an asterisk.
 | `GET /health` | none | Liveness only: `{"status": "ok"}` |
 | `GET /api/v1/system/status` | any role | Database and model state, model hash and threshold |
 | `POST /api/v1/auth/login` * | none | Get a token |
-| `GET /api/v1/auth/me` * | any role | Your account |
+| `POST`, `DELETE /api/v1/auth/session` * | none | Browser sign-in and sign-out |
+| `GET /api/v1/auth/me` * | any role | Your account, permissions and session expiry |
 | `POST /api/v1/auth/change-password` * | any role | Change your password, signing out other sessions |
 | `GET`, `POST /api/v1/users`, `PATCH /api/v1/users/{id}` * | admin | Manage accounts |
+| `GET /api/v1/users/assignable` * | investigator, admin | Active investigators and admins: id, email and role only |
 | `GET /api/v1/audit-logs` * | admin | Audit log, newest first |
 | `POST /api/v1/transactions/predict` | any role | Score one transaction |
 | `GET /api/v1/transactions` | any role | Explorer with filters, sorting and paging |
@@ -56,6 +69,7 @@ PRD 8.2 endpoints, plus additions marked with an asterisk.
 | `GET /api/v1/models/active` | any role | The model in use |
 | `GET /api/v1/models/metrics` | any role | Frozen Phase 2 evaluation, with `performance_notes` |
 | `GET /api/v1/models/feature-importance` | any role | Saved SHAP importance and its limits |
+| `GET /api/v1/models/report` * | any role | Saved comparison, curves, thresholds and experiment history, from `model_v1_report.json` |
 | `GET /api/v1/reports/summary` | any role | Totals for your scope |
 | `GET /api/v1/reports/export?report_type=` | analyst and above | `predictions`, `flag_summary`, `investigations` or `model_evaluation` as CSV |
 | `GET`, `PATCH /api/v1/settings` | read: any role. change: admin | Settings, versions, dataset and health |
@@ -152,7 +166,7 @@ Every error is JSON with `detail` and `request_id`. Validation errors also carry
 | Status | Meaning |
 |---|---|
 | 401 | Missing, invalid or outdated token, or wrong credentials |
-| 403 | Your role does not allow this |
+| 403 | Your role does not allow this, or a cookie request lacked a valid CSRF token or allowed origin |
 | 404 | Not found, or outside your demo scope |
 | 409 | The identifier already exists |
 | 413 | Upload too large, or too many rows |
@@ -172,6 +186,16 @@ Every error is JSON with `detail` and `request_id`. Validation errors also carry
 
 No metric is recalculated, and the test partition is not read.
 
-## Not yet served
+## Model report
 
-PRD 6.8's model comparison table, curves, confusion matrices for all candidates and experiment history are saved under `experiments/results/phase2/` but are not served. Phase 4 needs a decision on whether the API serves them or the frontend reads committed files.
+`GET /api/v1/models/report` serves `artifacts/metadata/model_v1_report.json` unchanged. `scripts/export_model_report.py` built that file by copying values from six saved Phase 2 files, whose hashes it records. No data partition was read and nothing was recalculated. The API checks the file against a hash pinned in code at start-up. It holds:
+
+- the family comparison, with intervals and timings;
+- validation curves for every family, and validation and test curves for the selected model;
+- confusion matrices and the threshold analysis;
+- the imbalance matrix and all 125 recorded runs;
+- the LightGBM diagnostic, and the statements the interface must show.
+
+## Security headers
+
+JSON responses carry `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`. `/docs` and `/redoc` get a separate policy allowing the CDN and inline script they need. Forwarded client addresses are believed only from proxies listed in `TRUSTED_PROXY_IPS`, which is empty by default.

@@ -22,6 +22,7 @@ from app.core.frozen_model import (
     FROZEN_MODEL_SHA256,
     FROZEN_MODEL_VERSION,
     FROZEN_THRESHOLD,
+    MODEL_REPORT_SHA256,
     VERIFIED_LIBRARIES,
 )
 from app.ml.explainability import LIMITATIONS, feature_group
@@ -42,6 +43,7 @@ class ServingModel:
     loaded: LoadedModel
     metrics: dict[str, Any]
     preprocessing: dict[str, Any]
+    report: dict[str, Any] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     @property
@@ -143,6 +145,20 @@ def read_metrics(metadata: dict[str, Any], path: Path) -> dict[str, Any]:
     return metrics
 
 
+def read_report(metadata: dict[str, Any], path: Path) -> dict[str, Any]:
+    """Read the performance report, after checking it against the hash pinned in code."""
+    if not path.is_file():
+        raise ModelArtifactError(f"Model report not found: {path}")
+    if sha256_file(path) != MODEL_REPORT_SHA256:
+        raise ModelArtifactError("Model report hash differs from the pinned hash")
+    report = json.loads(path.read_text(encoding="utf-8"))
+    if report.get("model_version") != metadata["model_version"]:
+        raise ModelArtifactError("Model report describes a different model version")
+    if report.get("threshold") != metadata["threshold"]["value"]:
+        raise ModelArtifactError("Model report describes a different threshold")
+    return report
+
+
 def load_verified_model(settings: Settings) -> ServingModel:
     """Run every check, then load the model. Any failure stops the application from starting."""
     if not settings.model_metadata_path.is_file():
@@ -152,8 +168,9 @@ def load_verified_model(settings: Settings) -> ServingModel:
     check_library_versions(metadata)
     preprocessing = check_preprocessing_metadata(metadata, settings.preprocessing_metadata_path)
     metrics = read_metrics(metadata, settings.model_metrics_path)
+    report = read_report(metadata, settings.model_report_path)
     loaded = load_model_artifact(settings.model_metadata_path, settings.model_artifact_dir)
-    return ServingModel(loaded=loaded, metrics=metrics, preprocessing=preprocessing)
+    return ServingModel(loaded=loaded, metrics=metrics, preprocessing=preprocessing, report=report)
 
 
 def register_active_model(session: Session, model: ServingModel) -> None:

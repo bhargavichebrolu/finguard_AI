@@ -57,7 +57,7 @@ migrate:
 	cd backend && uv run alembic upgrade head
 
 serve:
-	cd backend && uv run uvicorn app.main:app --port 8010
+	cd backend && uv run uvicorn app.main:app --port 8010 --no-proxy-headers
 
 admin:
 	$(UV_RUN) python scripts/create_admin.py --email $(EMAIL)

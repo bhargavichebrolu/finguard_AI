@@ -30,7 +30,7 @@ A Makefile has targets rather than functions. Each takes no parameters and retur
 | `db-up` | Starts PostgreSQL and waits until it is healthy. |
 | `stack` | Builds and starts the database, migrations and API. |
 | `migrate` | `alembic upgrade head` on the host. |
-| `serve` | Runs the API on the host, port 8010. |
+| `serve` | Runs the API on the host, port 8010, with Uvicorn's own proxy trust turned off. |
 | `admin` | Creates the first administrator: `make admin EMAIL=you@example.com`. |
 | `test` | The whole backend test suite. |
 | `test-phase3` | The suite without the one test that rereads the test partition. |

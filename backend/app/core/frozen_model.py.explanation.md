@@ -20,6 +20,9 @@ No functions. The constants:
 ### `FROZEN_MODEL_VERSION`, `FROZEN_MODEL_SHA256`, `FROZEN_THRESHOLD`
 Copied from `artifacts/metadata/model_v1.json`, which was committed at the Phase 2 freeze (`324e30d`).
 
+### `MODEL_REPORT_SHA256`
+The hash of `model_v1_report.json`, built from saved Phase 2 outputs by `scripts/export_model_report.py`. The API refuses a different file.
+
 ### `VERIFIED_LIBRARIES`
 Libraries whose installed version must equal the one recorded when the model was saved.
 

@@ -91,7 +91,7 @@ uv run --project backend pytest backend/tests/api/test_auth.py
 ```
 
 ## J. Maintenance Notes
-Add new public paths to `PUBLIC_PATHS` only deliberately.
+Add new public paths to `PUBLIC_PATHS` only deliberately. Phase 4 added `/api/v1/auth/session`, because signing in and out must work without a session.
 
 ## K. Related Files
 - [conftest.py](conftest.py.explanation.md): fixtures.

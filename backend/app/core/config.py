@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     upload_rate_limit_per_minute: int = Field(default=10, gt=0)
 
     default_high_risk_boundary: float = Field(default=0.30, gt=0, le=1)
+    model_report_path: Path = REPO_ROOT / "artifacts" / "metadata" / "model_v1_report.json"
+
+    # Unset means Secure in production only, because browsers drop Secure cookies over plain HTTP.
+    session_cookie_secure: bool | None = None
+    # Comma-separated proxy addresses whose X-Forwarded-For is believed. Empty trusts nobody.
+    trusted_proxy_ips: str = ""
 
     @field_validator("secret_key")
     @classmethod
@@ -79,12 +85,28 @@ class Settings(BaseSettings):
             raise ValueError("CORS_ALLOWED_ORIGINS must list origins, not a wildcard")
         if self.app_env == "production" and any("localhost" in origin for origin in origins):
             raise ValueError("Production must not allow localhost as a CORS origin")
+        if self.app_env == "production" and self.session_cookie_secure is False:
+            raise ValueError("Production session cookies must be Secure")
+        if "*" in self.trusted_proxies:
+            raise ValueError("TRUSTED_PROXY_IPS must list proxies, not a wildcard")
         return self
 
     @property
     def cors_origins(self) -> list[str]:
         """Return the allowed browser origins as a list."""
         return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
+
+    @property
+    def cookie_secure(self) -> bool:
+        """Whether session cookies carry the Secure flag."""
+        if self.session_cookie_secure is None:
+            return self.app_env == "production"
+        return self.session_cookie_secure
+
+    @property
+    def trusted_proxies(self) -> list[str]:
+        """Return the proxies allowed to report the client's address."""
+        return [item.strip() for item in self.trusted_proxy_ips.split(",") if item.strip()]
 
 
 @lru_cache

@@ -26,7 +26,7 @@ No functions: this is declarative configuration. The settings that matter:
 Runs `alembic upgrade head` once, after the database is healthy. It shares the `finguard-api:local` image with `api`, so the image is built once. Keeping this separate means the API never changes the schema on start-up.
 
 ### `api` service
-Starts only after `migrate` succeeds. `./artifacts` is mounted read-only, so the running API cannot alter the frozen model. Its environment is shared with `migrate` through the `&api-environment` YAML anchor.
+Starts only after `migrate` succeeds. `./artifacts` is mounted read-only, so the running API cannot alter the frozen model. Its environment is shared with `migrate` through the `&api-environment` YAML anchor. Phase 4 added `MODEL_REPORT_PATH`, and `TRUSTED_PROXY_IPS`, which is empty unless set in `.env`.
 
 ## E. Classes Explained
 None.

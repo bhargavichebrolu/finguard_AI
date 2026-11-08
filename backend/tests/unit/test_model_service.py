@@ -35,6 +35,7 @@ def settings_for(metadata_dir: Path, models_dir: Path) -> Settings:
         model_metadata_path=metadata_dir / "model_v1.json",
         model_metrics_path=metadata_dir / "model_v1_metrics.json",
         preprocessing_metadata_path=metadata_dir / "preprocessing_v1.json",
+        model_report_path=metadata_dir / "model_v1_report.json",
         model_artifact_dir=models_dir,
         _env_file=None,
     )
@@ -136,6 +137,25 @@ def test_metrics_for_another_threshold_are_refused(artifact_copy):
     )
     with pytest.raises(ModelArtifactError, match="different threshold"):
         load_verified_model(settings_for(metadata_dir, models_dir))
+
+
+def test_altered_model_report_is_refused(artifact_copy):
+    metadata_dir, models_dir = artifact_copy
+    edit_metadata(metadata_dir, "model_v1_report.json", lambda data: data.update(notes=[]))
+    with pytest.raises(ModelArtifactError, match="report hash"):
+        load_verified_model(settings_for(metadata_dir, models_dir))
+
+
+def test_missing_model_report_is_refused(artifact_copy):
+    metadata_dir, models_dir = artifact_copy
+    (metadata_dir / "model_v1_report.json").unlink()
+    with pytest.raises(ModelArtifactError, match="report not found"):
+        load_verified_model(settings_for(metadata_dir, models_dir))
+
+
+def test_model_report_is_loaded_with_the_model(model):
+    assert model.report["model_version"] == FROZEN_MODEL_VERSION
+    assert model.report["threshold"] == FROZEN_THRESHOLD
 
 
 def test_missing_model_file_is_refused(artifact_copy):

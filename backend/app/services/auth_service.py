@@ -22,7 +22,13 @@ def normalise_email(email: str) -> str:
 
 
 def authenticate(session: Session, email: str, password: str, client_address: str) -> str:
-    """Return a token for correct credentials. Wrong email and wrong password look the same."""
+    """Return a bearer token for correct credentials, for API clients."""
+    user = verify_login(session, email, password, client_address)
+    return create_access_token(user.id, user.token_version)
+
+
+def verify_login(session: Session, email: str, password: str, client_address: str) -> User:
+    """Return the user for correct credentials. Wrong email and wrong password look the same."""
     settings = get_settings()
     address = normalise_email(email)
     key = f"login:{client_address}:{address}"
@@ -41,7 +47,17 @@ def authenticate(session: Session, email: str, password: str, client_address: st
     limiter.clear(key)
     record_event(session, user.id, "auth.login_succeeded", "user", user.id)
     session.commit()
-    return create_access_token(user.id, user.token_version)
+    return user
+
+
+def list_assignable(session: Session) -> list[User]:
+    """Return active users who can work investigations, for choosing an assignee."""
+    query = (
+        select(User)
+        .where(User.is_active, User.role.in_([UserRole.INVESTIGATOR, UserRole.ADMIN]))
+        .order_by(User.email)
+    )
+    return list(session.scalars(query))
 
 
 def create_user(

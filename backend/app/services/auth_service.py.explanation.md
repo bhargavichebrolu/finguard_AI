@@ -20,11 +20,17 @@ PRD 8.1 keeps business logic out of routes. PRD 2.3 has administrators managing 
 Trims and lower-cases an email, so one person cannot hold two accounts through capitalisation.
 
 ### `authenticate`
-- **Purpose:** check credentials and issue a token.
-- **Parameters / types:** `session`, `email: str`, `password: str`, `client_address: str`. **Returns / type:** `str`.
+Returns a bearer token for correct credentials, for `/auth/login`, by calling `verify_login`.
+
+### `verify_login`
+- **Purpose:** check credentials, for both sign-in routes.
+- **Parameters / types:** `session`, `email: str`, `password: str`, `client_address: str`. **Returns / type:** `User`.
 - **Internal processing:** checks the rate limit first. For an unknown email it still spends the time of a password check. Only failures count towards the limit, and success clears them.
 - **Error handling:** wrong email, wrong password and inactive account all raise the same error. `RateLimitedError` when limited.
-- **Calls:** `limiter`, `verify_password`, `verify_against_dummy`, `record_event`, `create_access_token`. **Used by:** the login route.
+- **Calls:** `limiter`, `verify_password`, `verify_against_dummy`, `record_event`. **Used by:** `authenticate`, the session route.
+
+### `list_assignable`
+Returns active investigators and admins, ordered by email, for the assignee list.
 
 ### `create_user`
 - **Purpose:** create an account.
