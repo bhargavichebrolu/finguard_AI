@@ -171,8 +171,9 @@ Phase 1 and 2 files have documents in [docs/file-explanations/](docs/file-explan
 | `frontend/src/pages/*.tsx` | The ten pages and the sign-in page |
 | `frontend/src/services/`, `hooks/`, `components/`, `layouts/`, `types/`, `utils/` | API client, state, shared components, layout, typed contracts, formatting |
 | `frontend/tests/unit/*` | Component tests against a mock API |
-| `frontend/playwright.config.ts`, `frontend/tests/e2e/*` | Browser tests against the real API and `finguard_test` at three viewports |
-| `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Start the browser-test API; seed and adjust the test database (refuses non-`_test` names) |
+| `frontend/playwright.config.ts`, `frontend/tests/e2e/*` | Browser tests against the real API and `finguard_e2e_test` at three viewports |
+| `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Start the browser-test API; create, seed and adjust its database (refuses non-`_test` names) |
+| `scripts/verify_clean_clone.py`, `scripts/test_report.py` | Clean-clone reproducibility check and pytest report reading |
 | `frontend/src/styles/tokens.css` | PRD colour tokens |
 | `frontend/vite.config.ts` | Build tool config |
 | `Makefile` | Command shortcuts |
@@ -298,7 +299,7 @@ No token is kept in browser storage. `VITE_API_BASE_URL` stays empty unless the 
 ### Browser tests (Phase 4)
 ```
 scripts/e2e_stack.py up        compose profile "e2e": migrate-e2e -> api-e2e  127.0.0.1:8011
-                               same image as api; APP_ENV=test; DATABASE_URL -> finguard_test;
+                               same image as api; APP_ENV=test; DATABASE_URL -> finguard_e2e_test;
                                CORS only http://127.0.0.1:4173; new E2E_SECRET_KEY each start
 frontend/playwright.config.ts  global-setup.ts -> scripts/e2e_database.py seed (refuses non-*_test)
                                                 -> frontend/.e2e/accounts.json (Git-ignored)
@@ -310,7 +311,16 @@ frontend/playwright.config.ts  global-setup.ts -> scripts/e2e_database.py seed (
                                model-performance.spec.ts also reads artifacts/metadata/*.json and
                                experiments/results/phase2/* to compare with the page
 ```
-The backend suite empties `finguard_test` (including `model_versions`), so `e2e_stack.py up` is run again after it; the seed step stops with that instruction otherwise.
+Since Phase 5 M1 the browser tests have their own database, `finguard_e2e_test`, created by `e2e_stack.py up`; the backend suite keeps `finguard_test`, which it empties. The seed step still stops with an instruction if the browser-test API has not registered the model.
+
+### Reproducibility (Phase 5)
+```
+scripts/verify_clean_clone.py   git clone --no-local -> temp folder; confirm .env, model binary, dataset absent
+                                uv sync --frozen; pytest (JUnit -> scripts/test_report.py); repository checks;
+                                npm ci, typecheck, test, build
+backend/Dockerfile, compose     base images pinned by digest; uv pinned exactly
+export_model_report.py          source hashes over content with line endings normalised
+```
 
 ## 15. Database architecture (implemented)
 PostgreSQL 17 with the tables, constraints and indexes in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md). Two roles: a superuser for administration, and `finguard_app` without superuser rights for the API, migrations and tests. SCRAM applies to every connection, set by `POSTGRES_INITDB_ARGS` at first initialisation.
@@ -372,7 +382,7 @@ docker-compose.yml
   db       postgres:17-alpine, SCRAM from first start, named volume, port on 127.0.0.1 only
   migrate  finguard-api:local, alembic upgrade head, then exits
   api      finguard-api:local, non-root, ./artifacts mounted read-only, health check on /health
-  migrate-e2e, api-e2e   profile "e2e" only: the same image against finguard_test on 127.0.0.1:8011
+  migrate-e2e, api-e2e   profile "e2e" only: the same image against finguard_e2e_test on 127.0.0.1:8011
 ```
 
 ## 26. Local setup instructions

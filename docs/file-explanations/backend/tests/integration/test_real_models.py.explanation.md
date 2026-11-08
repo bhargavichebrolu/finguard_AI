@@ -51,6 +51,12 @@ Git helpers. `commits_touching` lists the commits that changed a file, newest fi
 | `test_documentation_tables_match_the_saved_results` | none | Tables in `ML_EXPERIMENTS.md` match the results files. |
 | `test_scores_are_not_constant` | none | The model produces varied scores. |
 
+### `require_model_file`
+Skips the test when the frozen model binary is absent, as in a clean clone or CI, where it is not stored in Git. Added in Phase 5 M1: three tests previously failed instead of skipping.
+
+### `require_partition`
+Skips the test when a processed partition is absent, since the dataset is not in Git.
+
 ## E. Classes Explained
 None.
 

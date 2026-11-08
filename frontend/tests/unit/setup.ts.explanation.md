@@ -30,6 +30,7 @@ Start the server before all tests. After each test, clean up, reset handlers, re
 None.
 
 ## H. Important Technical Concepts
+- **Async wait of 5 seconds (Phase 5 M1):** pages load lazily, and on a cold start (a fresh clone or CI) compiling a page the first time took longer than Testing Library's one-second default, so the first test in three files failed there. Waiting longer changes no assertion.
 - **`onUnhandledRequest: "error"`** makes unexpected API calls fail loudly.
 
 ## I. Example

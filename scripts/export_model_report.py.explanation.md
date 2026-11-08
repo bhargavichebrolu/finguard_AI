@@ -19,8 +19,11 @@ PRD 6.8 asks for a model comparison table, curves, confusion matrices, threshold
 ### `read_sources`
 Loads every file in `SOURCES`. A missing file raises, so a partial report is never written.
 
+### `content_sha256`
+Returns the SHA-256 of a text file after normalising CRLF to LF. Git stores these sources with LF, but a Windows checkout writes CRLF, so hashing raw bytes made the recorded hashes depend on the checkout. The Phase 5 clean-clone check found this; the report was rebuilt with content hashes, and every reported value stayed the same.
+
 ### `source_hashes`
-Returns each source's SHA-256, stored in the report so it can be traced.
+Returns each source's content hash (`content_sha256`), stored in the report so it can be traced.
 
 ### `csv_value`
 Converts one `all_runs.csv` cell back to a number, keeps text fields as text, and turns empty cells into `None`. `seed` becomes an integer.

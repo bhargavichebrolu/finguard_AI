@@ -40,7 +40,10 @@ async function openPage(page: Page) {
 test("every saved source file still matches the hash the report records", () => {
   for (const [file, hash] of Object.entries(report.source_files as Record<string, string>)) {
     expect(file.startsWith("data/")).toBe(false);
-    expect(createHash("sha256").update(repoBytes(file)).digest("hex"), file).toBe(hash);
+    // Content hash with line endings normalised, as export_model_report.py records it, so the
+    // result is the same on Windows (CRLF) and clean or Linux (LF) checkouts.
+    const content = repoBytes(file).toString("latin1").replace(/\r\n/g, "\n");
+    expect(createHash("sha256").update(content, "latin1").digest("hex"), file).toBe(hash);
   }
 });
 

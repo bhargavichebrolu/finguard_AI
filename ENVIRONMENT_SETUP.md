@@ -124,14 +124,14 @@ The app calls the API on its own origin. The Vite servers forward `/api` and `/h
 ### Browser tests
 
 ```powershell
-uv run --project backend python scripts/e2e_stack.py up   # API on 127.0.0.1:8011 using finguard_test
+uv run --project backend python scripts/e2e_stack.py up   # API on 127.0.0.1:8011 using finguard_e2e_test
 cd frontend
 npx playwright install chromium                           # once
 npm run test:e2e                                          # builds, serves on 127.0.0.1:4173, runs all projects
 cd ..; uv run --project backend python scripts/e2e_stack.py down
 ```
 
-Global setup reseeds `finguard_test` (and refuses any other database), so nothing in development data is touched. The backend test suite empties the same database, including the model registration, so run `e2e_stack.py up` again after it. Generated passwords, saved test sessions and screenshots go to `frontend/.e2e/`, which Git ignores. The browser-test API uses its own random signing key on each start and allows only `http://127.0.0.1:4173` as an origin.
+`e2e_stack.py up` creates `finguard_e2e_test` if it is missing, and global setup reseeds it (refusing any name not ending in `_test`), so nothing in development data is touched. The backend suite uses `finguard_test` instead, so the two suites can run one after the other without restarting anything. Generated passwords, saved test sessions and screenshots go to `frontend/.e2e/`, which Git ignores. The browser-test API uses its own random signing key on each start and allows only `http://127.0.0.1:4173` as an origin.
 
 ## Environment variables
 

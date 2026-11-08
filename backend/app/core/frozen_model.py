@@ -11,7 +11,9 @@ FROZEN_THRESHOLD = 0.02841914258897305
 VERIFIED_LIBRARIES = ("scikit-learn", "xgboost")
 # Built by scripts/export_model_report.py from saved Phase 2 outputs only. Rebuilding it from the
 # same sources gives the same bytes, so a different hash means the report or a source changed.
-MODEL_REPORT_SHA256 = "5c4d28a5d7509b73458cb76b96ae4d1b5ce53027e4e65d2245a0296b09180cd3"
+# Phase 5 M1 rebuilt it with line-ending-independent source hashes; every reported value is
+# unchanged, so only this pin and the report's source_files section changed.
+MODEL_REPORT_SHA256 = "9d1794bbeeb5f6cc4f518a1175ef3adddaf29e2ad1e47a4b9c88ff4cf02e3109"
 
 SCORE_TYPE = "uncalibrated_model_score"
 SCORE_IS_CALIBRATED = False

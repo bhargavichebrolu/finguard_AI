@@ -73,7 +73,7 @@ On `transactions`: created_at, transaction_type, amount, simulation_step, is_dem
 | Role | Rights | Used by |
 |---|---|---|
 | `POSTGRES_USER` (`finguard_admin`) | Superuser | Administration only |
-| `APP_DB_USER` (`finguard_app`) | Owns `finguard` and `finguard_test`. No superuser, database or role creation rights. | API, migrations, tests |
+| `APP_DB_USER` (`finguard_app`) | Owns `finguard`, `finguard_test` (backend suite) and `finguard_e2e_test` (browser tests, created by `scripts/e2e_stack.py`). No superuser, database or role creation rights. | API, migrations, tests |
 
 Every authentication rule uses `scram-sha-256`, including connections inside the container, because `POSTGRES_INITDB_ARGS` is set from the first initialisation. Verified on 2026-11-07, both on a throwaway Compose project and on the development database:
 - **Rules:** all 7 loaded rules in `pg_hba_file_rules` are SCRAM.

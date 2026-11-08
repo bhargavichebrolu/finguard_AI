@@ -52,7 +52,7 @@ docker compose build api
 ```
 
 ## J. Maintenance Notes
-`uv` is pinned to a minor version so builds do not change unexpectedly. If the lock file format changes, update this pin. New top-level backend folders the API needs must be copied here.
+The base image is pinned by digest and `uv` to an exact version (Phase 5 M1), so a rebuild uses exactly what was tested; `test_reproducibility.py` checks both pins exist. To update, resolve the new digest with `docker buildx imagetools inspect python:3.11-slim`, rebuild and rerun the tests. If the lock file format changes, update this pin. New top-level backend folders the API needs must be copied here.
 
 ## K. Related Files
 - [.dockerignore](.dockerignore.explanation.md): what stays out of the build.

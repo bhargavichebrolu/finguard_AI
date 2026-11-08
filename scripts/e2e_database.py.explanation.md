@@ -16,8 +16,8 @@ Browser tests need known accounts with passwords nobody has written down, and mu
 
 ## D. Every Function Explained
 
-### `test_database_url`
-Reads `TEST_DATABASE_URL` from the environment or `.env` and refuses a name not ending in `_test`.
+### `browser_test_database_url`
+Returns `E2E_DATABASE_URL` if set; otherwise `TEST_DATABASE_URL` (environment or `.env`) with the database renamed to `E2E_DB_NAME`, default `finguard_e2e_test`. Refuses any name not ending in `_test`. Since Phase 5 the browser tests no longer share `finguard_test` with the backend suite, which empties it.
 
 ### `configure_settings`
 Points the application settings at the test database before any app module reads them.
@@ -47,6 +47,7 @@ Command line, then the database.
 Input: `TEST_DATABASE_URL`. Output: `frontend/.e2e/accounts.json` (Git-ignored) and one line naming how many accounts were seeded. Passwords are never printed.
 
 ## H. Important Technical Concepts
+- **`DEFAULT_DATABASE`** is `finguard_e2e_test` (Phase 5 M1).
 - **`ACCOUNTS`** maps test names to roles. Disruptive tests get their own accounts.
 
 ## I. Example

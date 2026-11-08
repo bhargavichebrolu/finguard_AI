@@ -27,7 +27,10 @@ uv run --project backend python scripts/check_explanations.py
 # Frontend: type check, unit and component tests, production build
 cd frontend; npm run typecheck; npm test; npm run build
 
-# Browser tests against the real API and finguard_test (see ENVIRONMENT_SETUP.md)
+# Browser tests against the real API and finguard_e2e_test (see ENVIRONMENT_SETUP.md)
+
+# Clean-clone reproducibility check: no dataset, model binary or .env
+uv run --project backend python scripts/verify_clean_clone.py
 uv run --project backend python scripts/e2e_stack.py up
 cd frontend; npm run test:e2e
 ```
@@ -82,7 +85,7 @@ Database tests read `TEST_DATABASE_URL` from the environment or `.env`, and skip
 
 ## Phase 4 browser tests
 
-Playwright drives Chromium against the real API (Docker, port 8011) and PostgreSQL (`finguard_test`), never a mock. 103 tests: 5 sign-in setups, 64 on desktop (1440 x 900), and the layout and accessibility spec again on tablet (768 x 1024) and mobile (390 x 844), 17 each.
+Playwright drives Chromium against the real API (Docker, port 8011) and PostgreSQL (`finguard_e2e_test`, apart from the backend suite's `finguard_test`), never a mock. 103 tests: 5 sign-in setups, 64 on desktop (1440 x 900), and the layout and accessibility spec again on tablet (768 x 1024) and mobile (390 x 844), 17 each.
 
 | Area | Spec | Checks |
 |---|---|---|
@@ -115,6 +118,17 @@ Defects found and fixed in M7, each with a regression test:
 
 Not automated: screen-reader listening, colour contrast inside chart images (charts have table views, and the palette passed the dataviz validator in M3), and real touch devices. Automated checks find only part of all accessibility problems.
 
+## Clean-clone results (Phase 5 M1)
+
+`scripts/verify_clean_clone.py` on a fresh clone without `.env`, the model binary or the dataset: lockfile installs, backend 421 passed, 0 failed, 270 skipped (1 deselected); repository checks passed; frontend 98 passed and the build succeeded. Every skip has one of two reasons:
+
+| Reason | Tests | Where |
+|---|---|---|
+| Frozen model binary absent (not in Git) | 264 | `tests/api/*` (242, because the app verifies the model at start-up), `test_model_service.py` (19), `test_real_models.py` (3) |
+| Full dataset and processed partitions absent | 6 | `test_real_data.py` |
+
+The first run found four problems, all fixed in M1: the report's source hashes depended on checkout line endings; three model tests failed instead of skipping without the binary; `export_openapi.py --check` needed `.env`; and three component tests timed out on a cold start.
+
 ## Test types
 
 | Folder | Purpose | Data |
@@ -123,7 +137,7 @@ Not automated: screen-reader listening, colour contrast inside chart images (cha
 | `backend/tests/integration/` | Pipeline stages, real outputs, and migrations on PostgreSQL | Synthetic fixtures, real outputs, test database |
 | `backend/tests/api/` | The real application through HTTP, on real PostgreSQL with the frozen model | Hand-written requests |
 | `frontend/tests/unit/` | Components and pages with Vitest and a mock API | Typed fixtures with invented values |
-| `frontend/tests/e2e/` | The built app in Chromium against the real API and `finguard_test` | Seeded accounts and data created by each test |
+| `frontend/tests/e2e/` | The built app in Chromium against the real API and `finguard_e2e_test` | Seeded accounts and data created by each test |
 
 ## Manual checks run in Phase 3
 

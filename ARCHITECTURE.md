@@ -128,7 +128,7 @@ The browser holds no token. The API, not the interface, enforces every permissio
 
 ```
 scripts/e2e_stack.py up      docker compose profile "e2e": migrate-e2e, then api-e2e on 127.0.0.1:8011
-                             (same image, APP_ENV=test, finguard_test, fresh signing key)
+                             (same image, APP_ENV=test, finguard_e2e_test, fresh signing key)
 playwright global setup      scripts/e2e_database.py seed: refuses non-*_test names, empties tables
                              (keeping the registered model), creates accounts with random passwords,
                              then proves port 8011 reads that database by signing in

@@ -29,7 +29,7 @@ Runs `alembic upgrade head` once, after the database is healthy. It shares the `
 Starts only after `migrate` succeeds. `./artifacts` is mounted read-only, so the running API cannot alter the frozen model. Its environment is shared with `migrate` through the `&api-environment` YAML anchor. Phase 4 added `MODEL_REPORT_PATH`, and `TRUSTED_PROXY_IPS`, which is empty unless set in `.env`.
 
 ### `migrate-e2e` and `api-e2e` services (profile `e2e`)
-The browser-test stack. Same image and settings as `api`, through the `<<: *api-environment` merge, but with `APP_ENV=test`, the test database (`TEST_DB_NAME`), only `http://127.0.0.1:4173` allowed as an origin, no trusted proxies, and port 127.0.0.1:8011. `SECRET_KEY` comes from `E2E_SECRET_KEY`, which `scripts/e2e_stack.py` generates per start; without it the API refuses to start. Profiles keep these out of a plain `docker compose up`.
+The browser-test stack. Same image and settings as `api`, through the `<<: *api-environment` merge, but with `APP_ENV=test`, the test database (`TEST_DB_NAME`), only `http://127.0.0.1:4173` allowed as an origin, no trusted proxies, and port 127.0.0.1:8011. `SECRET_KEY` comes from `E2E_SECRET_KEY`, which `scripts/e2e_stack.py` generates per start; without it the API refuses to start. Profiles keep these out of a plain `docker compose up`. Since Phase 5 they use their own database, `${E2E_DB_NAME:-finguard_e2e_test}`, created by `scripts/e2e_stack.py`.
 
 ## E. Classes Explained
 None.
@@ -41,6 +41,7 @@ None.
 Input: `.env`. Output: three containers and the named volume `finguard_pgdata`, which survives `docker compose down` and is deleted only by `docker compose down -v`.
 
 ## H. Important Technical Concepts
+- **Pinned image (Phase 5 M1):** `postgres:17-alpine` is pinned by digest to the image tested. Changing the pin recreates the `db` container on the next `up`; the named volume keeps the data.
 - **`POSTGRES_INITDB_ARGS` applies once.** It only takes effect when a volume is first initialised. An older volume keeps its old rules until it is recreated.
 - **Container and host addresses differ.** Inside Compose the database host is `db`. From Windows it is `127.0.0.1` on `POSTGRES_HOST_PORT`, not `localhost`, because only IPv4 is published.
 - **`$$` in the health check** stops Compose substituting the value itself, so the shell inside the container reads it.

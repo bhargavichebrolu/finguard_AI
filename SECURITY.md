@@ -30,7 +30,7 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | Data stays out of Git | Datasets and model binaries are ignored. |
 | Dependencies pinned | `uv.lock` and `package-lock.json`. |
 | Browser-verified controls (Phase 4) | Playwright tests against the real API check cookie flags, that no token reaches browser storage, sign-out revocation, expiry, tampered cookies, CSRF and origin refusals, CORS, the sign-in rate limit, security headers, and that pages raise no Content Security Policy violations. |
-| Browser-test isolation | Tests use only `finguard_test`: the seed script refuses any other name, and global setup proves the API reads that database before any test runs. Test passwords are random per run, stored in a Git-ignored file, and never printed; traces and HTML reports, which record typed values, are off. |
+| Browser-test isolation | Tests use only `finguard_e2e_test`: the seed and stack scripts refuse any name not ending in `_test`, and global setup proves the API reads that database before any test runs. Test passwords are random per run, stored in a Git-ignored file, and never printed; traces and HTML reports, which record typed values, are off. |
 
 ## Known limitations
 

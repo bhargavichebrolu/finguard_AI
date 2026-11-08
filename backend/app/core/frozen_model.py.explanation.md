@@ -21,7 +21,7 @@ No functions. The constants:
 Copied from `artifacts/metadata/model_v1.json`, which was committed at the Phase 2 freeze (`324e30d`).
 
 ### `MODEL_REPORT_SHA256`
-The hash of `model_v1_report.json`, built from saved Phase 2 outputs by `scripts/export_model_report.py`. The API refuses a different file.
+The hash of `model_v1_report.json`, built from saved Phase 2 outputs by `scripts/export_model_report.py`. The API refuses a different file. Updated in Phase 5 M1, when the report's source hashes became line-ending independent; only the `source_files` section changed, and every reported value is identical.
 
 ### `VERIFIED_LIBRARIES`
 Libraries whose installed version must equal the one recorded when the model was saved.

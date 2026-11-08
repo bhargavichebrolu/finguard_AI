@@ -11,7 +11,7 @@ Authorisation decision 4 and the M7 brief require desktop, tablet, mobile and ac
 ## C. Dependencies
 - **Libraries:** Playwright Test.
 - **Internal modules:** `support.ts`.
-- **External services / database:** The browser-test API on 127.0.0.1:8011 and the finguard_test database, through the preview server on 127.0.0.1:4173.
+- **External services / database:** The browser-test API on 127.0.0.1:8011 and the finguard_e2e_test database, through the preview server on 127.0.0.1:4173.
 - **Depended on by:** none; run by `npm run test:e2e`.
 
 ## D. Every Function Explained
