@@ -263,11 +263,28 @@ PredictionView: model_score, score_is_calibrated false, risk level, FLAG_FOR_REV
 ```
 Endpoints are listed in [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
 
-## 13. React architecture (planned: Phase 4; toolchain implemented)
-Implemented: Vite, TypeScript strict mode and colour tokens. Planned: ten pages, a shared layout, an API service layer and hooks, using custom CSS with the white theme.
+## 13. React architecture (Phase 4, in progress)
+```
+main.tsx -> App.tsx (AuthProvider, BrowserRouter)
+  /login                      LoginPage
+  everything else             RequireAuth -> ModelLimitsProvider -> AppLayout
+                                -> RequirePermission(page.permission) -> page
+pages/registry.tsx            one list drives routes and navigation, in PRD 7.4 order
+services/api.ts               one Axios client: cookies, CSRF header, ApiError, 401 signal
+services/endpoints.ts         typed calls, using types/api.generated.ts from frontend/openapi.json
+hooks/                        useAuth, useApiResource and usePolling, useModelLimits
+components/                   feedback states, ScoreDisclosure, badges, DataTable, guards
+styles/                       tokens, layout, components, pages (custom CSS, white theme)
+```
+Navigation shows only pages whose permission `/auth/me` reports. The API still enforces every rule.
 
-## 14. Frontend-to-backend communication (planned: Phase 4)
-Axios calls the REST API over HTTPS, using `VITE_API_BASE_URL`. No localhost URL is hardcoded for production.
+## 14. Frontend-to-backend communication (Phase 4)
+```
+browser -> same origin /api/...    (Vite dev :5173 or preview :4173 locally; host rewrite in Phase 6)
+        -> proxy -> FastAPI         (FINGUARD_API_PROXY_TARGET, default http://127.0.0.1:8010)
+cookies: finguard_session (HttpOnly, Path=/api)  finguard_csrf (readable, sent back as X-CSRF-Token)
+```
+No token is kept in browser storage. `VITE_API_BASE_URL` stays empty unless the API must be reached on another origin, which would break SameSite=Strict cookies. Contract: `scripts/export_openapi.py` writes `frontend/openapi.json`, and `npm run gen:api` regenerates the types. Tests on both sides fail if either is stale.
 
 ## 15. Database architecture (implemented)
 PostgreSQL 17 with the tables, constraints and indexes in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md). Two roles: a superuser for administration, and `finguard_app` without superuser rights for the API, migrations and tests. SCRAM applies to every connection, set by `POSTGRES_INITDB_ARGS` at first initialisation.

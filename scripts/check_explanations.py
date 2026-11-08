@@ -36,7 +36,14 @@ SOURCE_FILES = (
     "backend/.dockerignore",
     "backend/alembic.ini",
     "backend/pyproject.toml",
+    "frontend/package.json",
+    "frontend/tsconfig.json",
+    "frontend/vitest.config.ts",
+    "frontend/playwright.config.ts",
 )
+# Generated from frontend/openapi.json by openapi-typescript. Never edited by hand, so exempt
+# (PRD 12.2), and a frontend test fails if it falls out of step with the schema.
+GENERATED_FILES = frozenset({"frontend/src/types/api.generated.ts"})
 SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".css", ".sql", ".mako"}
 IGNORED_PARTS = {"__pycache__", "node_modules", "dist", ".venv", ".pytest_cache", ".ruff_cache"}
 EXPLANATION_SUFFIX = ".explanation.md"
@@ -93,6 +100,8 @@ def is_package_marker(path: Path) -> bool:
 def is_documented_source(path: Path) -> bool:
     """Decide whether a file falls under the per-file explanation rule."""
     if IGNORED_PARTS & set(path.parts) or path.name.endswith(".d.ts"):
+        return False
+    if path.as_posix().endswith(tuple(GENERATED_FILES)):
         return False
     return path.suffix in SOURCE_SUFFIXES and not is_package_marker(path)
 

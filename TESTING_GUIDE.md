@@ -24,9 +24,11 @@ uv run --project backend ruff format --check backend/app backend/tests/api backe
 # Documentation rule
 uv run --project backend python scripts/check_explanations.py
 
-# Frontend type-check and build
-cd frontend; npm run build
+# Frontend: type check, unit and component tests, production build
+cd frontend; npm run typecheck; npm test; npm run build
 ```
+
+Frontend unit and component tests use Vitest with Testing Library and a mock API (Mock Service Worker) answering the real paths with typed fixtures. `source-rules.test.ts` also scans `src/` for forbidden wording, hardcoded Phase 2 figures, browser storage and inline styles, and checks the generated API types are current.
 
 Database tests read `TEST_DATABASE_URL` from the environment or `.env`, and skip when it is absent. They delete rows, so they refuse any database whose name does not end in `_test`. API tests also need the frozen model file, and skip without it.
 

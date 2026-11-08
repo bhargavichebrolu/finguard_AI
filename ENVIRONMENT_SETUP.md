@@ -113,9 +113,13 @@ The API refuses to start if the frozen model file is missing, altered or under d
 ```powershell
 cd frontend
 npm ci
-npm run dev     # http://localhost:5173
-npm run build   # type-check and production bundle
+npm run dev       # http://127.0.0.1:5173, forwarding /api to the API on 127.0.0.1:8010
+npm test          # unit and component tests
+npm run build     # type check and production bundle
+npm run preview   # http://127.0.0.1:4173, the built app with its Content Security Policy
 ```
+
+The app calls the API on its own origin. The Vite servers forward `/api` and `/health` to `FINGUARD_API_PROXY_TARGET`, which defaults to `http://127.0.0.1:8010`. Sign in with an account made by `scripts/create_admin.py`. After an API change, run `uv run --project backend python scripts/export_openapi.py`, then `npm run gen:api`.
 
 ## Environment variables
 

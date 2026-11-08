@@ -3,39 +3,43 @@
 Source: [frontend/vite.config.ts](../../../frontend/vite.config.ts)
 
 ## A. File Purpose
-Configures Vite, the frontend's development server and production bundler.
+Configures the Vite development and preview servers: the React plugin, the `/api` proxy and the preview build's security headers.
 
 ## B. Why This File Exists
-Vite needs the React plugin to compile JSX, and a fixed port keeps the local CORS configuration predictable.
+The web app calls the API on its own origin, so session cookies stay first-party (ADR 0004). These servers forward `/api` and `/health` to the backend. The preview server also serves the production Content Security Policy, which the browser tests check.
 
 ## C. Dependencies
-- **Libraries:** `vite`, `@vitejs/plugin-react`.
-- **Internal modules / external services / database:** none.
-- **Depended on by:** `npm run dev`, `npm run build`, `npm run preview`.
+- **Libraries:** Vite, `@vitejs/plugin-react`.
+- **Internal modules:** none.
+- **External services / database:** the API, at `FINGUARD_API_PROXY_TARGET`, default `http://127.0.0.1:8010`.
+- **Depended on by:** `npm run dev`, `npm run build`, `npm run preview`, Playwright.
 
 ## D. Every Function Explained
-This file defines no named functions. It calls `defineConfig`, a typing helper from Vite, and `react()`, which creates the plugin. Vite imports the default export.
+No functions. `CONTENT_SECURITY_POLICY` is exported for the browser tests.
 
 ## E. Classes Explained
 None.
 
 ## F. Execution Flow
-Vite loads this file at startup, applies the plugin and starts the dev server on port 5173, or bundles into `dist/`.
+Vite reads the file when a server or build starts.
 
 ## G. Input and Output
-Input: none at runtime. Output: a Vite configuration object.
+Input: the environment. Output: servers on ports 5173 (development) and 4173 (preview).
 
 ## H. Important Technical Concepts
-No API proxy or URL is configured here on purpose. From Phase 4, the API base URL comes from `VITE_API_BASE_URL`, as PRD 11.2 forbids a hardcoded localhost URL in production.
+- **The policy:** `default-src 'self'`, with no inline scripts or styles, `connect-src 'self'` because the API is same-origin, `frame-ancestors 'none'` and `object-src 'none'`.
+- **The development server has no policy,** because hot reloading injects inline code. The policy is verified on the preview build, which is what deployment serves.
+- **`changeOrigin: false`** keeps the browser's `Origin` header, which the API checks on cookie requests.
+- **`host: "127.0.0.1"`:** on Windows, Vite's default `localhost` bound only the IPv6 address `[::1]`, so requests to `127.0.0.1` found nothing. This was found while verifying the preview server.
 
 ## I. Example
 ```powershell
-cd frontend; npm run dev
+$env:FINGUARD_API_PROXY_TARGET = "http://127.0.0.1:8011"; npm run preview
 ```
 
 ## J. Maintenance Notes
-If the port changes, update `CORS_ALLOWED_ORIGINS` in `.env.example`. Test configuration is expected to be added here in Phase 4.
+Phase 6 must set the same headers and `/api` rewrite on the chosen host.
 
 ## K. Related Files
-- [index.html](index.html.explanation.md): Vite's entry point.
-- [main.tsx](src/main.tsx.explanation.md): application entry.
+- [vitest.config.ts](../../../frontend/vitest.config.ts.explanation.md): unit test settings.
+- [ADR 0004](../../decisions/0004-phase-4-decisions.md): the same-origin decision.

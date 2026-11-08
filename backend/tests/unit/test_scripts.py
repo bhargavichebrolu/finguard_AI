@@ -201,6 +201,24 @@ def test_compose_sets_scram_at_initialisation_and_stores_no_credentials():
     assert "127.0.0.1:${POSTGRES_HOST_PORT" in text
 
 
+def test_checker_exempts_generated_api_types(tmp_path, load_script):
+    checker = load_script("check_explanations")
+    generated = tmp_path / "frontend" / "src" / "types" / "api.generated.ts"
+    generated.parent.mkdir(parents=True)
+    generated.write_text("export interface paths {}", encoding="utf-8")
+    (tmp_path / "frontend" / "src" / "types" / "view.ts").write_text(
+        "export function view() {}", encoding="utf-8"
+    )
+    sources = [path.as_posix() for path in checker.find_source_files(tmp_path)]
+    assert sources == ["frontend/src/types/view.ts"]
+
+
+def test_openapi_snapshot_matches_the_api(load_script):
+    exporter = load_script("export_openapi")
+    saved = exporter.SCHEMA_PATH.read_text(encoding="utf-8")
+    assert saved == exporter.render(exporter.current_schema())
+
+
 def test_checker_reports_broken_links_and_accepts_valid_ones(tmp_path, load_script):
     checker = load_script("check_explanations")
     (tmp_path / "docs").mkdir()

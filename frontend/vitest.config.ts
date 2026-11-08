@@ -1,0 +1,13 @@
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
+
+// Unit and component tests only. Browser tests against the real API use Playwright instead.
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./tests/unit/setup.ts"],
+    include: ["tests/unit/**/*.test.{ts,tsx}"],
+    css: false,
+  },
+});
