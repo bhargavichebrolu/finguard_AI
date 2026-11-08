@@ -61,6 +61,17 @@
   margin-left: auto;
 }
 
+/* The product name, role and sign-out label never break across lines. */
+.brand span,
+.topbar-user .badge,
+.sign-out-label {
+  white-space: nowrap;
+}
+
+.sign-out {
+  position: relative;
+}
+
 .user-email {
   font-size: 0.9rem;
 }
@@ -171,10 +182,13 @@
     width: var(--sidebar-width);
     transform: translateX(-100%);
     box-shadow: var(--shadow);
+    /* Hidden, not only moved: closed-menu links must not take keyboard focus or be read out. */
+    visibility: hidden;
   }
 
   .sidebar-open {
     transform: translateX(0);
+    visibility: visible;
   }
 
   .shell-collapsed .nav-label {
@@ -183,5 +197,26 @@
 
   .content {
     padding: var(--space-4);
+  }
+}
+
+/* Phones: the menu, product name, role and sign-out button share one line. The sign-out label
+   is hidden visually but stays the button's accessible name. */
+@media (max-width: 480px) {
+  .topbar {
+    gap: var(--space-2);
+    padding: 0 var(--space-3);
+  }
+
+  .topbar-user {
+    gap: var(--space-2);
+  }
+
+  .sign-out-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 }

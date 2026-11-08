@@ -121,6 +121,18 @@ npm run preview   # http://127.0.0.1:4173, the built app with its Content Securi
 
 The app calls the API on its own origin. The Vite servers forward `/api` and `/health` to `FINGUARD_API_PROXY_TARGET`, which defaults to `http://127.0.0.1:8010`. Sign in with an account made by `scripts/create_admin.py`. After an API change, run `uv run --project backend python scripts/export_openapi.py`, then `npm run gen:api`.
 
+### Browser tests
+
+```powershell
+uv run --project backend python scripts/e2e_stack.py up   # API on 127.0.0.1:8011 using finguard_test
+cd frontend
+npx playwright install chromium                           # once
+npm run test:e2e                                          # builds, serves on 127.0.0.1:4173, runs all projects
+cd ..; uv run --project backend python scripts/e2e_stack.py down
+```
+
+Global setup reseeds `finguard_test` (and refuses any other database), so nothing in development data is touched. The backend test suite empties the same database, including the model registration, so run `e2e_stack.py up` again after it. Generated passwords, saved test sessions and screenshots go to `frontend/.e2e/`, which Git ignores. The browser-test API uses its own random signing key on each start and allows only `http://127.0.0.1:4173` as an origin.
+
 ## Environment variables
 
 Run `scripts/generate_env.py` rather than copying `.env.example` by hand. It fills every secret with a random value and refuses to overwrite an existing `.env`. Each variable is described in [.env.example.explanation.md](.env.example.explanation.md). Use `127.0.0.1`, not `localhost`, in database addresses.

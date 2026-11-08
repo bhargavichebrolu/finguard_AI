@@ -28,6 +28,7 @@ import {
   SERIES_SECONDARY,
 } from "../utils/chartColors";
 import { formatCount } from "../utils/format";
+import { TableScroll } from "./DataTable";
 
 const CHART_HEIGHT = 260;
 const AXIS_TICK = { fill: AXIS_TEXT, fontSize: 12 };
@@ -64,7 +65,7 @@ export function ChartCard({ title, description, tableColumns, tableRows, childre
       </div>
       {description ? <p className="muted small">{description}</p> : null}
       {showTable ? (
-        <div className="table-wrap">
+        <TableScroll label={title}>
           <table className="data-table">
             <caption className="visually-hidden">{title}</caption>
             <thead>
@@ -88,7 +89,7 @@ export function ChartCard({ title, description, tableColumns, tableRows, childre
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       ) : (
         <div className="chart-area" aria-hidden="true">
           {children}

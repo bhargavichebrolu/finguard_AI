@@ -63,5 +63,38 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Browser-test stack (profile "e2e"): the same image against the test database only, on its
+  # own port. Started by scripts/e2e_stack.py, which supplies a fresh E2E_SECRET_KEY each time;
+  # without one the API refuses to start. Never part of a plain "docker compose up".
+  migrate-e2e:
+    image: finguard-api:local
+    profiles: ["e2e"]
+    command: ["alembic", "upgrade", "head"]
+    environment: &e2e-environment
+      <<: *api-environment
+      APP_ENV: test
+      DATABASE_URL: postgresql+psycopg://${APP_DB_USER}:${APP_DB_PASSWORD}@db:5432/${TEST_DB_NAME}
+      SECRET_KEY: ${E2E_SECRET_KEY:-}
+      # Only the preview server the browser tests use. The browser reaches the API through it.
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:4173
+      TRUSTED_PROXY_IPS: ""
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api-e2e:
+    image: finguard-api:local
+    profiles: ["e2e"]
+    restart: "no"
+    environment: *e2e-environment
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    ports:
+      - "127.0.0.1:${E2E_API_HOST_PORT:-8011}:8000"
+    depends_on:
+      migrate-e2e:
+        condition: service_completed_successfully
+
 volumes:
   finguard_pgdata:

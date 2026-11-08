@@ -25,6 +25,12 @@ The explorer, investigation queue, batch results, experiment history and audit l
 ### `Pager`
 Shows "first to last of total", with previous and next buttons disabled at the ends.
 
+### `TableScroll`
+- **Purpose:** the scrolling area around a wide table.
+- **Parameters / types:** `label`, `children`. **Returns / type:** a focusable `div` with `role="group"` named "<label>, scrollable table".
+- **Internal processing:** `tabIndex=0` lets keyboard users focus it and scroll with the arrow keys (WCAG 2.1.1, axe `scrollable-region-focusable`). Its class is positioned, so visually hidden text inside the table is clipped here.
+- **Error handling:** none. **Calls:** none. **Used by:** `DataTable`, `ChartCard`, `ExplanationPanel`, `ExplainabilityPage`, `ModelPerformancePage`.
+
 ## E. Classes Explained
 None.
 
@@ -35,6 +41,7 @@ A page passes rows from the API and a column list.
 Input: rows and columns. Output: an accessible table.
 
 ## H. Important Technical Concepts
+- **Why a group, not a region:** a region would add a page landmark for every table; a named group gives the focus stop a name without that.
 - **Buttons, not clickable rows:** an explicit "Open" button works with a keyboard and screen readers, and a clickable `<tr>` does not.
 
 ## I. Example

@@ -18,6 +18,8 @@ uv run --project backend pytest backend/tests --rootdir backend -c backend/pypro
 uv run --project backend python scripts/check_explanations.py
 ```
 
+For frontend changes, also run `npm run typecheck`, `npm test` and `npm run build` in `frontend/`, and the browser tests (`npm run test:e2e`, see [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md#browser-tests)) when a change affects pages, layout, sessions or permissions. Fix accessibility violations in the code; never disable an axe rule to pass.
+
 ## Where explanation documents live
 
 The project has two locations, by decision ([ADR 0001](docs/decisions/0001-phase-1-decisions.md), [ADR 0003](docs/decisions/0003-phase-3-decisions.md)):

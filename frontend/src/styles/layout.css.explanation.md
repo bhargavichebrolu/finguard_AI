@@ -28,6 +28,7 @@ Loaded once by `main.tsx`.
 Output: style rules.
 
 ## H. Important Technical Concepts
+- **M7 fixes:** the brand, role and sign-out label never wrap; below 480 px the sign-out label is hidden visually; the closed narrow-screen menu is `visibility: hidden`.
 - **Tokens only:** colours come from `tokens.css` variables, never raw values, except white on primary buttons.
 - Below 900 px the navigation becomes a panel opened from the menu button, and the content uses the full width, so nothing scrolls sideways.
 - **No inline styles:** the Content Security Policy forbids inline style attributes, so all styling lives in these files.

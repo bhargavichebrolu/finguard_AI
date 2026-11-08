@@ -3,7 +3,7 @@
  * Navigation lists only pages the signed-in role may use, as reported by the API.
  */
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
 import { DemoBadge } from "../components/badges";
@@ -17,6 +17,20 @@ export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pages = visiblePages(can);
   const isDemo = user?.role === "demo";
+  const menuButton = useRef<HTMLButtonElement>(null);
+
+  // On narrow screens the menu covers the page, so Escape closes it and returns focus to the
+  // button that opened it.
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMobileOpen(false);
+      menuButton.current?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
 
   return (
     <div className={`shell ${collapsed ? "shell-collapsed" : ""}`}>
@@ -25,6 +39,7 @@ export function AppLayout() {
       </a>
       <header className="topbar">
         <button
+          ref={menuButton}
           type="button"
           className="button icon ghost mobile-only"
           aria-label="Open navigation"
@@ -42,9 +57,9 @@ export function AppLayout() {
         <div className="topbar-user">
           <span className="user-email">{user?.email}</span>
           <span className="badge badge-status">{humanise(user?.role ?? "")}</span>
-          <button type="button" className="button secondary" onClick={() => void signOut()}>
+          <button type="button" className="button secondary sign-out" onClick={() => void signOut()}>
             <LogOut aria-hidden="true" />
-            <span>Sign out</span>
+            <span className="sign-out-label">Sign out</span>
           </button>
         </div>
       </header>

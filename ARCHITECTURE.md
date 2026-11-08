@@ -34,7 +34,8 @@ Training and live inference are separate processes. The API loads an already-tra
 | Authentication and permissions | `backend/app/security/` | Implemented |
 | Configuration, errors, logging, middleware | `backend/app/core/` | Implemented |
 | Database models and migrations | `backend/app/models/`, `backend/migrations/` | Implemented |
-| React application | `frontend/src/` | Toolchain only; pages in Phase 4 |
+| React application | `frontend/src/` | Implemented: ten pages, cookie sessions, code-split per page |
+| Browser tests | `frontend/tests/e2e/`, `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Implemented: real API and test database, three viewports, axe |
 | CI | `.github/workflows/` | Planned: Phase 5 |
 | Containers | `backend/Dockerfile`, `docker-compose.yml` | Implemented for local use |
 | Deployment | | Planned: Phase 6 |
@@ -109,6 +110,33 @@ app/ml/               Phase 1 and 2 code; the API uses features, preprocessing, 
 
 Lower layers never import route modules. Services import schemas only to share input validation and response building.
 
+## Frontend layers (Phase 4)
+
+```
+main.tsx -> App.tsx           providers and routes; each page lazily loaded behind Suspense
+pages/registry.tsx            the ten PRD 7.4 pages with their permissions: one list for routes and navigation
+pages/*.tsx                   one file per page
+components/                   feedback states and dialog, disclosure, badges, tables, charts, guards
+hooks/                        useAuth (cookie session), useApiResource and usePolling, useModelLimits
+services/api.ts, endpoints.ts one Axios client (cookies, CSRF header, ApiError) and typed calls
+types/                        api.generated.ts from frontend/openapi.json; report.ts for the model report
+```
+
+The browser holds no token. The API, not the interface, enforces every permission; the interface only hides what a role cannot use.
+
+## Browser tests (Phase 4)
+
+```
+scripts/e2e_stack.py up      docker compose profile "e2e": migrate-e2e, then api-e2e on 127.0.0.1:8011
+                             (same image, APP_ENV=test, finguard_test, fresh signing key)
+playwright global setup      scripts/e2e_database.py seed: refuses non-*_test names, empties tables
+                             (keeping the registered model), creates accounts with random passwords,
+                             then proves port 8011 reads that database by signing in
+playwright web server        npm run build; vite preview on 127.0.0.1:4173 with the production CSP,
+                             forwarding /api to port 8011
+projects                     setup (sign in per role) -> desktop (all specs), tablet and mobile (layout and accessibility)
+```
+
 ## Key decisions
 
-Recorded in [ADR 0001](docs/decisions/0001-phase-1-decisions.md), [ADR 0002](docs/decisions/0002-phase-2-decisions.md) and [ADR 0003](docs/decisions/0003-phase-3-decisions.md).
+Recorded in [ADR 0001](docs/decisions/0001-phase-1-decisions.md), [ADR 0002](docs/decisions/0002-phase-2-decisions.md), [ADR 0003](docs/decisions/0003-phase-3-decisions.md) and [ADR 0004](docs/decisions/0004-phase-4-decisions.md).

@@ -55,6 +55,27 @@ describe("batch analysis", () => {
     expect(uploaded).toBe(false);
   });
 
+  it("checks a file chosen before the upload limits have loaded", async () => {
+    // Regression found by the browser tests: the check used to run only when the file was
+    // chosen, so a file picked before the limits arrived was never checked.
+    let release: () => void = () => undefined;
+    const limitsHeld = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.get("/api/v1/settings", async () => {
+        await limitsHeld;
+        return HttpResponse.json(settingsFixture());
+      }),
+    );
+    renderApp("/batches");
+    await userEvent.upload(await screen.findByLabelText("CSV file"), csv("big.csv", "x".repeat(2000)));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    release();
+    expect(await screen.findByRole("alert")).toHaveTextContent("larger than the 1,000 byte limit");
+    expect(screen.getByRole("button", { name: "Upload and score" })).toBeDisabled();
+  });
+
   it("uploads, follows processing to the end, and shows counts, ignored columns and results", async () => {
     let polls = 0;
     server.use(

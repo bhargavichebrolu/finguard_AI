@@ -46,6 +46,11 @@ frontend/dist/
 frontend/coverage/
 *.tsbuildinfo
 
+# Browser tests: generated passwords, saved sessions, downloads and traces stay local
+frontend/.e2e/
+frontend/test-results/
+frontend/playwright-report/
+
 # Editors and OS
 .vscode/
 .idea/

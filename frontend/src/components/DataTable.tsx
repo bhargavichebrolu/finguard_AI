@@ -14,6 +14,19 @@ export interface Column<T> {
   numeric?: boolean;
 }
 
+/**
+ * The horizontally scrolling area around a wide table. It takes keyboard focus, so people who
+ * cannot use a mouse or touch can scroll it with the arrow keys (WCAG 2.1.1), and it is the
+ * containing block for visually hidden text inside the table, which otherwise widened the page.
+ */
+export function TableScroll({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="table-wrap" role="group" aria-label={`${label}, scrollable table`} tabIndex={0}>
+      {children}
+    </div>
+  );
+}
+
 export interface DataTableProps<T> {
   caption: string;
   columns: Column<T>[];
@@ -39,7 +52,7 @@ export function DataTable<T>({
     return <EmptyState title={emptyTitle}>{emptyMessage}</EmptyState>;
   }
   return (
-    <div className="table-wrap">
+    <TableScroll label={caption}>
       <table className="data-table">
         <caption className="visually-hidden">{caption}</caption>
         <thead>
@@ -74,7 +87,7 @@ export function DataTable<T>({
           })}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 

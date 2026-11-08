@@ -10,12 +10,12 @@ An end-to-end machine learning application for monitoring simulated financial tr
 |---|---|---|
 | 1 | Foundation and data engineering | Complete |
 | 2 | Machine learning experiments | Complete |
-| 3 | Backend and database | Complete, awaiting review |
-| 4 | React frontend | Not started (toolchain only) |
+| 3 | Backend and database | Complete |
+| 4 | React frontend | Complete, awaiting review |
 | 5 | Integration and quality assurance | Not started |
 | 6 | Deployment and portfolio release | Not started |
 
-**What works today:** the data pipeline and experiments from the command line, and a FastAPI service backed by PostgreSQL. The service runs locally in Docker. It verifies and loads the frozen model, scores single transactions and CSV batches, stores predictions and investigations, and serves the saved evaluation. There is no user interface yet, apart from the interactive API documentation at `/docs`.
+**What works today:** the data pipeline and experiments from the command line, and a FastAPI service backed by PostgreSQL. The service runs locally in Docker. It verifies and loads the frozen model, scores single transactions and CSV batches, stores predictions and investigations, and serves the saved evaluation. A React interface covers all ten PRD pages: dashboard, single and CSV batch scoring, the transaction explorer, investigations, model performance, explanations, reports, settings and system information. It signs in with HttpOnly cookie sessions, shows each role only what it may use, and states the model's measured shortfalls beside every score. Browser tests run it against the real API and PostgreSQL at desktop, tablet and mobile sizes, with automated accessibility checks.
 
 `model_score` is not a calibrated probability, and `FLAG_FOR_REVIEW` is a request for human review.
 

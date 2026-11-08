@@ -6,7 +6,7 @@
 import { useState } from "react";
 
 import { CategoryBars, ChartCard, CurveChart } from "../components/charts";
-import { DataTable, Pager, type Column } from "../components/DataTable";
+import { DataTable, Pager, TableScroll, type Column } from "../components/DataTable";
 import { ErrorState, LoadingState, PageHeader } from "../components/feedback";
 import { ScoreDisclosure } from "../components/ScoreDisclosure";
 import { useApiResource } from "../hooks/useApiResource";
@@ -233,6 +233,7 @@ function ConfusionTable({ title, values }: { title: string; values: Confusion })
   return (
     <article className="card">
       <h3>{title}</h3>
+      <TableScroll label={title}>
       <table className="data-table">
         <caption className="visually-hidden">{title}</caption>
         <thead>
@@ -255,6 +256,7 @@ function ConfusionTable({ title, values }: { title: string; values: Confusion })
           </tr>
         </tbody>
       </table>
+      </TableScroll>
     </article>
   );
 }
@@ -369,7 +371,7 @@ function MatrixSection({ report }: { report: TypedReport }) {
         Baseline settings for every family and strategy. LightGBM's original and class-weighted results
         reflect a numerical divergence during fitting, not those strategies.
       </p>
-      <div className="table-wrap">
+      <TableScroll label="PR-AUC by family and imbalance strategy">
         <table className="data-table">
           <caption className="visually-hidden">PR-AUC by family and imbalance strategy</caption>
           <thead>
@@ -395,7 +397,7 @@ function MatrixSection({ report }: { report: TypedReport }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </article>
   );
 }

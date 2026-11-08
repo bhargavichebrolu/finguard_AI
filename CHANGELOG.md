@@ -1,5 +1,36 @@
 # Changelog
 
+## Phase 4: React frontend (2026-11-08)
+
+### Added
+- **M1, backend support:** HttpOnly, SameSite=Strict cookie sessions backed by a revocable `user_sessions` table, CSRF tokens and origin checks, permissions at sign-in, a restricted assignee list, a read-only model report built only from saved Phase 2 files (hash-pinned), Content Security Policy headers, and proxy trust that is off unless `TRUSTED_PROXY_IPS` is set.
+- **M2, foundation:** React 18 and TypeScript strict, typed API calls generated from `frontend/openapi.json`, an Axios client that adds the CSRF header, role-aware navigation from one page registry, loading, empty, error and confirmation states, and the score disclosure.
+- **M3–M6, pages:** all ten PRD 7.4 pages. Dashboard, Transaction Analysis, CSV Batch Analysis, Transaction Explorer, Investigation Centre, Model Performance, Explainable AI, Reports, Settings and System Information. Every chart has a table view. Pages are code-split.
+- **M7, browser tests:** Playwright against the real API in Docker (port 8011) and the `finguard_test` database, at 1440 x 900, 768 x 1024 and 390 x 844, with axe-core WCAG 2.2 A/AA checks. `scripts/e2e_stack.py` and `scripts/e2e_database.py` start the isolated stack and seed it with random passwords, refusing any database not named `*_test`.
+- Results: backend 677 passed, 1 deselected (the test that rereads the test partition), 0 failed, 0 skipped. Frontend unit and component 98 passed. Browser 103 passed (5 setup, 64 desktop, 17 tablet, 17 mobile), 0 failed, 0 skipped. Accessibility: 0 axe violations, no rules disabled.
+
+### Fixed in M7 (each with a regression test)
+- The API let an administrator deactivate their own account while another administrator existed; only the button had been disabled.
+- Visually hidden table headers escaped their scroll area and widened pages by up to 512 px on tablets and phones.
+- Scrolling tables were not reachable by keyboard; a long-option select widened the mobile viewport; some controls were under 24 px.
+- The closed mobile menu's links could take keyboard focus; Escape now closes the menu.
+- Confirmation dialogs let focus escape and did not return it.
+- "FinGuard AI" and "Sign out" wrapped onto two lines at 390 px.
+- A file chosen before the upload limits loaded skipped the client-side check.
+
+### Verified
+- Cookie flags, no token in browser storage, revocation on sign-out, expiry, tampered cookies, CSRF, origin and CORS refusals, and the sign-in rate limit, in a real browser.
+- Every role's refusals hold when the API is called directly, not only in the interface.
+- Model Performance values equal the original saved files (`selection.json`, `test_evaluation.json`, `model_v1_metrics.json`, `model_v1.json`, `all_runs.csv`), and those files still match their recorded hashes.
+- Investigation history stays a consistent chain under 16 simultaneous changes from two users.
+- Frozen model hash unchanged; no Phase 1 or 2 artefact or result changed; no file under `data/` was read.
+
+### Known limitations
+- Browser tests run over plain HTTP, so the `Secure` cookie flag is checked by unit tests only, and only Chromium is tested.
+- Automated accessibility checks are partial: no screen-reader or real-device testing yet.
+- The interface must be served from the same origin as the API (ADR 0004), which the Phase 6 host must provide.
+- Rate limits are per API process, and the browser-test and backend suites share `finguard_test`, so they cannot run at the same time.
+
 ## Phase 3: Backend and database (2026-11-07)
 
 ### Added

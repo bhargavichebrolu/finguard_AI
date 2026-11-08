@@ -324,10 +324,25 @@ def test_unknown_fields_are_refused(client, headers_for):
 
 def test_last_admin_cannot_be_removed(client, make_user):
     admin = make_user(UserRole.ADMIN)
-    for change in ({"is_active": False}, {"role": "analyst"}):
-        response = client.patch(f"/api/v1/users/{admin.id}", headers=bearer(admin), json=change)
-        assert response.status_code == 422
-        assert "only active administrator" in response.json()["detail"]
+    response = client.patch(
+        f"/api/v1/users/{admin.id}", headers=bearer(admin), json={"role": "analyst"}
+    )
+    assert response.status_code == 422
+    assert "only active administrator" in response.json()["detail"]
+
+
+def test_admin_cannot_deactivate_their_own_account(client, session, make_user):
+    # Regression: the interface disabled the button, but the API allowed it while another
+    # administrator existed. The rule now holds for any client.
+    admin = make_user(UserRole.ADMIN)
+    make_user(UserRole.ADMIN)
+    response = client.patch(
+        f"/api/v1/users/{admin.id}", headers=bearer(admin), json={"is_active": False}
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "You cannot deactivate your own account."
+    session.refresh(admin)
+    assert admin.is_active is True
 
 
 def test_admin_can_be_removed_when_another_exists(client, make_user):

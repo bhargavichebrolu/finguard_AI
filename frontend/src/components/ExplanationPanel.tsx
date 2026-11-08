@@ -4,6 +4,7 @@
 import type { Prediction } from "../services/endpoints";
 import { humanise } from "../utils/format";
 import { ChartCard, ContributionBars } from "./charts";
+import { TableScroll } from "./DataTable";
 
 type Explanation = NonNullable<Prediction["explanation"]>;
 
@@ -71,7 +72,7 @@ export function ExplanationPanel({ explanation }: { explanation: Explanation | n
           Base value {explanation.base_value.toFixed(3)} ({explanation.output_scale.replace("_", "-")}). Method:{" "}
           {explanation.method.replace(/_/g, " ")}.
         </p>
-        <div className="table-wrap">
+        <TableScroll label="Contribution of each model input">
           <table className="data-table">
             <caption className="visually-hidden">Contribution of each model input</caption>
             <thead>
@@ -91,7 +92,7 @@ export function ExplanationPanel({ explanation }: { explanation: Explanation | n
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
         <h3>Limits of this explanation</h3>
         <ul className="small">
           {explanation.limitations.map((limit) => (

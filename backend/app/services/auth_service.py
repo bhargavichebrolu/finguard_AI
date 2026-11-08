@@ -104,6 +104,9 @@ def update_user(
     user = session.get(User, user_id)
     if user is None:
         raise NotFoundError("User not found.")
+    if user.id == changed_by and is_active is False:
+        # Enforced here, not only by the disabled button, so no client can lock itself out.
+        raise InvalidInputError("You cannot deactivate your own account.")
     loses_admin = (
         user.role == UserRole.ADMIN
         and user.is_active

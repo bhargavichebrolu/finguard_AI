@@ -2,7 +2,7 @@
  * The loading, empty, error and confirmation states every page uses (PRD 7.5).
  */
 import { AlertTriangle, Inbox, Loader2 } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 import type { ApiError } from "../services/api";
 
@@ -68,26 +68,60 @@ export interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
-/** Ask before a significant action. Escape and the cancel button both back out. */
+/**
+ * Ask before a significant action. Escape and the cancel button both back out. While open, Tab
+ * and Shift+Tab stay inside the dialog, and on closing, focus returns to whatever opened it.
+ */
 export function ConfirmDialog({ open, title, message, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const messageId = useId();
+  // Callers pass a new onCancel on every render; reading it from a ref keeps the effect below
+  // tied to opening and closing only, so the element to return focus to is captured once.
+  const cancelHandler = useRef(onCancel);
+  useEffect(() => {
+    cancelHandler.current = onCancel;
+  });
 
   useEffect(() => {
     if (!open) return undefined;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cancelRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
+      if (event.key === "Escape") {
+        cancelHandler.current();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const controls = Array.from(dialogRef.current.querySelectorAll<HTMLElement>("button:not([disabled])"));
+      if (controls.length === 0) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      const inside = dialogRef.current.contains(document.activeElement);
+      if (event.shiftKey && (document.activeElement === first || !inside)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !inside)) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onCancel]);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (opener?.isConnected) opener.focus();
+    };
+  }, [open]);
 
   if (!open) return null;
   return (
     <div className="dialog-backdrop">
-      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-        <h2 id="confirm-title">{title}</h2>
-        <div className="dialog-body">{message}</div>
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={messageId} ref={dialogRef}>
+        <h2 id={titleId}>{title}</h2>
+        <div className="dialog-body" id={messageId}>
+          {message}
+        </div>
         <div className="dialog-actions">
           <button ref={cancelRef} type="button" className="button secondary" onClick={onCancel}>
             Cancel

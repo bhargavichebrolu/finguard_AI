@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { DecisionBadge } from "../components/badges";
 import { CategoryBars, ChartCard } from "../components/charts";
-import { DataTable, type Column } from "../components/DataTable";
+import { DataTable, TableScroll, type Column } from "../components/DataTable";
 import { ExplanationPanel, featureLabel } from "../components/ExplanationPanel";
 import { ErrorState, LoadingState, PageHeader } from "../components/feedback";
 import { useApiResource } from "../hooks/useApiResource";
@@ -55,7 +55,7 @@ export function ExplainabilityPage() {
             </ChartCard>
             <article className="card">
               <h2>By model input</h2>
-              <div className="table-wrap">
+              <TableScroll label="Mean absolute contribution of each model input">
                 <table className="data-table">
                   <caption className="visually-hidden">Mean absolute contribution of each model input</caption>
                   <thead>
@@ -75,7 +75,7 @@ export function ExplainabilityPage() {
                       ))}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
             </article>
           </div>
           <article className="card">

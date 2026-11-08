@@ -49,7 +49,7 @@ PRD 8.2 endpoints, plus additions marked with an asterisk.
 | `POST`, `DELETE /api/v1/auth/session` * | none | Browser sign-in and sign-out |
 | `GET /api/v1/auth/me` * | any role | Your account, permissions and session expiry |
 | `POST /api/v1/auth/change-password` * | any role | Change your password, signing out other sessions |
-| `GET`, `POST /api/v1/users`, `PATCH /api/v1/users/{id}` * | admin | Manage accounts |
+| `GET`, `POST /api/v1/users`, `PATCH /api/v1/users/{id}` * | admin | Manage accounts. An administrator cannot deactivate their own account (422), and the last active administrator cannot be demoted (422). |
 | `GET /api/v1/users/assignable` * | investigator, admin | Active investigators and admins: id, email and role only |
 | `GET /api/v1/audit-logs` * | admin | Audit log, newest first |
 | `POST /api/v1/transactions/predict` | any role | Score one transaction |

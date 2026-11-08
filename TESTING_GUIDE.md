@@ -26,6 +26,10 @@ uv run --project backend python scripts/check_explanations.py
 
 # Frontend: type check, unit and component tests, production build
 cd frontend; npm run typecheck; npm test; npm run build
+
+# Browser tests against the real API and finguard_test (see ENVIRONMENT_SETUP.md)
+uv run --project backend python scripts/e2e_stack.py up
+cd frontend; npm run test:e2e
 ```
 
 Frontend unit and component tests use Vitest with Testing Library and a mock API (Mock Service Worker) answering the real paths with typed fixtures. `source-rules.test.ts` also scans `src/` for forbidden wording, hardcoded Phase 2 figures, browser storage and inline styles, and checks the generated API types are current.
@@ -76,6 +80,41 @@ Database tests read `TEST_DATABASE_URL` from the environment or `.env`, and skip
 | SCRAM and least privilege | `test_migrations.py`, plus manual checks in `DATABASE_SCHEMA.md` |
 | Every route needs a token | `test_auth.py`, from the OpenAPI schema |
 
+## Phase 4 browser tests
+
+Playwright drives Chromium against the real API (Docker, port 8011) and PostgreSQL (`finguard_test`), never a mock. 103 tests: 5 sign-in setups, 64 on desktop (1440 x 900), and the layout and accessibility spec again on tablet (768 x 1024) and mobile (390 x 844), 17 each.
+
+| Area | Spec | Checks |
+|---|---|---|
+| Authentication | `auth.spec.ts` | Sign-in and sign-out, reload persistence, cookie flags, nothing in browser storage, revocation, expiry, tampered cookies, one message for bad credentials, the sign-in rate limit, CSRF and origin refusals, CORS, security headers |
+| Roles | `roles.spec.ts` | Navigation per role in PRD order, restricted pages by address, and every restricted action refused by the API when called directly; demo records kept apart |
+| Predictions | `predictions.spec.ts` | Field and API validation, the score as an uncalibrated four-decimal number, no sentence presenting it as a probability, limitations recomputed from `model_v1_metrics.json`, the stored record in the explorer |
+| CSV batches | `batches.spec.ts` | File and column checks, progress on 20,000 rows, row-level errors, paging, results and error downloads, no formula cells in exports |
+| Investigations | `investigations.spec.ts` | Filters, assignment, status changes with confirmation, notes and history after reload, and history order under 16 simultaneous changes from two users |
+| Model Performance | `model-performance.spec.ts` | Values compared with `selection.json`, `test_evaluation.json`, `model_v1_metrics.json`, `model_v1.json` and `all_runs.csv`; source hashes unchanged; validation and test labelled apart; only GET requests, none to `data/` |
+| Reports and Settings | `reports-settings.spec.ts` | Four downloads and their contents, the high risk boundary with confirmation and its effect on new predictions, password change, account creation, role change, deactivation ending a live session, no self-deactivation in the interface or the API |
+| Layout and accessibility | `responsive.spec.ts` | Every page at three sizes: no horizontal scrolling, axe WCAG 2.0/2.1/2.2 A and AA, no CSP or console errors, 24 px targets; the top bar on one line; the menu, skip link, focus ring, dialog focus trap, chart tables by keyboard; the sign-in page and its error state |
+
+### Accessibility results
+
+Automated: axe-core 4.14.0 with the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa` tags, on all ten pages, an open investigation with its dialog, the open mobile menu, the collapsed desktop menu and the sign-in page with an error, at all three sizes. **Final result: 0 violations. No rules are disabled and no elements are excluded, so there are no exceptions to justify.**
+
+Defects found and fixed in M7, each with a regression test:
+
+| Defect | Fix | Regression test |
+|---|---|---|
+| A visually hidden column header escaped its table's scroll area, widening pages by up to 512 px on tablet and mobile | `.table-wrap` is positioned | `responsive.spec.ts` overflow checks |
+| Scrolling tables could not be reached by keyboard (axe `scrollable-region-focusable`, serious) | `TableScroll`: a focusable, named group around every table | `accessibility.test.tsx`, axe |
+| The assignee select widened the mobile layout viewport to 405 px | Selects in inline rows can shrink | `responsive.spec.ts` viewport check |
+| Table "Open" buttons and a checkbox were under 24 px | 24 px minimum | `responsive.spec.ts` target sizes |
+| The closed mobile menu's links could take keyboard focus | Closed menu is `visibility: hidden`; Escape closes it and returns focus | `responsive.spec.ts`, `accessibility.test.tsx` |
+| Confirmation dialogs let focus escape and did not return it | Focus trap and return in `ConfirmDialog` | `accessibility.test.tsx`, `responsive.spec.ts` |
+| "FinGuard AI" and "Sign out" wrapped at 390 px | No wrapping; icon-only sign-out with its accessible name below 480 px | `responsive.spec.ts` (failed before the fix) |
+| A file chosen before upload limits loaded skipped the client check | Check derived on every render | `pages-m4.test.tsx` |
+| The API allowed an administrator to deactivate their own account | Refused in `update_user` | `test_auth.py`, `reports-settings.spec.ts` |
+
+Not automated: screen-reader listening, colour contrast inside chart images (charts have table views, and the palette passed the dataviz validator in M3), and real touch devices. Automated checks find only part of all accessibility problems.
+
 ## Test types
 
 | Folder | Purpose | Data |
@@ -83,6 +122,8 @@ Database tests read `TEST_DATABASE_URL` from the environment or `.env`, and skip
 | `backend/tests/unit/` | One module at a time | Synthetic fixtures, and the frozen model for `test_model_service.py` |
 | `backend/tests/integration/` | Pipeline stages, real outputs, and migrations on PostgreSQL | Synthetic fixtures, real outputs, test database |
 | `backend/tests/api/` | The real application through HTTP, on real PostgreSQL with the frozen model | Hand-written requests |
+| `frontend/tests/unit/` | Components and pages with Vitest and a mock API | Typed fixtures with invented values |
+| `frontend/tests/e2e/` | The built app in Chromium against the real API and `finguard_test` | Seeded accounts and data created by each test |
 
 ## Manual checks run in Phase 3
 

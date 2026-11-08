@@ -58,16 +58,16 @@ export function BatchAnalysisPage() {
   const settings = useApiResource(() => settingsApi.get(), []);
   const recent = useApiResource(() => batchesApi.list(10, 0), []);
   const [file, setFile] = useState<File | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<ApiError | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
+  // Worked out on every render, not when the file is chosen: a file chosen before the upload
+  // limits had loaded used to skip the check and could then be uploaded.
+  const fileError = file && settings.data ? checkFile(file, settings.data.max_upload_bytes) : null;
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    const chosen = event.target.files?.[0] ?? null;
-    setFile(chosen);
+    setFile(event.target.files?.[0] ?? null);
     setUploadError(null);
-    setFileError(chosen && settings.data ? checkFile(chosen, settings.data.max_upload_bytes) : null);
   }
 
   async function upload() {

@@ -60,7 +60,8 @@ Nested stand-in that raises an error containing a fake secret, used by `test_une
 | `test_duplicate_email_is_a_conflict` | Duplicates give 409, ignoring case. |
 | `test_rejected_password_is_not_echoed` | A refused password is not repeated in the response. |
 | `test_unknown_fields_are_refused` | Extra fields give 422. |
-| `test_last_admin_cannot_be_removed` | Neither deactivation nor demotion can cause a lockout. |
+| `test_last_admin_cannot_be_removed` | Demotion cannot remove the last administrator. |
+| `test_admin_cannot_deactivate_their_own_account` | Regression: self-deactivation is refused by the API even when another administrator exists. |
 | `test_admin_can_be_removed_when_another_exists` | The rule only blocks the last one. |
 | `test_user_changes_are_audited` | Who, what and which record are recorded. |
 | `test_unknown_user_is_not_found` | 404 for a missing user. |

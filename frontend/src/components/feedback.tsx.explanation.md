@@ -31,11 +31,11 @@ Shows the page title and an introduction.
 ### `ConfirmDialog`
 - **Purpose:** ask before a significant action.
 - **Parameters / types:** `open`, `title`, `message`, `confirmLabel`, `onConfirm`, `onCancel`. **Returns / type:** a dialog or nothing.
-- **Internal processing:** focuses Cancel when opened, so the safe choice is the default, and closes on Escape.
+- **Internal processing:** focuses Cancel when opened, so the safe choice is the default, and closes on Escape. While open, Tab and Shift+Tab cycle between its buttons. On closing, focus returns to the control that opened it. The title and message are linked with `aria-labelledby` and `aria-describedby`, using `useId`. `onCancel` is read through a ref, so the effect runs only on opening and closing and captures the opener once.
 - **Error handling:** none needed. **Calls:** `onKey`. **Used by:** the investigation and settings pages.
 
 ### `onKey`
-Nested in `ConfirmDialog`. Calls `onCancel` when Escape is pressed.
+Nested in `ConfirmDialog`. Calls `onCancel` on Escape, and keeps Tab and Shift+Tab inside the dialog.
 
 ## E. Classes Explained
 None.
@@ -47,6 +47,7 @@ Pages render one of these according to `useApiResource` state.
 Input: props. Output: accessible markup.
 
 ## H. Important Technical Concepts
+- **Fixed in M7:** the browser tests found focus could leave the open dialog and was not returned on closing. `accessibility.test.tsx` covers both.
 - **`role="alert"` and `role="status"`** let assistive technology announce errors and progress without moving focus.
 
 ## I. Example

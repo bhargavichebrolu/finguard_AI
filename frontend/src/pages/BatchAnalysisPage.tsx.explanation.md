@@ -23,7 +23,7 @@ Returns a message if the file is not `.csv`, is empty, or exceeds `max_upload_by
 Shows the limits, the file input, upload progress, a template download and recent uploads. Opening a recent upload shows its job.
 
 ### `chooseFile`
-Stores the chosen file and checks it straight away, so problems show before uploading.
+Stores the chosen file. The check (`fileError`) is worked out on every render from the file and the loaded limits, so a file chosen before the limits arrive is still checked. Before M7 the check ran only at the moment of choosing and was skipped if the limits had not loaded.
 
 ### `upload`
 - **Purpose:** send the file.

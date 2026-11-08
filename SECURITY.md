@@ -12,7 +12,8 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | Authentication | Browser sessions in HttpOnly, SameSite=Strict cookies, Secure in production, backed by a revocable server-side session (Phase 4). Bearer tokens remain for API clients. Both last 30 minutes, and each request reloads the user, so deactivation, role changes and password changes apply immediately. |
 | CSRF protection | Cookie requests that change data need `X-CSRF-Token` matching their own session's hashed token, and an allowed `Origin`. Sign-in accepts JSON only, so a cross-site form cannot submit it. |
 | Logout | Revokes that session on the server. A replayed cookie is refused. |
-| Role-based permissions | One table in `app/security/permissions.py`, covering demo, analyst, investigator and admin. A test confirms that every non-public route refuses requests without a token. |
+| Role-based permissions | One table in `app/security/permissions.py`, covering demo, analyst, investigator and admin. A test confirms that every non-public route refuses requests without a token, and browser tests call the API directly to confirm each role's refusals do not depend on the interface (Phase 4). |
+| Account self-protection | Administrators cannot deactivate their own account, and the last active administrator cannot be removed. Both are enforced by the API (self-deactivation since Phase 4 M7; before that only the button was disabled). |
 | Input validation | Pydantic schemas refuse unknown fields, including labels and balances. The database repeats the key rules as CHECK constraints. |
 | Upload restrictions | Extension, size (checked before the body is read and while streaming), row count, encoding, NUL bytes, headers and cell values. Files are stored under random names and deleted afterwards. |
 | CORS | Explicit origin list, with credentials allowed only for those origins. Wildcards are refused, and production also refuses `localhost`. |
@@ -28,6 +29,8 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | Container | Runs as an ordinary user, with no training libraries, tests or `.env` in the image. |
 | Data stays out of Git | Datasets and model binaries are ignored. |
 | Dependencies pinned | `uv.lock` and `package-lock.json`. |
+| Browser-verified controls (Phase 4) | Playwright tests against the real API check cookie flags, that no token reaches browser storage, sign-out revocation, expiry, tampered cookies, CSRF and origin refusals, CORS, the sign-in rate limit, security headers, and that pages raise no Content Security Policy violations. |
+| Browser-test isolation | Tests use only `finguard_test`: the seed script refuses any other name, and global setup proves the API reads that database before any test runs. Test passwords are random per run, stored in a Git-ignored file, and never printed; traces and HTML reports, which record typed values, are off. |
 
 ## Known limitations
 
@@ -41,6 +44,7 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | Chunked uploads without `Content-Length` | Spooled by the framework before the size check | Phase 6, with a proxy body limit |
 | No Python dependency scanning | Vulnerable packages would not be flagged | Phase 5, with CI |
 | HTTPS | Not provided locally | Phase 6, by the host |
+| The `Secure` cookie flag is not exercised in a browser | Browser tests run over plain HTTP with `APP_ENV=test`, so they confirm Secure is off there; production refusing to start without it is a unit test (`test_config.py`) | Phase 6, with HTTPS end-to-end tests |
 | Audit log has no retention policy | Grows without limit | Before long-running use |
 
 ## Rules

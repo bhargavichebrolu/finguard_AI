@@ -28,6 +28,7 @@ Loaded once by `main.tsx`.
 Output: style rules.
 
 ## H. Important Technical Concepts
+- **M7 fixes:** checkboxes are 24 px, and selects in inline rows can shrink below their longest option.
 - **Tokens only:** colours come from `tokens.css` variables, never raw values, except white on primary buttons.
 - Page rules stay here so shared components stay generic.
 - **No inline styles:** the Content Security Policy forbids inline style attributes, so all styling lives in these files.

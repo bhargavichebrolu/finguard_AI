@@ -171,6 +171,8 @@ Phase 1 and 2 files have documents in [docs/file-explanations/](docs/file-explan
 | `frontend/src/pages/*.tsx` | The ten pages and the sign-in page |
 | `frontend/src/services/`, `hooks/`, `components/`, `layouts/`, `types/`, `utils/` | API client, state, shared components, layout, typed contracts, formatting |
 | `frontend/tests/unit/*` | Component tests against a mock API |
+| `frontend/playwright.config.ts`, `frontend/tests/e2e/*` | Browser tests against the real API and `finguard_test` at three viewports |
+| `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Start the browser-test API; seed and adjust the test database (refuses non-`_test` names) |
 | `frontend/src/styles/tokens.css` | PRD colour tokens |
 | `frontend/vite.config.ts` | Build tool config |
 | `Makefile` | Command shortcuts |
@@ -266,7 +268,7 @@ PredictionView: model_score, score_is_calibrated false, risk level, FLAG_FOR_REV
 ```
 Endpoints are listed in [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
 
-## 13. React architecture (Phase 4, in progress)
+## 13. React architecture (Phase 4, implemented)
 ```
 main.tsx -> App.tsx (AuthProvider, BrowserRouter)
   /login                      LoginPage
@@ -292,6 +294,23 @@ browser -> same origin /api/...    (Vite dev :5173 or preview :4173 locally; hos
 cookies: finguard_session (HttpOnly, Path=/api)  finguard_csrf (readable, sent back as X-CSRF-Token)
 ```
 No token is kept in browser storage. `VITE_API_BASE_URL` stays empty unless the API must be reached on another origin, which would break SameSite=Strict cookies. Contract: `scripts/export_openapi.py` writes `frontend/openapi.json`, and `npm run gen:api` regenerates the types. Tests on both sides fail if either is stale.
+
+### Browser tests (Phase 4)
+```
+scripts/e2e_stack.py up        compose profile "e2e": migrate-e2e -> api-e2e  127.0.0.1:8011
+                               same image as api; APP_ENV=test; DATABASE_URL -> finguard_test;
+                               CORS only http://127.0.0.1:4173; new E2E_SECRET_KEY each start
+frontend/playwright.config.ts  global-setup.ts -> scripts/e2e_database.py seed (refuses non-*_test)
+                                                -> frontend/.e2e/accounts.json (Git-ignored)
+                                                -> sign-in proof against :8011
+                               webServer: npm run build + vite preview :4173 -> proxy -> :8011
+                               sessions.setup.ts -> .e2e/state-<role>.json
+                               specs (tests/e2e/*.spec.ts) -> support.ts (apiCall adds X-CSRF-Token
+                               and Origin; repoBytes refuses data/)
+                               model-performance.spec.ts also reads artifacts/metadata/*.json and
+                               experiments/results/phase2/* to compare with the page
+```
+The backend suite empties `finguard_test` (including `model_versions`), so `e2e_stack.py up` is run again after it; the seed step stops with that instruction otherwise.
 
 ## 15. Database architecture (implemented)
 PostgreSQL 17 with the tables, constraints and indexes in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md). Two roles: a superuser for administration, and `finguard_app` without superuser rights for the API, migrations and tests. SCRAM applies to every connection, set by `POSTGRES_INITDB_ARGS` at first initialisation.
@@ -353,6 +372,7 @@ docker-compose.yml
   db       postgres:17-alpine, SCRAM from first start, named volume, port on 127.0.0.1 only
   migrate  finguard-api:local, alembic upgrade head, then exits
   api      finguard-api:local, non-root, ./artifacts mounted read-only, health check on /health
+  migrate-e2e, api-e2e   profile "e2e" only: the same image against finguard_test on 127.0.0.1:8011
 ```
 
 ## 26. Local setup instructions

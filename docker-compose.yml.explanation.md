@@ -28,6 +28,9 @@ Runs `alembic upgrade head` once, after the database is healthy. It shares the `
 ### `api` service
 Starts only after `migrate` succeeds. `./artifacts` is mounted read-only, so the running API cannot alter the frozen model. Its environment is shared with `migrate` through the `&api-environment` YAML anchor. Phase 4 added `MODEL_REPORT_PATH`, and `TRUSTED_PROXY_IPS`, which is empty unless set in `.env`.
 
+### `migrate-e2e` and `api-e2e` services (profile `e2e`)
+The browser-test stack. Same image and settings as `api`, through the `<<: *api-environment` merge, but with `APP_ENV=test`, the test database (`TEST_DB_NAME`), only `http://127.0.0.1:4173` allowed as an origin, no trusted proxies, and port 127.0.0.1:8011. `SECRET_KEY` comes from `E2E_SECRET_KEY`, which `scripts/e2e_stack.py` generates per start; without it the API refuses to start. Profiles keep these out of a plain `docker compose up`.
+
 ## E. Classes Explained
 None.
 

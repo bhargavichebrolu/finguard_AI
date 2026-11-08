@@ -1,4 +1,4 @@
-"""Write the API's OpenAPI schema to frontend/openapi.json, the contract the frontend's types follow.
+"""Write the API's OpenAPI schema to frontend/openapi.json, the contract for the frontend's types.
 
 Building the schema starts no server and opens no database connection.
 

@@ -52,8 +52,8 @@ Returns one page of accounts and the total count, in creation order.
 ### `update_user`
 - **Purpose:** change a role or active state.
 - **Parameters / types:** `session`, `user_id`, `role`, `is_active`, `changed_by`. **Returns / type:** `User`.
-- **Internal processing:** records only actual changes in the audit log.
-- **Error handling:** `NotFoundError`, or the lockout refusal.
+- **Internal processing:** refuses to let users deactivate their own account, then applies the last-administrator rule, and records only actual changes in the audit log.
+- **Error handling:** `NotFoundError`, `InvalidInputError` for self-deactivation (added in M7: the interface disabled the button, but the API had allowed it while another administrator existed), or the lockout refusal.
 - **Calls:** `_require_another_active_admin`, `record_event`. **Used by:** the users route.
 
 ### `change_password`
