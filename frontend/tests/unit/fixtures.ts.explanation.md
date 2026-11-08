@@ -34,6 +34,12 @@ Returns a summary. `empty` gives a scope with no records, and `demo` marks it as
 ### `featureImportanceFixture`
 Returns saved-importance data with a labelled fixture limitation.
 
+### `settingsFixture`
+Returns settings with small upload limits (1,000 bytes, 50 rows), so limit checks are easy to trigger.
+
+### `batchFixture`
+Returns a finished batch job with one refused row and an ignored `isFraud` column. Fields can be overridden.
+
 ## E. Classes Explained
 None.
 

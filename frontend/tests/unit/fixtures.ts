@@ -5,6 +5,8 @@
  * Figures in these fixtures are test inputs only. The application never contains them.
  */
 import type {
+  AppSettings,
+  Batch,
   CurrentUser,
   FeatureImportance,
   ModelMetrics,
@@ -201,5 +203,46 @@ export function featureImportanceFixture(): FeatureImportance {
     by_group: { amount: 0.5, hour: 0.3, transaction_type_and_destination: 2.1 },
     by_feature: { transaction_type_TRANSFER: 0.4, amount: 0.3 },
     limitations: ["Fixture limitation: does not show causes."],
+  };
+}
+
+export function settingsFixture(): AppSettings {
+  return {
+    high_risk_boundary: 0.3,
+    frozen_threshold: 0.03,
+    frozen_threshold_is_editable: false,
+    risk_bands: "Fixture bands: not calibrated.",
+    application_version: "0.3.0",
+    model_version: "fraud_detector_v1",
+    database_available: true,
+    max_upload_bytes: 1000,
+    max_batch_rows: 50,
+    dataset: {
+      name: "PaySim (synthetic mobile money simulator)",
+      source_file: "fixture.csv",
+      preprocessing_version: "split-v1",
+      feature_schema_version: "1.0.0",
+      split_boundaries: { first_step: 1, last_step: 743 },
+    },
+  };
+}
+
+export function batchFixture(overrides: Partial<Batch> = {}): Batch {
+  return {
+    id: "66666666-6666-4666-8666-666666666666",
+    filename: "upload.csv",
+    status: "COMPLETED_WITH_ERRORS",
+    total_records: 3,
+    processed_records: 3,
+    failed_records: 1,
+    succeeded_records: 2,
+    progress_percent: 100,
+    ignored_columns: ["isFraud"],
+    labels_supplied: true,
+    is_demo: false,
+    error_message: null,
+    created_at: "2026-11-08T10:00:00Z",
+    completed_at: "2026-11-08T10:00:05Z",
+    ...overrides,
   };
 }
