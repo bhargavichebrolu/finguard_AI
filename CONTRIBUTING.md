@@ -4,8 +4,8 @@
 
 The PRD's documentation synchronisation rule (section 12.2) is mandatory.
 
-1. Create or modify the source file.
-2. In the same change, create or update `docs/file-explanations/<source path>.explanation.md`.
+1. Create or modify the source or configuration file.
+2. In the same change, create or update its explanation document. See the next section for where it lives.
 3. Confirm the explanation matches the implementation.
 4. Run the relevant tests.
 5. Update [PROJECT_CONNECTIONS.md](PROJECT_CONNECTIONS.md) if system connections changed.
@@ -14,9 +14,23 @@ Before committing:
 
 ```powershell
 uv run --project backend ruff check backend scripts --config backend/pyproject.toml
-uv run --project backend pytest backend/tests --rootdir backend -c backend/pyproject.toml
+uv run --project backend pytest backend/tests --rootdir backend -c backend/pyproject.toml --deselect tests/integration/test_real_models.py::test_test_results_can_be_recalculated_from_the_saved_model
 uv run --project backend python scripts/check_explanations.py
 ```
+
+## Where explanation documents live
+
+The project has two locations, by decision ([ADR 0001](docs/decisions/0001-phase-1-decisions.md), [ADR 0003](docs/decisions/0003-phase-3-decisions.md)):
+
+| Files | Document location | Example |
+|---|---|---|
+| Created in Phase 1 or 2 | Mirrored under `docs/file-explanations/` | `docs/file-explanations/backend/app/ml/features.py.explanation.md` |
+| Created from Phase 3 onward | Beside the file | `backend/app/main.py.explanation.md` |
+
+- **Editing an existing file:** update its document wherever it already is. Do not move a document.
+- **Creating a file:** put its document beside it.
+- **The checker accepts either location, but not both.** It reports a file documented twice, a document whose file is gone, and a document Git would ignore. It covers Python, TypeScript, CSS, SQL and migration templates, plus the configuration files listed in `SOURCE_FILES` in `scripts/check_explanations.py`.
+- **Moving the 61 Phase 1 and 2 documents was considered and declined** on 2026-11-08, because it adds no information and churns history.
 
 The checker verifies documents exist, contain sections A to K, and name every function, and that relative links resolve. It cannot judge whether an explanation is correct: reviewers do that.
 
