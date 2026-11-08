@@ -4,7 +4,9 @@
  * Types come from src/types/api.generated.ts, which is generated from the API's own schema.
  */
 import type { components, paths } from "../types/api.generated";
-import { api } from "./api";
+import { AxiosError } from "axios";
+
+import { api, ApiError, toApiError } from "./api";
 
 export type Schemas = components["schemas"];
 export type CurrentUser = Schemas["CurrentUserView"];
@@ -177,9 +179,40 @@ export const downloadPaths = {
   report: (type: ReportType) => `${V1}/reports/export?report_type=${type}`,
 };
 
+/** A Blob's text. FileReader is the fallback where Blob.text() is missing, as in older runtimes. */
+function blobText(blob: Blob): Promise<string> {
+  if (typeof blob.text === "function") return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
+/**
+ * A failed download's body arrives as a Blob, because the request asked for one. Read it back as
+ * JSON so the API's message reaches the person, then map it like any other error.
+ */
+export async function readBlobError(caught: unknown): Promise<ApiError> {
+  if (caught instanceof AxiosError && caught.response?.data instanceof Blob) {
+    try {
+      caught.response.data = JSON.parse(await blobText(caught.response.data));
+    } catch {
+      caught.response.data = null;
+    }
+  }
+  return toApiError(caught);
+}
+
 /** Fetch a file through the signed-in client and hand it to the browser as a download. */
 export async function downloadFile(path: string, fallbackName: string): Promise<void> {
-  const response = await api.get<Blob>(path, { responseType: "blob" });
+  let response;
+  try {
+    response = await api.get<Blob>(path, { responseType: "blob" });
+  } catch (caught) {
+    throw await readBlobError(caught);
+  }
   const disposition = String(response.headers["content-disposition"] ?? "");
   const match = /filename="([^"]+)"/.exec(disposition);
   const url = URL.createObjectURL(response.data);

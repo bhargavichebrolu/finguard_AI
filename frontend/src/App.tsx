@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
+import { LoadingState } from "./components/feedback";
 import { ForbiddenPage, NotFoundPage, RequireAuth, RequirePermission } from "./components/guards";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { ModelLimitsProvider } from "./hooks/useModelLimits";
@@ -33,7 +35,11 @@ export function AppRoutes() {
           <Route
             key={page.path}
             path={page.path.slice(1)}
-            element={<RequirePermission permission={page.permission}>{page.element}</RequirePermission>}
+            element={
+              <RequirePermission permission={page.permission}>
+                <Suspense fallback={<LoadingState label="Loading page" />}>{page.element}</Suspense>
+              </RequirePermission>
+            }
           />
         ))}
         <Route path="*" element={<NotFoundPage />} />

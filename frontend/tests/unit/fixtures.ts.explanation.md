@@ -40,6 +40,15 @@ Returns settings with small upload limits (1,000 bytes, 50 rows), so limit check
 ### `batchFixture`
 Returns a finished batch job with one refused row and an ignored `isFraud` column. Fields can be overridden.
 
+### `fixtureAt`
+Returns the measures at one threshold, with invented values.
+
+### `fixtureFamily`
+Returns one family's comparison row, with invented values.
+
+### `reportFixture`
+Returns a small model report with the real section shape and invented values: three families, curves, confusion matrices, thresholds, two matrix cells and two history runs.
+
 ## E. Classes Explained
 None.
 

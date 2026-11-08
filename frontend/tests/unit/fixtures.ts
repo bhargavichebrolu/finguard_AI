@@ -10,6 +10,7 @@ import type {
   CurrentUser,
   FeatureImportance,
   ModelMetrics,
+  ModelReport,
   Prediction,
   SummaryReport,
   SystemStatus,
@@ -224,6 +225,93 @@ export function settingsFixture(): AppSettings {
       feature_schema_version: "1.0.0",
       split_boundaries: { first_step: 1, last_step: 743 },
     },
+  };
+}
+
+const FIXTURE_CURVES = {
+  pr_precision: [1, 0.5, 0.1],
+  pr_recall: [0, 0.4, 1],
+  roc_fpr: [0, 0.2, 1],
+  roc_tpr: [0, 0.7, 1],
+};
+
+function fixtureAt(threshold: number, precision: number, recall: number) {
+  return {
+    threshold,
+    precision,
+    recall,
+    f1: 0.111,
+    balanced_accuracy: 0.222,
+    false_positive_rate: 0.000444,
+    false_negative_rate: 1 - recall,
+    alerts: 77,
+    true_positives: 11,
+    false_positives: 66,
+    false_negatives: 22,
+    true_negatives: 9900,
+  };
+}
+
+function fixtureFamily(family: string, prAuc: number) {
+  return {
+    family,
+    run_id: `${family}-fixture`,
+    stage: "tuning",
+    strategy: "class_weight",
+    pr_auc: prAuc,
+    pr_auc_mean_over_seeds: prAuc,
+    pr_auc_seed_cv: 0,
+    pr_auc_interval: { mean: prAuc, ci_low: prAuc - 0.05, ci_high: prAuc + 0.05 },
+    difference_from_top: null,
+    roc_auc: 0.876,
+    at_fpr_cap: fixtureAt(0.0123, 0.345, 0.456),
+    training_seconds: 12.5,
+    batch_microseconds_per_row: 1.25,
+    single_row_ms: 3.5,
+  };
+}
+
+/** A small model report with the real shape and invented values. */
+export function reportFixture(): ModelReport {
+  return {
+    report_version: "fixture",
+    model_version: "fraud_detector_v1",
+    threshold: 0.0123,
+    source_files: { "artifacts/metrics/fixture.json": "abcdef0123456789abcdef" },
+    notes: ["Fixture report note one.", "Fixture report note two."],
+    selection: {
+      decision: {
+        selected_family: "xgboost",
+        top_by_pr_auc: "catboost",
+        statistically_indistinguishable: ["xgboost", "catboost"],
+        tied_on_recall: ["xgboost"],
+      },
+    },
+    families: [fixtureFamily("xgboost", 0.6111), fixtureFamily("catboost", 0.6222), fixtureFamily("decision_tree", 0.2333)],
+    family_validation_curves: { xgboost: FIXTURE_CURVES, catboost: FIXTURE_CURVES, decision_tree: FIXTURE_CURVES },
+    selected_model_curves: { validation: FIXTURE_CURVES, test: FIXTURE_CURVES },
+    confusion_matrices: {
+      validation: { true_positives: 101, false_positives: 202, false_negatives: 303, true_negatives: 40404 },
+      test: { true_positives: 111, false_positives: 222, false_negatives: 333, true_negatives: 44444 },
+      test_by_step_type: {},
+    },
+    thresholds: {
+      selected_threshold: 0.0123,
+      objective: "Fixture objective sentence.",
+      selected: fixtureAt(0.0123, 0.345, 0.456),
+      sweep: [fixtureAt(0.001, 0.1, 0.9), fixtureAt(0.01, 0.3, 0.5), fixtureAt(0.1, 0.8, 0.2)],
+      prd_candidates: { "0.50": fixtureAt(0.5, 0.9, 0.1) },
+      rule_alternatives: { "fpr_cap_0.005": fixtureAt(0.004, 0.2, 0.6), max_f1: fixtureAt(0.2, 0.7, 0.3) },
+    },
+    imbalance_matrix: [
+      { family: "xgboost", strategy: "original", pr_auc: 0.5111, fpr_cap_recall: 0.3 },
+      { family: "xgboost", strategy: "smote", pr_auc: 0.4111, fpr_cap_recall: 0.2 },
+    ],
+    experiment_history: [
+      { run_id: "run-tuning-1", stage: "tuning", status: "ok", family: "xgboost", strategy: "original", seed: 42, pr_auc: 0.5555, roc_auc: 0.9, fpr_cap_precision: 0.2, fpr_cap_recall: 0.3, total_training_seconds: 10 },
+      { run_id: "run-matrix-1", stage: "matrix", status: "ok", family: "catboost", strategy: "smote", seed: 7, pr_auc: 0.4444, roc_auc: 0.8, fpr_cap_precision: 0.1, fpr_cap_recall: 0.2, total_training_seconds: 20 },
+    ],
+    lightgbm_diagnostic: {},
   };
 }
 

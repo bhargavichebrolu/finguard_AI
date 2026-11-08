@@ -167,7 +167,10 @@ Phase 1 and 2 files have documents in [docs/file-explanations/](docs/file-explan
 | `backend/tests/integration/test_phase2_pipeline.py` | The whole Phase 2 flow, with no test file on disk until the freeze |
 | `backend/tests/unit/test_regimes.py`, `test_preprocessing.py`, `test_imbalance.py`, `test_candidates.py`, `test_evaluation.py`, `test_experiments.py`, `test_selection.py`, `test_drift.py`, `test_model_artifacts.py`, `test_explainability.py`, `test_reporting.py` | One Phase 2 module each |
 | `frontend/index.html`, `frontend/src/main.tsx` | Page and React mount |
-| `frontend/src/App.tsx` | Placeholder root component |
+| `frontend/src/App.tsx`, `pages/registry.tsx` | Routes, guards and the PRD 7.4 page list, each page lazily loaded |
+| `frontend/src/pages/*.tsx` | The ten pages and the sign-in page |
+| `frontend/src/services/`, `hooks/`, `components/`, `layouts/`, `types/`, `utils/` | API client, state, shared components, layout, typed contracts, formatting |
+| `frontend/tests/unit/*` | Component tests against a mock API |
 | `frontend/src/styles/tokens.css` | PRD colour tokens |
 | `frontend/vite.config.ts` | Build tool config |
 | `Makefile` | Command shortcuts |
@@ -268,8 +271,12 @@ Endpoints are listed in [API_DOCUMENTATION.md](API_DOCUMENTATION.md).
 main.tsx -> App.tsx (AuthProvider, BrowserRouter)
   /login                      LoginPage
   everything else             RequireAuth -> ModelLimitsProvider -> AppLayout
-                                -> RequirePermission(page.permission) -> page
-pages/registry.tsx            one list drives routes and navigation, in PRD 7.4 order
+                                -> RequirePermission(page.permission) -> Suspense -> lazy page
+pages/registry.tsx            one list drives routes and navigation, in PRD 7.4 order:
+                              Dashboard, Transaction Analysis, CSV Batch Analysis,
+                              Transaction Explorer, Investigation Centre, Model Performance,
+                              Explainable AI, Reports, Settings, System Information
+types/report.ts               typed sections of GET /models/report (saved Phase 2 outputs only)
 services/api.ts               one Axios client: cookies, CSRF header, ApiError, 401 signal
 services/endpoints.ts         typed calls, using types/api.generated.ts from frontend/openapi.json
 hooks/                        useAuth, useApiResource and usePolling, useModelLimits

@@ -22,7 +22,7 @@ Sends `/` to the first page the role may open, or shows the not-permitted page i
 ### `AppRoutes`
 - **Purpose:** define all routes.
 - **Parameters / types:** none. **Returns / type:** `<Routes>`.
-- **Internal processing:** `/login` is public. Everything else sits inside `RequireAuth`, `ModelLimitsProvider` and `AppLayout`. Each page from `PAGES` is wrapped in `RequirePermission`. Unknown addresses show `NotFoundPage`.
+- **Internal processing:** `/login` is public. Everything else sits inside `RequireAuth`, `ModelLimitsProvider` and `AppLayout`. Each page from `PAGES` is wrapped in `RequirePermission` and in `Suspense`, which shows a loading state while a lazily loaded page downloads. Unknown addresses show `NotFoundPage`.
 - **Error handling:** guards handle missing sessions and permissions.
 - **Calls:** `visiblePages`. **Used by:** `App`, tests.
 

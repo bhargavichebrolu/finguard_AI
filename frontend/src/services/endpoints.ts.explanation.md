@@ -22,6 +22,18 @@ Pages should not build URLs or guess response shapes. The types come from `api.g
 - **Internal processing:** fetches the file as a blob, so the session cookie is sent, takes the file name from `Content-Disposition`, and saves it through a temporary link.
 - **Error handling:** a failed request rejects with `ApiError`. **Calls:** `api.get`. **Used by:** batch, report and investigation pages.
 
+### `blobText`
+Returns a Blob's text, using `Blob.text()` where it exists and `FileReader` otherwise, as in jsdom.
+
+### `readBlobError`
+- **Purpose:** keep the API's message when a download fails.
+- **Parameters / types:** `caught: unknown`. **Returns / type:** `Promise<ApiError>`.
+- **Internal processing:** a download asks for a Blob, so an error body arrives as a Blob too. This reads it, parses it as JSON and puts it back on the error before `toApiError` maps it. A body that is not JSON becomes empty, giving the status's default message.
+- **Error handling:** never throws. **Calls:** `blobText`, `toApiError`. **Used by:** `downloadFile`, tests.
+
+### `response`
+A local value in `downloadFile`, not a function: the successful response.
+
 ## E. Classes Explained
 None.
 
