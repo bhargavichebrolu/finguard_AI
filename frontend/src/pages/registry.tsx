@@ -2,12 +2,13 @@
  * Every page, its address, its navigation entry and the permission it needs, in PRD 7.4 order.
  * Routes and navigation are both built from this list, so they cannot disagree.
  */
-import { Calculator, FileSpreadsheet, LayoutDashboard, Lightbulb, Search, Server, type LucideIcon } from "lucide-react";
+import { Calculator, ClipboardList, FileSpreadsheet, LayoutDashboard, Lightbulb, Search, Server, type LucideIcon } from "lucide-react";
 import type { ReactElement } from "react";
 
 import { BatchAnalysisPage } from "./BatchAnalysisPage";
 import { DashboardPage } from "./DashboardPage";
 import { ExplainabilityPage } from "./ExplainabilityPage";
+import { InvestigationCentrePage } from "./InvestigationCentrePage";
 import { SystemInformationPage } from "./SystemInformationPage";
 import { TransactionAnalysisPage } from "./TransactionAnalysisPage";
 import { TransactionExplorerPage } from "./TransactionExplorerPage";
@@ -48,6 +49,13 @@ export const PAGES: PageDefinition[] = [
     icon: Search,
     permission: "view_transactions",
     element: <TransactionExplorerPage />,
+  },
+  {
+    path: "/investigations",
+    label: "Investigation Centre",
+    icon: ClipboardList,
+    permission: "view_investigations",
+    element: <InvestigationCentrePage />,
   },
   {
     path: "/explainability",
