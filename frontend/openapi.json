@@ -109,6 +109,11 @@
       "BatchView": {
         "description": "A batch job. processed counts rows read, failed counts rows refused.",
         "properties": {
+          "attempts": {
+            "description": "How many times a worker has claimed the job. More than one while processing means it is resuming after an interruption.",
+            "title": "Attempts",
+            "type": "integer"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -199,7 +204,8 @@
           "is_demo",
           "error_message",
           "created_at",
-          "completed_at"
+          "completed_at",
+          "attempts"
         ],
         "title": "BatchView",
         "type": "object"
@@ -2810,7 +2816,7 @@
     },
     "/api/v1/batches/upload": {
       "post": {
-        "description": "Accept a CSV file, and process it in the background. Poll the batch for progress.",
+        "description": "Accept a CSV file and queue it. A worker processes it; poll the batch for progress.",
         "operationId": "upload_api_v1_batches_upload_post",
         "requestBody": {
           "content": {

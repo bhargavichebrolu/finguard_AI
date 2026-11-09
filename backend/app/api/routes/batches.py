@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, status
+from fastapi import APIRouter, Depends, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from app.api.schemas.batches import BatchView, batch_view
@@ -18,7 +18,7 @@ from app.repositories.transactions import (
     TransactionFilters,
     list_transactions,
 )
-from app.security.dependencies import DbSession, ServingModelDep, rate_limited, require_permission
+from app.security.dependencies import DbSession, rate_limited, require_permission
 from app.security.permissions import Permission
 from app.services import batch_service
 from app.services.export_service import prediction_csv_lines
@@ -57,13 +57,14 @@ def _csv_response(lines, filename: str) -> StreamingResponse:
 def upload(
     user: UploadUser,
     db: DbSession,
-    model: ServingModelDep,
-    background: BackgroundTasks,
+    request: Request,
     file: UploadFile,
 ) -> BatchView:
-    """Accept a CSV file, and process it in the background. Poll the batch for progress."""
-    job, path = batch_service.start_batch(db, file.file, file.filename, user, get_settings())
-    background.add_task(batch_service.process_batch, job.id, path, model)
+    """Accept a CSV file and queue it. A worker processes it; poll the batch for progress."""
+    job = batch_service.start_batch(db, file.file, file.filename, user, get_settings())
+    worker = getattr(request.app.state, "batch_worker", None)
+    if worker is not None:
+        worker.wake()
     return batch_view(job)
 
 

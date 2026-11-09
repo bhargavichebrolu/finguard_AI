@@ -141,7 +141,7 @@ export interface paths {
         put?: never;
         /**
          * Upload
-         * @description Accept a CSV file, and process it in the background. Poll the batch for progress.
+         * @description Accept a CSV file and queue it. A worker processes it; poll the batch for progress.
          */
         post: operations["upload_api_v1_batches_upload_post"];
         delete?: never;
@@ -686,6 +686,11 @@ export interface components {
          * @description A batch job. processed counts rows read, failed counts rows refused.
          */
         BatchView: {
+            /**
+             * Attempts
+             * @description How many times a worker has claimed the job. More than one while processing means it is resuming after an interruption.
+             */
+            attempts: number;
             /** Completed At */
             completed_at: string | null;
             /**

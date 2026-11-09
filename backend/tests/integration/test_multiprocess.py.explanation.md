@@ -31,6 +31,30 @@ One bearer sign-in attempt; returns the status code.
 ### `account`
 Fixture: an empty database with one account.
 
+### `ApiProcess`
+A class, not a function: a `str` holding a process's address that also carries the `subprocess.Popen`, so a test can kill one process.
+
+### `batch_csv`
+A CSV of synthetic rows, half without identifiers.
+
+### `bearer`
+Signs in and returns a bearer header.
+
+### `upload`
+Uploads a CSV and returns the job id.
+
+### `wait_for`
+Polls a job until a condition holds, failing after a timeout.
+
+### `stored`
+Counts a job's stored rows and distinct identifiers in the database.
+
+### `test_a_killed_process_s_batch_is_finished_by_another_process`
+Kills an API process outright partway through 6,000 rows; a second process with a different, empty upload folder finishes the job on its second attempt, with every row stored exactly once.
+
+### `test_two_processes_share_the_queue_and_store_every_row_once`
+Two processes with workers process four jobs; each completes on one attempt with every row once.
+
 ## E. Classes Explained
 None.
 
@@ -45,6 +69,7 @@ Launch processes, act over HTTP, stop them, check the database.
 | `test_processes_starting_together_register_the_model_once` | Four simultaneous start-ups leave exactly one active model row. Without the advisory lock this failed in two of three runs. |
 
 ## H. Important Technical Concepts
+- **`QUEUE_SETTINGS`** shorten chunks, leases and polling so crash tests finish quickly; **`BATCH_HEADER`** is the CSV header.
 - **`LOGIN_LIMIT`** is the configured failed sign-in limit, five.
 
 ## I. Example

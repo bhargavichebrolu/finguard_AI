@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     max_batch_rows: int = Field(default=50_000, gt=0)
     batch_chunk_rows: int = Field(default=1_000, gt=0)
     max_stored_row_errors: int = Field(default=1_000, gt=0)
+    # Batch queue (Phase 5 M4). Each API process runs one worker that polls for jobs, holds a
+    # lease it renews after every chunk, and gives up a job after this many interrupted attempts.
+    batch_worker_enabled: bool = True
+    batch_poll_seconds: float = Field(default=2.0, gt=0)
+    batch_lease_seconds: int = Field(default=60, gt=0)
+    batch_max_attempts: int = Field(default=3, gt=0)
 
     access_token_minutes: int = Field(default=30, gt=0)
     login_rate_limit_attempts: int = Field(default=5, gt=0)

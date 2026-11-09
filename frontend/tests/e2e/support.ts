@@ -73,6 +73,15 @@ export function runDatabaseScript(...args: string[]): string {
   });
 }
 
+/**
+ * Restart the browser-test API container gracefully (SIGTERM, then start), as a deploy would.
+ * Needs the Docker CLI on PATH. The container keeps its environment, so sessions stay valid.
+ */
+export function restartApiContainer(): void {
+  const container = process.env.FINGUARD_E2E_CONTAINER ?? "finguard-api-e2e-1";
+  execFileSync("docker", ["restart", "--time", "30", container], { stdio: "ignore" });
+}
+
 /** Headers a changing request needs from a signed-in browser: its CSRF token and origin. */
 export async function changeHeaders(context: BrowserContext): Promise<Record<string, string>> {
   const csrf = (await context.cookies(BASE_URL)).find((cookie) => cookie.name === "finguard_csrf");

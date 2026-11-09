@@ -58,6 +58,9 @@ A valid, unique transaction identifier for this run.
 ### `predictThroughApi`
 Scores one transaction through the API and returns the stored prediction, checking it was created.
 
+### `restartApiContainer`
+Restarts the browser-test API container gracefully with `docker restart`, as a deploy would. Needs the Docker CLI on `PATH`; the container keeps its environment, so sessions stay valid.
+
 ## E. Classes Explained
 ### `Account, Problems, StoredPrediction`
 Interfaces describing a seeded account, the problem list and the prediction fields the tests read.

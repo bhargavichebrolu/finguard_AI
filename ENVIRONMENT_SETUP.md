@@ -125,6 +125,10 @@ The app calls the API on its own origin. The Vite servers forward `/api` and `/h
 
 `WEB_CONCURRENCY` sets the API's worker processes (default 1). Each loads the model, about 170 MiB; two workers nearly doubled concurrent throughput in measurement, four were slower than two (`docs/performance/phase-5-m3-rate-limits-and-workers.md`). Rate limits are shared through PostgreSQL, so any number of workers or containers enforce one limit. `RATE_LIMIT_STORE=memory` exists only for comparison measurements and is refused in production.
 
+### Batch queue (Phase 5)
+
+Every API process runs one batch worker. `BATCH_LEASE_SECONDS` (60) is how long a crashed process holds a job before another resumes it, `BATCH_MAX_ATTEMPTS` (3) how many interrupted attempts a job gets, `BATCH_POLL_SECONDS` (2) how often an idle worker looks for work. A graceful stop gives the job back at once. Uploads are stored in the database until their job ends, so no shared disk is needed.
+
 ### Browser tests
 
 ```powershell

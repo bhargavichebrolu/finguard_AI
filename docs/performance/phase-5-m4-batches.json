@@ -1,0 +1,41 @@
+{
+  "label": "after-m4-queue",
+  "environment": {
+    "measured_at": "2026-11-09T12:24:09+00:00",
+    "git_commit": "395cef4",
+    "host": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "processor": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+      "logical_cpus": 16
+    },
+    "docker_vm": {
+      "cpus": 16,
+      "memory_gib": 7.6,
+      "version": "29.9.2",
+      "os": "Docker Desktop"
+    },
+    "api": "http://127.0.0.1:8011",
+    "path": "cookie session through the API directly (no proxy)",
+    "inputs": "synthetic, random seed 20261108"
+  },
+  "batch_throughput": {
+    "1000": {
+      "rows": 1000,
+      "server_seconds": 0.59,
+      "client_seconds": 0.76,
+      "rows_per_second": 1699.4
+    },
+    "10000": {
+      "rows": 10000,
+      "server_seconds": 6.06,
+      "client_seconds": 6.28,
+      "rows_per_second": 1650.3
+    },
+    "50000": {
+      "rows": 50000,
+      "server_seconds": 30.69,
+      "client_seconds": 30.99,
+      "rows_per_second": 1629.4
+    }
+  }
+}

@@ -9,9 +9,10 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.frozen_model import FROZEN_MODEL_VERSION, FROZEN_THRESHOLD
-from app.models.enums import BatchStatus, InvestigationStatus, UserRole
+from app.models.enums import InvestigationStatus, UserRole
 from app.models.records import (
     BatchJob,
+    BatchUpload,
     GroundTruthLabel,
     Investigation,
     Prediction,
@@ -44,9 +45,16 @@ def send(client, headers, text: str | bytes, name: str = "data.csv"):
     return client.post(UPLOAD, headers=headers, files={"file": (name, content, "text/csv")})
 
 
+def drain_queue(client) -> int:
+    """Process every queued job now, with the code each API process's worker runs."""
+    return batch_service.process_available_jobs(client.app.state.model, "test-worker")
+
+
 def finished_job(client, headers, text: str):
     response = send(client, headers, text)
     assert response.status_code == 202, response.text
+    assert response.json()["status"] == "PENDING"
+    drain_queue(client)
     job_id = response.json()["id"]
     return client.get(f"/api/v1/batches/{job_id}", headers=headers).json()
 
@@ -337,19 +345,8 @@ def test_processing_failure_marks_the_job_and_removes_the_file(
     assert job["status"] == "FAILED"
     assert "secret internal detail" not in job["error_message"]
     assert list(tmp_uploads.iterdir()) == []
-
-
-def test_restart_recovery_fails_unfinished_jobs_and_removes_files(session, tmp_path):
-    leftover = tmp_path / "old.csv"
-    leftover.write_text("x", encoding="utf-8")
-    for status in (BatchStatus.PENDING, BatchStatus.PROCESSING, BatchStatus.COMPLETED):
-        session.add(BatchJob(filename="a.csv", status=status))
-    session.commit()
-    assert batch_service.recover_interrupted_jobs(session, tmp_path) == 2
-    session.expire_all()
-    statuses = sorted(job.status.value for job in session.scalars(select(BatchJob)))
-    assert statuses == ["COMPLETED", "FAILED", "FAILED"]
-    assert not leftover.exists()
+    # PRD 9.2: the stored upload is temporary, and goes when the job fails too.
+    assert session.get(BatchUpload, uuid.UUID(job["id"])) is None
 
 
 @pytest.mark.parametrize(

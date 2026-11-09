@@ -15,6 +15,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -123,7 +124,12 @@ class ModelVersion(Base):
 
 
 class BatchJob(Base):
-    """One uploaded CSV file and its progress. The file itself is not stored here."""
+    """One uploaded CSV file and its progress. Its bytes are in batch_uploads until it finishes.
+
+    Since Phase 5 M4 this table is also the work queue: a worker in any API process claims a job,
+    holds it with a lease it renews after every chunk, and another worker resumes the job from
+    processed_records if the lease expires.
+    """
 
     __tablename__ = "batch_jobs"
 
@@ -144,6 +150,23 @@ class BatchJob(Base):
     )
     created_at: Mapped[datetime] = created_at_column()
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    worker_id: Mapped[str | None] = mapped_column(String(128))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
+
+class BatchUpload(Base):
+    """The bytes of an uploaded CSV, kept until its job ends, so any API process can process it.
+
+    Separate from batch_jobs so that reading a job's status never loads the file.
+    """
+
+    __tablename__ = "batch_uploads"
+
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("batch_jobs.id", ondelete="CASCADE"), primary_key=True
+    )
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
 
 
 class BatchRowError(Base):

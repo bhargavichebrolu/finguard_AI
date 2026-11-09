@@ -61,7 +61,7 @@ Returns `TRUSTED_PROXY_IPS` as a list. It is empty by default, which trusts no p
 
 ### `Settings`
 - **Purpose:** the full list of settings, with types and limits.
-- **Attributes:** credentials (`database_url`, `secret_key`) have no default. Model paths default to the repository's `artifacts/` folder and are overridden in Docker. Batch limits, token lifetime, rate limits and `default_high_risk_boundary` have defaults with bounds. Phase 4 added `model_report_path`, `session_cookie_secure` and `trusted_proxy_ips`. Phase 5 M3 added `rate_limit_store` (`database` by default; production refuses `memory`, because per-process counts multiply the limits and reset on restart).
+- **Attributes:** credentials (`database_url`, `secret_key`) have no default. Model paths default to the repository's `artifacts/` folder and are overridden in Docker. Batch limits, token lifetime, rate limits and `default_high_risk_boundary` have defaults with bounds. Phase 4 added `model_report_path`, `session_cookie_secure` and `trusted_proxy_ips`. Phase 5 M4 added `batch_worker_enabled`, `batch_poll_seconds` (2), `batch_lease_seconds` (60) and `batch_max_attempts` (3). Phase 5 M3 added `rate_limit_store` (`database` by default; production refuses `memory`, because per-process counts multiply the limits and reset on restart).
 - **Methods:** the validators above, plus `cors_origins`.
 - **Inheritance:** `pydantic_settings.BaseSettings`.
 

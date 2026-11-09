@@ -439,6 +439,23 @@ def command_queries(label: str, out: Path, export: bool) -> int:
     return 0
 
 
+def command_batches(label: str, out: Path) -> int:
+    """Batch throughput only, at 1,000, 10,000 and 50,000 rows, after reseeding."""
+    rng = random.Random(SEED)
+    run_id = secrets.token_hex(3)
+    reseed()
+    clients = create_perf_users(admin_client(), run_id)
+    batches = {}
+    for size in BATCH_SIZES:
+        rows = synthetic_rows(size, f"BATCH-{run_id}-{size}", rng)
+        batches[str(size)] = run_batch(clients[size % len(clients)], rows, f"batch-{size}.csv")
+    result = {"label": label, "environment": environment(), "batch_throughput": batches}
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(batches, indent=2))
+    return 0
+
+
 def command_latency(label: str, out: Path) -> int:
     rng = random.Random(SEED)
     run_id = secrets.token_hex(3)
@@ -620,6 +637,9 @@ def main(argv: list[str] | None = None) -> int:
     queries.add_argument("--label", required=True)
     queries.add_argument("--out", type=Path, required=True)
     queries.add_argument("--no-export", action="store_true")
+    batches = commands.add_parser("batches")
+    batches.add_argument("--label", required=True)
+    batches.add_argument("--out", type=Path, required=True)
     latency = commands.add_parser("latency")
     latency.add_argument("--label", required=True)
     latency.add_argument("--out", type=Path, required=True)
@@ -637,6 +657,8 @@ def main(argv: list[str] | None = None) -> int:
         return command_compare(arguments.baseline, arguments.candidate, arguments.out)
     if arguments.command == "queries":
         return command_queries(arguments.label, arguments.out, not arguments.no_export)
+    if arguments.command == "batches":
+        return command_batches(arguments.label, arguments.out)
     if arguments.command == "latency":
         return command_latency(arguments.label, arguments.out)
     return command_render(arguments.source, arguments.pages)

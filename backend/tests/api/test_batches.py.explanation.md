@@ -57,10 +57,12 @@ Nested stand-in that makes scoring fail, with a fake secret in the message.
 | `test_demo_batches_are_labelled_and_kept_apart` | Separation in both directions, and no investigations. |
 | `test_unknown_batch_is_not_found` | 404 on each route. |
 | `test_processing_failure_marks_the_job_and_removes_the_file` | The job shows `FAILED`, without internal detail, and the file is gone. |
-| `test_restart_recovery_fails_unfinished_jobs_and_removes_files` | Recovery after a restart. |
 | `test_safe_cell` | Formula characters are neutralised, and numbers are untouched. |
 | `test_csv_lines_neutralise_formulas_and_stream` | Formulas are neutralised and output still streams in pieces (several lines per piece since Phase 5 M2). |
 | `test_clean_filename` | Path parts and unsafe characters are removed. |
+
+### `drain_queue`
+Processes every queued job now, with the same code each API process's worker runs; the worker thread is off in API tests so processing happens at a known moment.
 
 ## E. Classes Explained
 None.
@@ -72,6 +74,7 @@ Each test uploads hand-written content, then checks the job, database and files.
 Input: CSV text. Output: pass or fail.
 
 ## H. Important Technical Concepts
+- **Phase 5 M4:** uploads are queued, so `finished_job` drains the queue before reading the job. The old start-up recovery test was removed with the behaviour it tested; resumption is tested in `test_batch_queue.py`.
 - **`monkeypatch` on settings** lets tests use small limits, and it restores them afterwards.
 
 ## I. Example

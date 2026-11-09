@@ -14,7 +14,8 @@ The PRD 9.1 tables are marked PRD. The others close gaps the PRD's list left ope
 | `investigations` | PRD | id, prediction_id (unique), status, assigned_user_id, created_at, updated_at |
 | `investigation_notes` | PRD | id, investigation_id, user_id, note, created_at |
 | `model_versions` | PRD | id, version (unique), algorithm, model_path_or_artifact_reference, model_sha256, threshold, feature_schema_version, metrics_json, is_active, created_at |
-| `batch_jobs` | PRD | id, filename, status, total_records, processed_records, failed_records, ignored_columns, labels_supplied, is_demo, error_message, created_by, created_at, completed_at |
+| `batch_jobs` | PRD | id, filename, status, total_records, processed_records, failed_records, ignored_columns, labels_supplied, is_demo, error_message, created_by, created_at, completed_at; queue columns worker_id, lease_expires_at, attempts (Phase 5 M4, revision `0004`) |
+| `batch_uploads` | added in Phase 5 M4 (revision `0004`) | job_id (primary key, cascades from batch_jobs), content: the checked upload's bytes, at most 10 MB, deleted when the job ends |
 | `audit_logs` | PRD | id, user_id, action, entity_type, entity_id, details, created_at |
 | `investigation_status_history` | added | id, investigation_id, from_status, to_status, changed_by, created_at |
 | `batch_row_errors` | added | id, batch_job_id, row_number, column_name, message |
@@ -35,6 +36,7 @@ transactions 1---1 predictions 1---0..1 investigations 1---* investigation_notes
 transactions 1---0..1 ground_truth_labels       model_versions 1---* predictions (by version)
 users 1---* investigations (assigned_user_id), investigation_notes, audit_logs
 batch_jobs 1---* batch_row_errors
+batch_jobs 1---1 batch_uploads (only while the job is unfinished)
 ```
 
 Deleting a transaction removes its prediction, investigation, notes, history and label (`CASCADE`). Deleting a user keeps their work and clears the reference (`SET NULL`). No route deletes either.

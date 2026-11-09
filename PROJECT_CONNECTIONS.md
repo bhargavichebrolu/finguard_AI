@@ -373,13 +373,19 @@ Roles: demo, analyst, investigator and admin, from PRD section 2. The table is i
 POST /batches/upload
   | extension, streaming size limit, NUL check -> temporary file under a random name
   | header: required columns, leaky columns refused, isFraud and isFlaggedFraud ignored
-  | row count limit -> BatchJob PENDING -> 202
-background: process_batch
-  | chunks of 1,000 rows: TransactionInput per row, score, insert with ON CONFLICT DO NOTHING,
-  |   predictions, investigations for flags, labels to ground_truth_labels, row errors, commit
-  | final status, audit entry; the temporary file is always deleted
+  | row count limit -> bytes to batch_uploads, BatchJob PENDING (one commit); temp file deleted
+  | wake this process's BatchWorker -> 202
+BatchWorker (one thread in every API process, Phase 5 M4)
+  | fail_exhausted_jobs; claim_next_job: UPDATE ... WHERE id = (SELECT ... FOR UPDATE SKIP LOCKED)
+  |   -> worker_id, lease_expires_at (database time), attempts + 1
+  | process_job: skip processed_records rows; per chunk of 1,000, in ONE commit:
+  |   lock job row + check owner, renew lease (heartbeat), TransactionInput per row, score,
+  |   insert ON CONFLICT DO NOTHING, predictions, investigations, labels, row errors, progress
+  | final status, owner cleared, batch_uploads row deleted, audit entry
+  | crash: lease expires -> any worker resumes after the last commit; after 3 attempts -> FAILED
+  | shutdown: finish chunk, release lease -> another process resumes at once
 ```
-Results, export and the error report are separate routes. A restart marks unfinished jobs as failed.
+Results, export and the error report are separate routes. Start-up only removes temporary files older than an hour; it never touches jobs.
 
 ## 20. Prediction storage (implemented)
 Every prediction stores `model_version`, `threshold_used` and `high_risk_boundary_used`, so old results stay interpretable after a model or setting change. The database refuses a stored decision that contradicts the score and threshold.

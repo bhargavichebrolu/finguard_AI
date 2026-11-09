@@ -76,6 +76,28 @@ describe("batch analysis", () => {
     expect(screen.getByRole("button", { name: "Upload and score" })).toBeDisabled();
   });
 
+  it("says a job is resuming after an interruption, and keeps progress through a lost poll", async () => {
+    let polls = 0;
+    server.use(
+      http.get("/api/v1/batches", () => HttpResponse.json(page([batchFixture({ status: "PROCESSING", attempts: 2 })]))),
+      http.get("/api/v1/batches/:id", () => {
+        polls += 1;
+        if (polls === 2) return errorBody("Bad gateway", 502);
+        if (polls < 4) return HttpResponse.json(batchFixture({ status: "PROCESSING", attempts: 2, processed_records: 1 }));
+        return HttpResponse.json(batchFixture({ attempts: 2 }));
+      }),
+      http.get("/api/v1/batches/:id/results", () => HttpResponse.json(page([ROW]))),
+    );
+    renderApp("/batches");
+    const recent = await screen.findByRole("table", { name: "Recent batch uploads" });
+    await userEvent.click(within(recent).getByRole("button", { name: "Open" }));
+    const status = await screen.findByRole("article", { name: "Batch status" });
+    expect(await within(status).findByText(/Resuming after an interruption: 1 of 3 rows/)).toBeInTheDocument();
+    expect(await within(status).findByText(/Lost contact with the server/, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(within(status).getByText(/Resuming after an interruption: 1 of 3 rows/)).toBeInTheDocument();
+    expect(await within(status).findByText(/Completed with errors: 3 of 3 rows/, {}, { timeout: 5000 })).toBeInTheDocument();
+  });
+
   it("uploads, follows processing to the end, and shows counts, ignored columns and results", async () => {
     let polls = 0;
     server.use(

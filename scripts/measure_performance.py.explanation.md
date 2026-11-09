@@ -115,6 +115,9 @@ Loads paired run files, applies `compare_runs`, writes the decision and exits 1 
 ### `load`
 Nested in `command_compare`: reads the run files.
 
+### `command_batches`
+Measures batch throughput only, at 1,000, 10,000 and 50,000 rows, after reseeding.
+
 ## E. Classes Explained
 None.
 

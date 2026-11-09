@@ -46,4 +46,16 @@ Idle memory was read with `docker stats` just after each start (recorded in the 
 
 **Decision:** the default stays at one worker (`WEB_CONCURRENCY=1`), which leaves headroom in a 512 MB container for batches and exports. Two workers nearly doubled concurrent throughput here and are recommended where at least 1 GB is available. Four workers were slower than two, most likely because each worker's model scoring competes for the same CPU cores; per-worker thread limits are a possible tuning for Phase 6, not made here.
 
-**Batches:** until M4, more than one worker is not safe for CSV batches, because start-up recovery in one process can fail another process's running job (finding F1). M4 replaces that logic.
+**Batches:** M4 replaced the start-up recovery that made more than one worker unsafe for CSV batches (finding F1); see the M4 section below.
+
+## Batch throughput with the queue (M4)
+
+Measured after M4 with `measure_performance.py batches` (`phase-5-m4-batches.json`). Compare with caution: the M2 baseline ran in a different session, and sessions on this machine differed by up to about half in latency.
+
+| Rows | Server seconds | Rows per second |
+|---|---|---|
+| 1,000 | 0.59 | 1,699.4 |
+| 10,000 | 6.06 | 1,650.3 |
+| 50,000 | 30.69 | 1,629.4 |
+
+No throughput regression was observed from storing uploads in the database and taking a row lock per chunk.

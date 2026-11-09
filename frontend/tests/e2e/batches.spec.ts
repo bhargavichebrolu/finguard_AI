@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 
 import { expect, test, type Page } from "@playwright/test";
 
-import { statePath, uniqueId, watchForProblems } from "./support";
+import { apiCall, restartApiContainer, statePath, uniqueId, watchForProblems } from "./support";
 
 test.use({ storageState: statePath("analyst") });
 
@@ -166,4 +166,28 @@ test("shows processing progress for a larger file until it completes", async ({ 
   expect(seen[0]).toBeLessThan(100);
   expect(labels.size).toBeGreaterThan(1);
   await expect(page.getByText("1–25 of 20,000")).toBeVisible();
+});
+
+test("resumes a batch after the API restarts mid-job, storing every row once", async ({ page }) => {
+  test.setTimeout(240_000);
+  const prefix = uniqueId("R");
+  const rows = 20_000;
+  await page.goto("/batches");
+  await upload(page, csvFile(`${prefix.toLowerCase()}.csv`, `${HEADER}\n${goodRows(prefix, rows).join("\n")}\n`));
+  const status = page.getByRole("article", { name: "Batch status" });
+  const progress = status.locator("#processing-progress");
+  await expect.poll(async () => Number(await progress.getAttribute("value")), { timeout: 60_000 }).toBeGreaterThan(0);
+  const before = Number(await progress.getAttribute("value"));
+  expect(before).toBeLessThan(100);
+
+  // A graceful restart: the worker finishes its chunk and gives the job back (Phase 5 M4).
+  restartApiContainer();
+  await expect(status.getByText(/Resuming after an interruption:/)).toBeVisible({ timeout: 120_000 });
+  await expect(status.getByText("Completed: 20,000 of 20,000 rows")).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByText("1–25 of 20,000")).toBeVisible();
+
+  const jobs = await apiCall(page, "GET", "/api/v1/batches?limit=1");
+  const job = ((await jobs.json()) as { items: { attempts: number; succeeded_records: number }[] }).items[0];
+  expect(job.attempts).toBe(2);
+  expect(job.succeeded_records).toBe(rows);
 });

@@ -3,6 +3,8 @@
 import uuid
 from datetime import datetime
 
+from pydantic import Field
+
 from app.api.schemas.common import ApiModel
 from app.models.enums import BatchStatus
 from app.models.records import BatchJob
@@ -25,6 +27,10 @@ class BatchView(ApiModel):
     error_message: str | None
     created_at: datetime
     completed_at: datetime | None
+    attempts: int = Field(
+        description="How many times a worker has claimed the job. More than one while processing "
+        "means it is resuming after an interruption."
+    )
 
 
 def batch_view(job: BatchJob) -> BatchView:
@@ -45,4 +51,5 @@ def batch_view(job: BatchJob) -> BatchView:
         error_message=job.error_message,
         created_at=job.created_at,
         completed_at=job.completed_at,
+        attempts=job.attempts,
     )

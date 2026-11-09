@@ -1,4 +1,4 @@
-"""Several API processes share one set of rate limits and register the model safely (Phase 5 M3).
+"""Several API processes share rate limits, the model registry and the batch queue (Phase 5 M3, M4).
 
 Each test starts real Uvicorn processes against the test database, as separate containers or
 workers would run, and talks to them over HTTP.
@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from tests.conftest import TEST_DATABASE_URL, empty_all_tables
 
 from app.models.enums import UserRole
-from app.models.records import ModelVersion
+from app.models.records import ModelVersion, Transaction
 from app.services.auth_service import create_user
 
 pytestmark = pytest.mark.database
@@ -53,45 +53,57 @@ def _wait_until_healthy(process: subprocess.Popen, base: str) -> None:
         time.sleep(0.3)
 
 
+class ApiProcess(str):
+    """A running API process's base address, which also carries the process itself."""
+
+    process: subprocess.Popen
+
+
 @contextmanager
-def api_processes(count: int, store: str = "database") -> Iterator[list[str]]:
+def api_processes(
+    count: int, store: str = "database", settings: list[dict[str, str]] | None = None
+) -> Iterator[list[ApiProcess]]:
     """Start `count` API processes at the same moment and wait for all. Yields their addresses.
 
     All are launched before any is waited for, so their start-ups overlap, as when several
-    containers or workers start together.
+    containers or workers start together. `settings` gives extra environment per process.
     """
-    env = {
+    base_env = {
         **os.environ,
         "APP_ENV": "test",
         "DATABASE_URL": TEST_DATABASE_URL,
         "SECRET_KEY": "multiprocess-test-signing-key-" + "x" * 32,
         "RATE_LIMIT_STORE": store,
+        "BATCH_WORKER_ENABLED": "true",
     }
-    running: list[tuple[subprocess.Popen, str]] = []
+    running: list[ApiProcess] = []
     try:
-        for _ in range(count):
+        for index in range(count):
             port = free_port()
+            env = {**base_env, **((settings or [{}] * count)[index])}
             command = [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1"]
             command += ["--port", str(port), "--no-proxy-headers"]
-            process = subprocess.Popen(
+            handle = ApiProcess(f"http://127.0.0.1:{port}")
+            handle.process = subprocess.Popen(
                 command,
                 cwd=BACKEND_DIR,
                 env=env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            running.append((process, f"http://127.0.0.1:{port}"))
-        for process, base in running:
-            _wait_until_healthy(process, base)
-        yield [base for _, base in running]
+            running.append(handle)
+        for handle in running:
+            _wait_until_healthy(handle.process, handle)
+        yield running
     finally:
-        for process, _ in running:
-            process.terminate()
-        for process, _ in running:
+        for handle in running:
+            if handle.process.poll() is None:
+                handle.process.terminate()
+        for handle in running:
             try:
-                process.wait(timeout=20)
+                handle.process.wait(timeout=20)
             except subprocess.TimeoutExpired:
-                process.kill()
+                handle.process.kill()
 
 
 def sign_in(base: str, password: str) -> int:
@@ -147,3 +159,103 @@ def test_processes_starting_together_register_the_model_once(db_engine, account)
             select(func.count()).select_from(ModelVersion).where(ModelVersion.is_active)
         )
     assert (rows, active) == (1, 1)
+
+
+# ---------------------------------------------------------------- batch queue (Phase 5 M4)
+
+BATCH_HEADER = "external_transaction_id,amount,transaction_type,step,destination_category"
+
+
+def batch_csv(rows: int, prefix: str) -> bytes:
+    """Half the rows have no identifier: stored twice, they would show up as extra rows."""
+    lines = [BATCH_HEADER]
+    for index in range(rows):
+        identifier = f"{prefix}-{index}" if index % 2 == 0 else ""
+        lines.append(f"{identifier},{100 + index}.00,CASH_OUT,{1 + index % 700},customer")
+    return ("\n".join(lines) + "\n").encode()
+
+
+def bearer(base: str) -> dict[str, str]:
+    response = httpx.post(
+        f"{base}/api/v1/auth/login", data={"username": EMAIL, "password": PASSWORD}, timeout=30
+    )
+    response.raise_for_status()
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+def upload(base: str, headers: dict[str, str], content: bytes) -> str:
+    response = httpx.post(
+        f"{base}/api/v1/batches/upload",
+        headers=headers,
+        files={"file": ("rows.csv", content, "text/csv")},
+        timeout=60,
+    )
+    assert response.status_code == 202, response.text
+    return response.json()["id"]
+
+
+def wait_for(base: str, headers: dict[str, str], job_id: str, done, timeout: float = 180) -> dict:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        job = httpx.get(f"{base}/api/v1/batches/{job_id}", headers=headers, timeout=10).json()
+        if done(job):
+            return job
+        time.sleep(0.2)
+    raise AssertionError(f"job {job_id} did not reach the expected state: {job}")
+
+
+def stored(db_engine, job_id: str) -> tuple[int, int]:
+    with Session(db_engine) as session:
+        total = session.scalar(
+            select(func.count()).select_from(Transaction).where(Transaction.batch_job_id == job_id)
+        )
+        distinct = session.scalar(
+            select(func.count(func.distinct(Transaction.external_transaction_id))).where(
+                Transaction.batch_job_id == job_id
+            )
+        )
+    return total, distinct
+
+
+QUEUE_SETTINGS = {
+    "BATCH_CHUNK_ROWS": "200",
+    "BATCH_LEASE_SECONDS": "3",
+    "BATCH_POLL_SECONDS": "0.5",
+}
+
+
+def test_a_killed_process_s_batch_is_finished_by_another_process(account, db_engine, tmp_path):
+    rows = 6000
+    first_dir, second_dir = tmp_path / "first", tmp_path / "second"
+    with api_processes(1, settings=[{**QUEUE_SETTINGS, "UPLOAD_TMP_DIR": str(first_dir)}]) as (
+        first,
+    ):
+        headers = bearer(first)
+        job_id = upload(first, headers, batch_csv(rows, "KILL"))
+        part = wait_for(first, headers, job_id, lambda j: 400 <= j["processed_records"] < rows)
+        first.process.kill()  # no shutdown: the lease is never released
+        first.process.wait(timeout=20)
+    stopped_at = part["processed_records"]
+
+    # A second process with its own, empty upload folder: the job's bytes are in the database.
+    with api_processes(1, settings=[{**QUEUE_SETTINGS, "UPLOAD_TMP_DIR": str(second_dir)}]) as (
+        second,
+    ):
+        headers = bearer(second)
+        job = wait_for(second, headers, job_id, lambda j: j["status"] == "COMPLETED")
+    assert job["processed_records"] == job["succeeded_records"] == rows
+    assert job["attempts"] == 2
+    assert stopped_at < rows
+    assert stored(db_engine, job_id) == (rows, rows)  # every row once, none twice
+
+
+def test_two_processes_share_the_queue_and_store_every_row_once(account, db_engine):
+    rows = 1500
+    with api_processes(2, settings=[QUEUE_SETTINGS, QUEUE_SETTINGS]) as (first, second):
+        headers = bearer(first)
+        jobs = [upload(first, headers, batch_csv(rows, f"SHARE{n}")) for n in range(4)]
+        for job_id in jobs:
+            job = wait_for(second, headers, job_id, lambda j: j["status"] == "COMPLETED")
+            assert (job["processed_records"], job["attempts"]) == (rows, 1)
+    for job_id in jobs:
+        assert stored(db_engine, job_id) == (rows, rows)

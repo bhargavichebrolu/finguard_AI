@@ -23,7 +23,7 @@ Returns whether a user's records are demo records.
 Wraps lines in a `StreamingResponse`, with a download header. The name is built from the job's identifier, not from client text.
 
 ### `upload`
-`POST /api/v1/batches/upload`. Takes a multipart `file` and returns `BatchView` with status 202. Bad files give 422, and oversized ones give 413. Calls `start_batch`, then schedules `process_batch`.
+`POST /api/v1/batches/upload`. Takes a multipart `file` and returns `BatchView` with status 202. Bad files give 422, and oversized ones give 413. Calls `start_batch`, which stores the file and queues the job, then wakes this process's batch worker. Any API process's worker may process it (Phase 5 M4).
 
 ### `list_batches`
 `GET /api/v1/batches`. Returns `Page[BatchView]`.

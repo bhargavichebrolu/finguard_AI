@@ -34,6 +34,7 @@ Each test sets mock responses, renders a page, then acts and checks.
 | checks type, emptiness and size against the API's limit | Client file checks. |
 | refuses an oversized file without uploading it | No request is sent. |
 | checks a file chosen before the upload limits have loaded | Regression found by the browser tests. |
+| says a job is resuming after an interruption, and keeps progress through a lost poll | Phase 5 M4 states. |
 | uploads, follows processing to the end, and shows counts, ignored columns and results | Upload, polling through PROCESSING to finished, counts, `isFraud` reported as ignored, results and downloads. |
 | downloads the error report through the signed-in client | Downloads use the authenticated client. |
 | shows the API's refusal of a bad file | API messages. |

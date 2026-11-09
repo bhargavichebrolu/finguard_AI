@@ -154,6 +154,10 @@ def test_summary_keeps_flags_workflow_and_labels_separate(
         headers=analyst,
         files={"file": ("a.csv", text.encode(), "text/csv")},
     )
+    # Uploads are queued since Phase 5 M4; process the queue now, as a worker would.
+    from app.services.batch_service import process_available_jobs
+
+    assert process_available_jobs(client.app.state.model, "test-worker") == 1
     investigation = client.get("/api/v1/investigations", headers=analyst).json()["items"][0]
     client.patch(
         f"/api/v1/investigations/{investigation['id']}",

@@ -37,6 +37,9 @@ Chooses a file and clicks Upload and score.
 ### `scores`
 A local value, not a function: the score column of the first results page.
 
+### `job`
+A local value, not a function: the most recent job read back after the resume test.
+
 ## E. Classes Explained
 None.
 
@@ -50,6 +53,7 @@ Each test signs in through a saved state and works through the real interface an
 | refuses columns that are not available when a transaction is scored | Balance columns refused; missing columns named. |
 | scores good rows, reports bad rows, pages results and exports safely | 60 stored, 3 refused (two shaped like formulas), labels ignored and stored apart, results sorted and paged 25 at a time, results and error CSVs with exact headers, no labels in exports, no formula cells. |
 | shows processing progress for a larger file until it completes | 20,000 rows: progress seen before completion and never going backwards. |
+| resumes a batch after the API restarts mid-job, storing every row once | Phase 5 M4: a graceful container restart mid-job; the page shows the resume, and all 20,000 rows are stored once, on attempt 2. |
 
 ## H. Important Technical Concepts
 - **Formula safety:** the error report records the row, column and message, never the submitted text, so formula-shaped input cannot reach a spreadsheet; the check covers every exported cell anyway.

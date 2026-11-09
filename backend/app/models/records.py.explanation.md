@@ -32,6 +32,9 @@ One counted sliding-window event, such as a failed sign-in: key and `occurred_at
 ### `RateLimitWindow`
 A fixed-window counter: key, window start and count, one row per key per minute (Phase 5 M3).
 
+### `BatchUpload`
+The bytes of an uploaded CSV, kept until its job ends, so any API process can process it (Phase 5 M4). Separate from `batch_jobs` so status reads never load the file.
+
 ### `ModelVersion`
 Filled from the frozen metadata at start-up. `uq_model_versions_single_active` is a partial unique index that allows only one active row.
 
@@ -76,6 +79,7 @@ Imported at start-up, which registers the tables on `Base.metadata`. Alembic com
 No runtime input. Output: table definitions and mapped classes.
 
 ## H. Important Technical Concepts
+- **Batch queue columns (Phase 5 M4):** `BatchJob` gained `worker_id`, `lease_expires_at` and `attempts`.
 - **Rules are repeated in the database on purpose.** API validation gives clear messages, and CHECK constraints stop any other route from storing something invalid.
 - **`Numeric(15, 2)` for amounts:** exact decimals, not binary fractions, so the stored amount is exactly what was scored.
 - **`Float(53)` for scores:** double precision, so the comparison with the threshold gives the same result in the database as in Python.
