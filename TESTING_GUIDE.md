@@ -27,7 +27,8 @@ uv run --project backend python scripts/check_explanations.py
 # Frontend: type check, unit and component tests, production build
 cd frontend; npm run typecheck; npm test; npm run build
 
-# Browser tests against the real API and finguard_e2e_test (see ENVIRONMENT_SETUP.md)
+# Browser tests against the real API and finguard_e2e_test (see ENVIRONMENT_SETUP.md);
+# every engine by default, or one: npm run test:e2e -- --project=setup --project=webkit
 
 # Clean-clone reproducibility check: no dataset, model binary or .env
 uv run --project backend python scripts/verify_clean_clone.py
@@ -131,6 +132,41 @@ Defects found and fixed in M7, each with a regression test:
 
 Not automated: screen-reader listening, colour contrast inside chart images (charts have table views, and the palette passed the dataviz validator in M3), and real touch devices. Automated checks find only part of all accessibility problems.
 
+## Cross-browser and assistive-technology results (Phase 5 M6)
+
+The same browser tests run in Playwright's Firefox and WebKit builds as well as Chromium, all against the real API and `finguard_e2e_test`. Final run, 2026-11-09, one worker:
+
+| Project | Engine (Playwright 1.65 build) | Viewport | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|---|---|
+| setup | Chromium | 1440 x 900 | 5 | 5 | 0 | 0 |
+| desktop | Chromium | 1440 x 900 | 72 | 72 | 0 | 0 |
+| tablet | Chromium | 768 x 1024, touch | 19 | 19 | 0 | 0 |
+| mobile | Chromium | 390 x 844, mobile emulation | 19 | 19 | 0 | 0 |
+| firefox | Firefox 159 | 1440 x 900 | 72 | 72 | 0 | 0 |
+| webkit | WebKit 27.2 | 1440 x 900 | 72 | 72 | 0 | 0 |
+| webkit-mobile | WebKit 27.2 | 390 x 844, touch | 19 | 19 | 0 | 0 |
+| **Total** | | | **278** | **278** | **0** | **0** |
+
+**What this does and does not show.** The WebKit results are Playwright's WebKit build on Windows: the engine Safari uses, not Safari on macOS or iOS, and `webkit-mobile` is a narrow touch window, not an iPhone (WebKit does not support Playwright's mobile emulation). Safari itself is untested. Firefox is Playwright's build of the release engine.
+
+**Defects found by the new engines, each fixed with a regression test:**
+
+| Defect | Engines affected | Fix | Regression test |
+|---|---|---|---|
+| The phone menu button was also shown on desktop, beside the collapse toggle, and took keyboard focus; the collapse toggle likewise showed on phones | All, since Phase 4 (found through WebKit's focus order) | `.mobile-only` and `.desktop-only` win over `.button` | `responsive.spec.ts` "only the navigation control for this width is shown" |
+| Dashboard totals in the billions overflowed their tile by 9 px | WebKit | Tiles at least 220 px; the figure's size follows the tile and never wraps | `responsive.spec.ts` "every figure fits its tile on one line" |
+
+**Test changes for engine behaviour, none removing a check:**
+
+- **Screenshots after the CSP check:** in WebKit every Playwright screenshot injects a style that the page's CSP refuses. Nothing is reported on load or after axe; the order keeps the check about the app.
+- **Skip link in WebKit:** this WebKit build moves focus to no link with Tab or Option+Tab, so the test focuses the skip link directly and checks the rest. Its place first in the Tab order is checked in Chromium and Firefox.
+- **Dialog focus return:** opened from the keyboard. In WebKit, as in Safari, a click does not focus a button, so there is no control to return to.
+- **SameSite:** every engine checks the server's `Set-Cookie: SameSite=Strict`. WebKit's stored attribute reads `None` here and is not asserted (recorded in SECURITY.md).
+- **Accounts:** tests that use an account up create their own, and the Accounts table is paged through, so each engine starts clean.
+- **Batch progress:** the test polls until the job is completed, not until the bar reads 100. The last chunk is stored a moment before completion, which made one check depend on timing.
+
+**Assistive technology.** `accessibility-tree.spec.ts` checks the tree screen readers receive on key screens: landmarks, the ten links in order, names, the invalid state and its description, a named modal dialog, and chart tables. It passes in all three engines. It shows what is exposed, not what is spoken. **Screen-reader behaviour is UNTESTED:** the Narrator and NVDA checklist in [docs/accessibility/screen-reader-checklist.md](docs/accessibility/screen-reader-checklist.md) has not been run.
+
 ## Clean-clone results (Phase 5 M1)
 
 `scripts/verify_clean_clone.py` on a fresh clone without `.env`, the model binary or the dataset: lockfile installs, backend 421 passed, 0 failed, 270 skipped (1 deselected); repository checks passed; frontend 98 passed and the build succeeded. Every skip has one of two reasons:
@@ -150,7 +186,7 @@ The first run found four problems, all fixed in M1: the report's source hashes d
 | `backend/tests/integration/` | Pipeline stages, real outputs, and migrations on PostgreSQL | Synthetic fixtures, real outputs, test database |
 | `backend/tests/api/` | The real application through HTTP, on real PostgreSQL with the frozen model | Hand-written requests |
 | `frontend/tests/unit/` | Components and pages with Vitest and a mock API | Typed fixtures with invented values |
-| `frontend/tests/e2e/` | The built app in Chromium against the real API and `finguard_e2e_test` | Seeded accounts and data created by each test |
+| `frontend/tests/e2e/` | The built app in Chromium, Firefox and WebKit against the real API and `finguard_e2e_test` | Seeded accounts and data created by each test |
 
 ## Manual checks run in Phase 3
 

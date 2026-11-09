@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { expect, type APIResponse, type BrowserContext, type Page } from "@playwright/test";
+import { expect, type APIResponse, type Browser, type BrowserContext, type Page } from "@playwright/test";
 
 export const FRONTEND_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const REPO_ROOT = path.resolve(FRONTEND_DIR, "..");
@@ -109,6 +109,31 @@ export async function signInThroughForm(page: Page, name: AccountName, password?
   await page.getByLabel("Password").fill(password ?? seeded);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+}
+
+/** Sign in through the form with given credentials. */
+export async function signInWith(page: Page, email: string, password: string): Promise<void> {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+}
+
+/**
+ * Create a fresh account through the administrator API. Tests that use an account up, such as
+ * changing its password or deactivating it, use one of these so every browser project gets its
+ * own (Phase 5 M6: the seeded account was used up by the first browser).
+ */
+export async function createAccount(browser: Browser, role = "analyst"): Promise<Account> {
+  const email = `fresh-${uniqueId("u").toLowerCase()}@e2e.example.com`;
+  const password = `Pw-${uniqueId("x")}-${uniqueId("y")}`;
+  const context = await browser.newContext({ storageState: statePath("admin") });
+  const page = await context.newPage();
+  const response = await apiCall(page, "POST", "/api/v1/users", { email, password, role });
+  expect(response.status(), "account created").toBe(201);
+  await context.close();
+  return { email, password, role };
 }
 
 /** Start a session through the API, returning the response. */

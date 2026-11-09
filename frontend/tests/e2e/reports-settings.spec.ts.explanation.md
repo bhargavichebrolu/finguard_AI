@@ -37,6 +37,16 @@ A local value, not a function: the new account's details after its role changed.
 ### `me`
 A local value, not a function: the signed-in administrator.
 
+### `accountRow`
+- **Purpose:** find the Accounts table row for an email.
+- **Parameters / types:** `page`, `email`. **Returns / type:** the row `Locator`.
+- **Internal processing:** accounts are listed oldest first, a page at a time, so it clicks Next page, waiting each time for the first row to change, until the row is shown. The search is retried for up to 20 seconds, because just after a change the list may still be reloading with Next not yet enabled.
+- **Error handling:** fails if the row has not appeared within 20 seconds.
+- **Why:** with three browser projects creating accounts, a new account moved to a later page (Phase 5 M6).
+
+### `before`
+Inside `accountRow`: the first row's text before Next page is clicked, so the helper can wait until the next page has replaced it.
+
 ## E. Classes Explained
 None.
 
@@ -55,6 +65,7 @@ Each test signs in through a saved state and works through the real interface an
 | an administrator cannot deactivate their own account, in the interface or the API | Disabled button and 422 from the API. |
 
 ## H. Important Technical Concepts
+- **Own accounts (Phase 5 M6):** the password-change and deactivation tests create their account with `createAccount`, so each browser project starts from an unused one.
 - **Restoring state:** the boundary test restores the original value in `finally`, so later tests are unaffected.
 
 ## I. Example

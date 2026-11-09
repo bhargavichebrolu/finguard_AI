@@ -148,7 +148,7 @@ Caddy serves the built frontend over HTTPS with its own local certificate (brows
 ```powershell
 uv run --project backend python scripts/e2e_stack.py up   # API on 127.0.0.1:8011 using finguard_e2e_test
 cd frontend
-npx playwright install chromium                           # once
+npx playwright install chromium firefox webkit            # once (Firefox and WebKit since Phase 5 M6)
 npm run test:e2e                                          # builds, serves on 127.0.0.1:4173, runs all projects
 cd ..; uv run --project backend python scripts/e2e_stack.py down
 ```

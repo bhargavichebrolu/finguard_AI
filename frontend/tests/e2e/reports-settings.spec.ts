@@ -4,19 +4,44 @@
  */
 import { readFileSync } from "node:fs";
 
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
 
 import {
   NO_SESSION,
   account,
   apiCall,
+  createAccount,
   predictThroughApi,
   repoFile,
-  signInThroughForm,
+  signInWith,
   startSession,
   statePath,
   uniqueId,
 } from "./support";
+
+/**
+ * The Accounts row for an email. Accounts are listed oldest first, a page at a time, so a new
+ * account is on the last page once enough exist (Phase 5 M6: three browser runs created enough).
+ * Pages forward, waiting for each page to load, until the row is shown.
+ */
+async function accountRow(page: Page, email: string): Promise<Locator> {
+  const table = page.getByRole("table", { name: "Accounts" });
+  const row = table.getByRole("row", { name: new RegExp(email.replace(/\./g, "\\.")) });
+  const firstRow = table.getByRole("row").nth(1);
+  const next = page.getByRole("navigation", { name: "Pages" }).getByRole("button", { name: "Next page" });
+  await expect(firstRow).toBeVisible();
+  // Retried: just after a change the list may still be reloading, with Next not yet enabled.
+  await expect(async () => {
+    if ((await row.count()) > 0) return;
+    if (await next.isEnabled()) {
+      const before = (await firstRow.textContent()) ?? "";
+      await next.click();
+      await expect(firstRow).not.toHaveText(before);
+    }
+    throw new Error(`${email} is not on this page yet`);
+  }).toPass({ timeout: 20_000 });
+  return row;
+}
 
 async function downloadReport(page: Page, button: string): Promise<{ name: string; lines: string[] }> {
   const pending = page.waitForEvent("download");
@@ -116,10 +141,10 @@ test.describe("high risk boundary", () => {
 test.describe("password change", () => {
   test.use({ storageState: NO_SESSION });
 
-  test("signs the user out everywhere, and only the new password then works", async ({ page }) => {
-    const { email, password } = account("password");
+  test("signs the user out everywhere, and only the new password then works", async ({ page, browser }) => {
+    const { email, password } = await createAccount(browser);
     const replacement = `New-${uniqueId("p")}-${uniqueId("q")}`;
-    await signInThroughForm(page, "password");
+    await signInWith(page, email, password);
     await page.goto("/settings");
     await page.getByLabel("Current password").fill(password);
     await page.getByLabel("New password").fill("short");
@@ -153,7 +178,7 @@ test.describe("account management", () => {
     await page.getByLabel("Role", { exact: true }).selectOption("analyst");
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(page.getByText(`Created ${email}. Share the temporary password privately.`)).toBeVisible();
-    const row = page.getByRole("table", { name: "Accounts" }).getByRole("row", { name: new RegExp(email) });
+    const row = await accountRow(page, email);
     await expect(row).toBeVisible();
 
     const newUser = await signedInAs(browser, email, password);
@@ -169,12 +194,12 @@ test.describe("account management", () => {
   });
 
   test("deactivates another account after confirming, ending its live session", async ({ page, browser }) => {
-    const { email, password } = account("deactivate");
+    const { email, password } = await createAccount(browser);
     const target = await signedInAs(browser, email, password);
     expect((await apiCall(target, "GET", "/api/v1/auth/me")).status()).toBe(200);
 
     await page.goto("/settings");
-    const row = page.getByRole("table", { name: "Accounts" }).getByRole("row", { name: new RegExp(email) });
+    const row = await accountRow(page, email);
     await row.getByRole("button", { name: "Deactivate" }).click();
     const dialog = page.getByRole("dialog", { name: `Deactivate ${email}?` });
     await dialog.getByRole("button", { name: "Cancel" }).click();
@@ -193,7 +218,7 @@ test.describe("account management", () => {
   test("an administrator cannot deactivate their own account, in the interface or the API", async ({ page }) => {
     const admin = account("admin");
     await page.goto("/settings");
-    const own = page.getByRole("table", { name: "Accounts" }).getByRole("row", { name: new RegExp(admin.email) });
+    const own = await accountRow(page, admin.email);
     await expect(own.getByRole("button", { name: "Deactivate" })).toBeDisabled();
 
     const me = (await (await apiCall(page, "GET", "/api/v1/auth/me")).json()) as { id: string };

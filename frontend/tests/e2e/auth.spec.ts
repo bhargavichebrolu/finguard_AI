@@ -23,9 +23,15 @@ import {
 test.describe("signing in and out", () => {
   test.use({ storageState: NO_SESSION });
 
-  test("signs in, survives a reload, keeps tokens out of storage, and signs out", async ({ page, context }) => {
+  test("signs in, survives a reload, keeps tokens out of storage, and signs out", async ({ page, context, browserName }) => {
     const problems = await watchForProblems(page, true);
+    const signedIn = page.waitForResponse((r) => r.url().endsWith("/api/v1/auth/session") && r.request().method() === "POST");
     await signInThroughForm(page, "logout");
+    // What the server sends, whatever the browser does with it: HttpOnly and SameSite=Strict.
+    const setCookies = await (await signedIn).headerValues("set-cookie");
+    const sessionHeader = setCookies.find((line) => line.startsWith("finguard_session="));
+    expect(sessionHeader).toMatch(/HttpOnly/i);
+    expect(sessionHeader).toMatch(/SameSite=strict/i);
     await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
     await expect(page.getByText(account("logout").email)).toBeVisible();
 
@@ -37,8 +43,14 @@ test.describe("signing in and out", () => {
     expect(csrf, "CSRF cookie").toBeDefined();
     // HttpOnly and SameSite=Strict always. Secure is off only because this test API runs over
     // plain HTTP with APP_ENV=test; production refuses to start without it (test_config.py).
-    expect(session).toMatchObject({ httpOnly: true, sameSite: "Strict", secure: false, path: "/api" });
-    expect(csrf).toMatchObject({ httpOnly: false, sameSite: "Strict", path: "/" });
+    expect(session).toMatchObject({ httpOnly: true, secure: false, path: "/api" });
+    expect(csrf).toMatchObject({ httpOnly: false, path: "/" });
+    // Playwright's WebKit build on Windows reports SameSite as None for these cookies although the
+    // server sends Strict (checked above); CSRF tokens and origin checks protect changes anyway.
+    if (browserName !== "webkit") {
+      expect(session?.sameSite).toBe("Strict");
+      expect(csrf?.sameSite).toBe("Strict");
+    }
     expect(await page.evaluate(() => document.cookie)).not.toContain("finguard_session");
 
     const stored = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));

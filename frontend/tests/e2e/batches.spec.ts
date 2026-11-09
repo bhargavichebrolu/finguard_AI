@@ -150,16 +150,21 @@ test("shows processing progress for a larger file until it completes", async ({ 
   await expect(progress).toBeVisible();
   const seen: number[] = [];
   const labels = new Set<string>();
+  // Polled until the status completes, not until the bar reads 100: the last chunk is stored
+  // (100%) a moment before the job is marked completed, so stopping at 100 could end while the
+  // label still said Processing, and the test then depended on timing (Phase 5 M6, WebKit).
   await expect
     .poll(
       async () => {
         seen.push(Number(await progress.getAttribute("value")));
-        labels.add((await status.locator("label[for=processing-progress]").innerText()).split(":")[0]);
-        return seen[seen.length - 1];
+        const label = (await status.locator("label[for=processing-progress]").innerText()).split(":")[0];
+        labels.add(label);
+        return label;
       },
       { timeout: 120_000, intervals: [250] },
     )
-    .toBe(100);
+    .toBe("Completed");
+  expect(seen[seen.length - 1]).toBe(100);
   await expect(status.getByText(`Completed: 20,000 of 20,000 rows`)).toBeVisible();
   // Progress only moves forward, and the page showed the job before it had finished.
   expect([...seen].sort((a, b) => a - b)).toEqual(seen);

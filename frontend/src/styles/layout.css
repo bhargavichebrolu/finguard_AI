@@ -145,8 +145,11 @@
   outline: none;
 }
 
+/* Visibility helpers win over component rules: `.button` (components.css, loaded later) sets its
+   own display, which showed the phone menu button on desktop and the collapse toggle on phones
+   until Phase 5 M6. */
 .mobile-only {
-  display: none;
+  display: none !important;
 }
 
 @media (max-width: 900px) {
@@ -160,10 +163,13 @@
   }
 
   .mobile-only {
-    display: inline-flex;
+    display: inline-flex !important;
   }
 
-  .desktop-only,
+  .desktop-only {
+    display: none !important;
+  }
+
   .topbar-note,
   .user-email {
     display: none;

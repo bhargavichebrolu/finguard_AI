@@ -61,6 +61,15 @@ Scores one transaction through the API and returns the stored prediction, checki
 ### `restartApiContainer`
 Restarts the browser-test API container gracefully with `docker restart`, as a deploy would. Needs the Docker CLI on `PATH`; the container keeps its environment, so sessions stay valid.
 
+### `signInWith`
+Signs in through the form with an email and password given directly, for accounts a test created itself.
+
+### `createAccount`
+- **Purpose:** create a fresh account through the administrator API.
+- **Parameters / types:** `browser`, optional `role` (default analyst). **Returns / type:** `Account` with a generated email and password.
+- **Why:** tests that use an account up (changing its password, deactivating it) need one per run of each browser project. With Firefox and WebKit added, the seeded accounts were used up by the first engine (Phase 5 M6).
+- **Error handling:** fails unless the API answers 201.
+
 ## E. Classes Explained
 ### `Account, Problems, StoredPrediction`
 Interfaces describing a seeded account, the problem list and the prediction fields the tests read.

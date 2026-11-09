@@ -15,6 +15,15 @@ export const BASE_URL = "http://127.0.0.1:4173";
 
 const desktop = { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } };
 const tablet = { ...devices["Desktop Chrome"], viewport: { width: 768, height: 1024 }, hasTouch: true };
+// Phase 5 M6: the same tests in Firefox and WebKit (Playwright's builds). WebKit here is the
+// engine Safari uses, run on this machine; it is not Safari on macOS or iOS.
+const firefox = { ...devices["Desktop Firefox"], viewport: { width: 1440, height: 900 } };
+const webkit = { ...devices["Desktop Safari"], viewport: { width: 1440, height: 900 } };
+const webkitMobile = {
+  ...devices["Desktop Safari"],
+  viewport: { width: 390, height: 844 },
+  hasTouch: true,
+};
 const mobile = {
   ...devices["Desktop Chrome"],
   viewport: { width: 390, height: 844 },
@@ -53,5 +62,8 @@ export default defineConfig({
     { name: "desktop", testMatch: /\.spec\.ts$/, dependencies: ["setup"], use: desktop },
     { name: "tablet", testMatch: /responsive\.spec\.ts$/, dependencies: ["setup"], use: tablet },
     { name: "mobile", testMatch: /responsive\.spec\.ts$/, dependencies: ["setup"], use: mobile },
+    { name: "firefox", testMatch: /\.spec\.ts$/, dependencies: ["setup"], use: firefox },
+    { name: "webkit", testMatch: /\.spec\.ts$/, dependencies: ["setup"], use: webkit },
+    { name: "webkit-mobile", testMatch: /responsive\.spec\.ts$/, dependencies: ["setup"], use: webkitMobile },
   ],
 });

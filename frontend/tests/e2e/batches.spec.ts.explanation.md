@@ -40,6 +40,9 @@ A local value, not a function: the score column of the first results page.
 ### `job`
 A local value, not a function: the most recent job read back after the resume test.
 
+### `label`
+Inside the progress test's poll: the status word before the colon in the progress label (for example Processing or Completed). The poll ends when it reads Completed.
+
 ## E. Classes Explained
 None.
 
@@ -56,6 +59,7 @@ Each test signs in through a saved state and works through the real interface an
 | resumes a batch after the API restarts mid-job, storing every row once | Phase 5 M4: a graceful container restart mid-job; the page shows the resume, and all 20,000 rows are stored once, on attempt 2. |
 
 ## H. Important Technical Concepts
+- **Progress polled to completion (Phase 5 M6):** the progress test polls until the status label reads Completed, not until the bar reads 100. The last chunk is stored (100%) a moment before the job is marked completed, so stopping at 100 made the check that the label changed depend on timing; it failed once in WebKit.
 - **Formula safety:** the error report records the row, column and message, never the submitted text, so formula-shaped input cannot reach a spreadsheet; the check covers every exported cell anyway.
 
 ## I. Example

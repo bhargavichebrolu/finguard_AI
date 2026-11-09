@@ -171,7 +171,8 @@ Phase 1 and 2 files have documents in [docs/file-explanations/](docs/file-explan
 | `frontend/src/pages/*.tsx` | The ten pages and the sign-in page |
 | `frontend/src/services/`, `hooks/`, `components/`, `layouts/`, `types/`, `utils/` | API client, state, shared components, layout, typed contracts, formatting |
 | `frontend/tests/unit/*` | Component tests against a mock API |
-| `frontend/playwright.config.ts`, `frontend/tests/e2e/*` | Browser tests against the real API and `finguard_e2e_test` at three viewports |
+| `frontend/playwright.config.ts`, `frontend/tests/e2e/*` | Browser tests against the real API and `finguard_e2e_test` at three viewports in Chromium, and in Firefox and WebKit (Phase 5 M6); `accessibility-tree.spec.ts` checks what assistive technology is given |
+| `docs/accessibility/screen-reader-checklist.md` | Manual Narrator and NVDA steps; UNTESTED until the owner runs it |
 | `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Start the browser-test API; create, seed and adjust its database (refuses non-`_test` names) |
 | `scripts/verify_clean_clone.py`, `scripts/test_report.py` | Clean-clone reproducibility check and pytest report reading |
 | `scripts/prodlike_stack.py`, `docker/caddy/Caddyfile`, `frontend/playwright.prodlike.config.ts`, `frontend/tests/prodlike/*` | HTTPS production-like stack and its tests |
@@ -315,6 +316,8 @@ frontend/playwright.config.ts  global-setup.ts -> scripts/e2e_database.py seed (
                                experiments/results/phase2/* to compare with the page
 ```
 Since Phase 5 M1 the browser tests have their own database, `finguard_e2e_test`, created by `e2e_stack.py up`; the backend suite keeps `finguard_test`, which it empties. The seed step still stops with an instruction if the browser-test API has not registered the model.
+
+Since Phase 5 M6 the same run covers three engines: the `setup` project signs in with Chromium and its saved cookies load into `firefox`, `webkit` and `webkit-mobile`. Tests that use an account up create their own with `support.ts` `createAccount`, so every engine starts from an unused account.
 
 ### Reproducibility (Phase 5)
 ```

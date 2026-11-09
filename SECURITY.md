@@ -47,7 +47,8 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | Chunked uploads without `Content-Length` | Spooled by the framework before the size check | Phase 6, with a proxy body limit |
 | HTTPS | The production-like stack uses Caddy's local certificate authority; a real host needs a public certificate | Phase 6, by the host |
 | Sign-in limit behind unlisted platform proxies | Keyed by address and email; if the host's proxies are not in `TRUSTED_PROXY_IPS`, it becomes per email only | Phase 6 configuration |
-| The `Secure` cookie flag is not exercised in a browser | Browser tests run over plain HTTP with `APP_ENV=test`, so they confirm Secure is off there; production refusing to start without it is a unit test (`test_config.py`) | Phase 6, with HTTPS end-to-end tests |
+| `Secure` and the cookie prefixes are checked in Chromium only | Since Phase 5 M5 the HTTPS stack's browser tests (`npm run test:prodlike`) confirm `Secure`, `__Secure-`, `__Host-` and host-only scope in Chromium; the main browser tests run over plain HTTP, where Secure is off | Phase 6, on the real host |
+| WebKit's stored SameSite attribute | Playwright's WebKit build on Windows reports these cookies as `SameSite=None`, although the server sends `Strict` (checked from the `Set-Cookie` header in every engine). Whether Safari applies Strict is untested; the CSRF token and origin check protect changes either way | Check in Safari on macOS when one is available |
 
 ## Rules
 
