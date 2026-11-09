@@ -19,7 +19,7 @@ PRD 6.4 lets batch results be exported, and PRD 6.9 lists a transaction predicti
 ### `_prediction_rows`
 - **Purpose:** yield rows from the database.
 - **Parameters / types:** `is_demo: bool`, `batch_job_id: uuid.UUID | None`. **Returns / type:** an iterator of tuples.
-- **Internal processing:** `yield_per` fetches a limited number of rows at a time. It opens its own session, because the request's session has closed by the time streaming happens.
+- **Internal processing:** `yield_per` is passed as an execution option, which streams rows from a server-side cursor 1,000 at a time. Until Phase 5 M2 it was called on the result, after the driver had fetched every row, and the API's memory reached 496 MiB during a 500,000-row export. It opens its own session, because the request's session has closed by the time streaming happens.
 - **Error handling:** an error ends the stream early.
 - **Calls:** `session_scope`, `_plain`. **Used by:** `prediction_csv_lines`.
 

@@ -1,0 +1,89 @@
+{
+  "label": "after-one-pass-summary",
+  "environment": {
+    "measured_at": "2026-11-09T11:07:40+00:00",
+    "git_commit": "373a196",
+    "host": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "processor": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+      "logical_cpus": 16
+    },
+    "docker_vm": {
+      "cpus": 16,
+      "memory_gib": 7.6,
+      "version": "29.9.2",
+      "os": "Docker Desktop"
+    },
+    "api": "http://127.0.0.1:8011",
+    "path": "cookie session through the API directly (no proxy)",
+    "inputs": "synthetic, random seed 20261108"
+  },
+  "stored_predictions": 500000,
+  "queries": {
+    "explorer_newest_first": {
+      "n": 20,
+      "mean_ms": 117.25,
+      "p50_ms": 115.57,
+      "p95_ms": 132.48,
+      "p99_ms": 138.05,
+      "max_ms": 138.05
+    },
+    "explorer_high_risk": {
+      "n": 20,
+      "mean_ms": 121.6,
+      "p50_ms": 118.23,
+      "p95_ms": 137.91,
+      "p99_ms": 140.7,
+      "max_ms": 140.7
+    },
+    "explorer_type_and_amount": {
+      "n": 20,
+      "mean_ms": 70.86,
+      "p50_ms": 69.87,
+      "p95_ms": 74.8,
+      "p99_ms": 76.56,
+      "max_ms": 76.56
+    },
+    "explorer_identifier_contains": {
+      "n": 20,
+      "mean_ms": 151.44,
+      "p50_ms": 150.0,
+      "p95_ms": 162.0,
+      "p99_ms": 166.02,
+      "max_ms": 166.02
+    },
+    "explorer_highest_score": {
+      "n": 20,
+      "mean_ms": 127.0,
+      "p50_ms": 120.51,
+      "p95_ms": 149.93,
+      "p99_ms": 186.1,
+      "max_ms": 186.1
+    },
+    "explorer_last_page": {
+      "n": 20,
+      "mean_ms": 2552.13,
+      "p50_ms": 2560.27,
+      "p95_ms": 2677.01,
+      "p99_ms": 2741.93,
+      "max_ms": 2741.93
+    },
+    "dashboard_summary": {
+      "n": 20,
+      "mean_ms": 436.87,
+      "p50_ms": 433.94,
+      "p95_ms": 451.01,
+      "p99_ms": 496.61,
+      "max_ms": 496.61
+    },
+    "investigation_queue_new": {
+      "n": 20,
+      "mean_ms": 79.16,
+      "p50_ms": 77.82,
+      "p95_ms": 86.94,
+      "p99_ms": 99.65,
+      "max_ms": 99.65
+    }
+  },
+  "memory": "168.6MiB / 7.601GiB"
+}

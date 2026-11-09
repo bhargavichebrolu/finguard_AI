@@ -414,7 +414,7 @@ def error_report_lines(job_id: uuid.UUID) -> Iterator[str]:
                 .where(BatchRowError.batch_job_id == job_id)
                 .order_by(BatchRowError.row_number)
             )
-            for row in session.execute(query).yield_per(1000):
+            for row in session.execute(query.execution_options(yield_per=1000)):
                 yield tuple(row)
 
     return csv_lines(ERROR_REPORT_HEADER, rows())

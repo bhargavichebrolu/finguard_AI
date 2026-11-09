@@ -58,7 +58,9 @@ def _prediction_rows(is_demo: bool, batch_job_id: uuid.UUID | None) -> Iterator[
         )
         if batch_job_id is not None:
             query = query.where(Transaction.batch_job_id == batch_job_id)
-        for row in session.execute(query).yield_per(_STREAM_ROWS):
+        # yield_per as an execution option streams rows from a server-side cursor; called on the
+        # result instead, the driver had already fetched every row into memory (Phase 5 M2).
+        for row in session.execute(query.execution_options(yield_per=_STREAM_ROWS)):
             yield tuple(_plain(value) for value in row)
 
 

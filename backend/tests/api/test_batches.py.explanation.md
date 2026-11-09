@@ -59,7 +59,7 @@ Nested stand-in that makes scoring fail, with a fake secret in the message.
 | `test_processing_failure_marks_the_job_and_removes_the_file` | The job shows `FAILED`, without internal detail, and the file is gone. |
 | `test_restart_recovery_fails_unfinished_jobs_and_removes_files` | Recovery after a restart. |
 | `test_safe_cell` | Formula characters are neutralised, and numbers are untouched. |
-| `test_csv_lines_neutralise_formulas_and_stream` | Lines are produced one at a time. |
+| `test_csv_lines_neutralise_formulas_and_stream` | Formulas are neutralised and output still streams in pieces (several lines per piece since Phase 5 M2). |
 | `test_clean_filename` | Path parts and unsafe characters are removed. |
 
 ## E. Classes Explained

@@ -174,6 +174,7 @@ Phase 1 and 2 files have documents in [docs/file-explanations/](docs/file-explan
 | `frontend/playwright.config.ts`, `frontend/tests/e2e/*` | Browser tests against the real API and `finguard_e2e_test` at three viewports |
 | `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Start the browser-test API; create, seed and adjust its database (refuses non-`_test` names) |
 | `scripts/verify_clean_clone.py`, `scripts/test_report.py` | Clean-clone reproducibility check and pytest report reading |
+| `scripts/measure_performance.py`, `frontend/playwright.perf.config.ts`, `frontend/tests/perf/*` | Measured performance against the browser-test stack; results in `docs/performance/` |
 | `frontend/src/styles/tokens.css` | PRD colour tokens |
 | `frontend/vite.config.ts` | Build tool config |
 | `Makefile` | Command shortcuts |
@@ -321,6 +322,17 @@ scripts/verify_clean_clone.py   git clone --no-local -> temp folder; confirm .en
 backend/Dockerfile, compose     base images pinned by digest; uv pinned exactly
 export_model_report.py          source hashes over content with line endings normalised
 ```
+
+### Performance measurement (Phase 5)
+```
+scripts/measure_performance.py run      reseed finguard_e2e_test -> 40 synthetic analysts (admin API)
+                                        -> predict latency (cookie path, direct to :8011) -> batches
+                                        -> populate 100k / 500k via batch uploads -> query timings
+                                        -> docker stats memory -> docs/performance/*.json
+npm run perf:pages                      playwright.perf.config.ts (no reseed) -> page readiness JSON
+measure_performance.py render           Markdown tables only from saved JSON
+```
+Dashboard summary: `report_service.build_summary` -> `repositories/reports.model_flag_breakdown` (one grouped pass). CSV exports: `utils/csv_safety.csv_lines` (64 KB pieces) fed by server-side-cursor queries.
 
 ## 15. Database architecture (implemented)
 PostgreSQL 17 with the tables, constraints and indexes in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md). Two roles: a superuser for administration, and `finguard_app` without superuser rights for the API, migrations and tests. SCRAM applies to every connection, set by `POSTGRES_INITDB_ARGS` at first initialisation.

@@ -25,7 +25,7 @@ None.
 npm reads it for `install` and `run`.
 
 ## G. Input and Output
-Scripts: `dev`, `build` (type check, then bundle), `preview` (serve the build with the Content Security Policy), `typecheck`, `test` (Vitest), `test:e2e` (Playwright) and `gen:api` (regenerate API types).
+Scripts: `dev`, `build` (type check, then bundle), `preview` (serve the build with the Content Security Policy), `typecheck`, `test` (Vitest), `test:e2e` (Playwright), `perf:pages` (page timings, Phase 5) and `gen:api` (regenerate API types).
 
 ## H. Important Technical Concepts
 - **Runtime dependencies are only the PRD 3.3 libraries:** React, React Router, Axios, Recharts and Lucide.

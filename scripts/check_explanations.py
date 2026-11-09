@@ -40,6 +40,7 @@ SOURCE_FILES = (
     "frontend/tsconfig.json",
     "frontend/vitest.config.ts",
     "frontend/playwright.config.ts",
+    "frontend/playwright.perf.config.ts",
 )
 # Generated from frontend/openapi.json by openapi-typescript. Never edited by hand, so exempt
 # (PRD 12.2), and a frontend test fails if it falls out of step with the schema.

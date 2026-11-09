@@ -31,6 +31,10 @@ cd frontend; npm run typecheck; npm test; npm run build
 
 # Clean-clone reproducibility check: no dataset, model binary or .env
 uv run --project backend python scripts/verify_clean_clone.py
+
+# Performance (browser-test stack running; see docs/performance/phase-5-baseline.md)
+uv run --project backend python scripts/measure_performance.py run --out docs/performance/<name>.json
+cd frontend; npm run perf:pages
 uv run --project backend python scripts/e2e_stack.py up
 cd frontend; npm run test:e2e
 ```

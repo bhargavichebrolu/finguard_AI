@@ -28,6 +28,7 @@ Read by `tsc --noEmit` before every build.
 Output: type errors, or none.
 
 ## H. Important Technical Concepts
+- **`playwright.perf.config.ts`** is type-checked too (Phase 5 M2).
 - **`strict`, `noUnusedLocals`, `noUnusedParameters`** stay on.
 - **`types`:** `vite/client` for `import.meta.env`, and `node` for the config files.
 

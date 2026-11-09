@@ -1,0 +1,375 @@
+{
+  "environment": {
+    "measured_at": "2026-11-09T10:41:29+00:00",
+    "git_commit": "373a196",
+    "host": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "processor": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+      "logical_cpus": 16
+    },
+    "docker_vm": {
+      "cpus": 16,
+      "memory_gib": 7.6,
+      "version": "29.9.2",
+      "os": "Docker Desktop"
+    },
+    "api": "http://127.0.0.1:8011",
+    "path": "cookie session through the API directly (no proxy)",
+    "inputs": "synthetic, random seed 20261108"
+  },
+  "memory": {
+    "after_start": "215.7MiB / 7.601GiB",
+    "after_predictions": "225.4MiB / 7.601GiB",
+    "after_batches": "231.3MiB / 7.601GiB",
+    "after_100000": "278.3MiB / 7.601GiB",
+    "after_500000": "495.6MiB / 7.601GiB"
+  },
+  "prediction_latency": {
+    "sequential_round_1": {
+      "n": 400,
+      "mean_ms": 41.64,
+      "p50_ms": 37.61,
+      "p95_ms": 44.95,
+      "p99_ms": 50.57,
+      "max_ms": 1410.31,
+      "requests_per_second": 24.0
+    },
+    "concurrent_8_round_1": {
+      "n": 1600,
+      "mean_ms": 299.62,
+      "p50_ms": 297.93,
+      "p95_ms": 395.21,
+      "p99_ms": 466.55,
+      "max_ms": 573.19,
+      "requests_per_second": 26.6
+    },
+    "sequential_round_2": {
+      "n": 400,
+      "mean_ms": 41.68,
+      "p50_ms": 38.72,
+      "p95_ms": 56.4,
+      "p99_ms": 65.18,
+      "max_ms": 150.81,
+      "requests_per_second": 24.0
+    },
+    "concurrent_8_round_2": {
+      "n": 1600,
+      "mean_ms": 316.69,
+      "p50_ms": 316.34,
+      "p95_ms": 420.75,
+      "p99_ms": 464.19,
+      "max_ms": 589.64,
+      "requests_per_second": 25.1
+    }
+  },
+  "batch_throughput": {
+    "1000": {
+      "rows": 1000,
+      "server_seconds": 1.22,
+      "client_seconds": 1.51,
+      "rows_per_second": 816.9
+    },
+    "10000": {
+      "rows": 10000,
+      "server_seconds": 9.86,
+      "client_seconds": 9.94,
+      "rows_per_second": 1014.0
+    },
+    "50000": {
+      "rows": 50000,
+      "server_seconds": 47.99,
+      "client_seconds": 48.36,
+      "rows_per_second": 1041.8
+    }
+  },
+  "volumes": {
+    "100000": {
+      "stored_predictions": 100000,
+      "loads": [
+        {
+          "rows": 34960,
+          "server_seconds": 32.5,
+          "client_seconds": 32.63,
+          "rows_per_second": 1075.7
+        }
+      ],
+      "queries": {
+        "explorer_newest_first": {
+          "n": 20,
+          "mean_ms": 61.57,
+          "p50_ms": 61.83,
+          "p95_ms": 65.04,
+          "p99_ms": 68.45,
+          "max_ms": 68.45
+        },
+        "explorer_high_risk": {
+          "n": 20,
+          "mean_ms": 62.0,
+          "p50_ms": 58.34,
+          "p95_ms": 74.74,
+          "p99_ms": 75.99,
+          "max_ms": 75.99
+        },
+        "explorer_type_and_amount": {
+          "n": 20,
+          "mean_ms": 62.6,
+          "p50_ms": 61.96,
+          "p95_ms": 72.11,
+          "p99_ms": 72.94,
+          "max_ms": 72.94
+        },
+        "explorer_identifier_contains": {
+          "n": 20,
+          "mean_ms": 132.45,
+          "p50_ms": 131.58,
+          "p95_ms": 141.99,
+          "p99_ms": 144.59,
+          "max_ms": 144.59
+        },
+        "explorer_highest_score": {
+          "n": 20,
+          "mean_ms": 62.76,
+          "p50_ms": 60.57,
+          "p95_ms": 70.16,
+          "p99_ms": 76.41,
+          "max_ms": 76.41
+        },
+        "explorer_last_page": {
+          "n": 20,
+          "mean_ms": 310.8,
+          "p50_ms": 305.98,
+          "p95_ms": 334.17,
+          "p99_ms": 335.91,
+          "max_ms": 335.91
+        },
+        "dashboard_summary": {
+          "n": 20,
+          "mean_ms": 304.38,
+          "p50_ms": 311.24,
+          "p95_ms": 362.18,
+          "p99_ms": 374.72,
+          "max_ms": 374.72
+        },
+        "investigation_queue_new": {
+          "n": 20,
+          "mean_ms": 49.9,
+          "p50_ms": 49.37,
+          "p95_ms": 52.51,
+          "p99_ms": 53.43,
+          "max_ms": 53.43
+        },
+        "predictions_csv_export": {
+          "n": 3,
+          "mean_ms": 38867.69,
+          "p50_ms": 37606.39,
+          "p95_ms": 43117.36,
+          "p99_ms": 43117.36,
+          "max_ms": 43117.36,
+          "bytes": 19762349
+        }
+      }
+    },
+    "500000": {
+      "stored_predictions": 500000,
+      "loads": [
+        {
+          "rows": 50000,
+          "server_seconds": 32.87,
+          "client_seconds": 33.07,
+          "rows_per_second": 1521.3
+        },
+        {
+          "rows": 50000,
+          "server_seconds": 30.49,
+          "client_seconds": 30.83,
+          "rows_per_second": 1640.0
+        },
+        {
+          "rows": 50000,
+          "server_seconds": 29.22,
+          "client_seconds": 29.47,
+          "rows_per_second": 1711.4
+        },
+        {
+          "rows": 50000,
+          "server_seconds": 28.94,
+          "client_seconds": 29.22,
+          "rows_per_second": 1727.5
+        },
+        {
+          "rows": 50000,
+          "server_seconds": 28.83,
+          "client_seconds": 29.05,
+          "rows_per_second": 1734.6
+        },
+        {
+          "rows": 50000,
+          "server_seconds": 31.11,
+          "client_seconds": 31.27,
+          "rows_per_second": 1607.3
+        },
+        {
+          "rows": 50000,
+          "server_seconds": 31.16,
+          "client_seconds": 31.34,
+          "rows_per_second": 1604.6
+        },
+        {
+          "rows": 50000,
+          "server_seconds": 30.18,
+          "client_seconds": 30.37,
+          "rows_per_second": 1657.0
+        }
+      ],
+      "queries": {
+        "explorer_newest_first": {
+          "n": 20,
+          "mean_ms": 127.51,
+          "p50_ms": 122.6,
+          "p95_ms": 147.27,
+          "p99_ms": 173.24,
+          "max_ms": 173.24
+        },
+        "explorer_high_risk": {
+          "n": 20,
+          "mean_ms": 130.96,
+          "p50_ms": 119.63,
+          "p95_ms": 158.37,
+          "p99_ms": 178.74,
+          "max_ms": 178.74
+        },
+        "explorer_type_and_amount": {
+          "n": 20,
+          "mean_ms": 75.31,
+          "p50_ms": 73.42,
+          "p95_ms": 83.97,
+          "p99_ms": 90.83,
+          "max_ms": 90.83
+        },
+        "explorer_identifier_contains": {
+          "n": 20,
+          "mean_ms": 154.65,
+          "p50_ms": 150.29,
+          "p95_ms": 174.56,
+          "p99_ms": 194.36,
+          "max_ms": 194.36
+        },
+        "explorer_highest_score": {
+          "n": 20,
+          "mean_ms": 130.19,
+          "p50_ms": 126.57,
+          "p95_ms": 148.15,
+          "p99_ms": 157.05,
+          "max_ms": 157.05
+        },
+        "explorer_last_page": {
+          "n": 20,
+          "mean_ms": 2671.63,
+          "p50_ms": 2664.13,
+          "p95_ms": 2787.39,
+          "p99_ms": 2971.53,
+          "max_ms": 2971.53
+        },
+        "dashboard_summary": {
+          "n": 20,
+          "mean_ms": 895.73,
+          "p50_ms": 862.19,
+          "p95_ms": 1034.27,
+          "p99_ms": 1091.1,
+          "max_ms": 1091.1
+        },
+        "investigation_queue_new": {
+          "n": 20,
+          "mean_ms": 75.15,
+          "p50_ms": 72.84,
+          "p95_ms": 80.37,
+          "p99_ms": 100.57,
+          "max_ms": 100.57
+        },
+        "predictions_csv_export": {
+          "n": 3,
+          "mean_ms": 108626.46,
+          "p50_ms": 109466.26,
+          "p95_ms": 110869.27,
+          "p99_ms": 110869.27,
+          "max_ms": 110869.27,
+          "bytes": 98869998
+        }
+      }
+    }
+  },
+  "bundle": {
+    "BatchAnalysisPage-CVnUHZX2.js": {
+      "bytes": 6691,
+      "gzip_bytes": 2490
+    },
+    "charts-CjrHxbIE.js": {
+      "bytes": 396807,
+      "gzip_bytes": 103219
+    },
+    "DashboardPage-BSrh9Oru.js": {
+      "bytes": 6242,
+      "gzip_bytes": 2162
+    },
+    "DataTable-DjtNpTjR.js": {
+      "bytes": 1931,
+      "gzip_bytes": 814
+    },
+    "endpoints-UpGnTLcF.js": {
+      "bytes": 74135,
+      "gzip_bytes": 26863
+    },
+    "ExplainabilityPage-YlCxBCGQ.js": {
+      "bytes": 3525,
+      "gzip_bytes": 1382
+    },
+    "ExplanationPanel-uv3SPmDH.js": {
+      "bytes": 2814,
+      "gzip_bytes": 1161
+    },
+    "index-4R0afLiJ.css": {
+      "bytes": 11501,
+      "gzip_bytes": 2948
+    },
+    "index-CSUavGRU.js": {
+      "bytes": 190560,
+      "gzip_bytes": 62364
+    },
+    "InvestigationCentrePage-BEMODfyu.js": {
+      "bytes": 7853,
+      "gzip_bytes": 2733
+    },
+    "ModelPerformancePage-Cxi_183x.js": {
+      "bytes": 13674,
+      "gzip_bytes": 3812
+    },
+    "PredictionResult-BLLuGt51.js": {
+      "bytes": 1612,
+      "gzip_bytes": 628
+    },
+    "ReportsPage-Ca6rdpGN.js": {
+      "bytes": 1861,
+      "gzip_bytes": 995
+    },
+    "ScoreDisclosure-DJiOCFpM.js": {
+      "bytes": 1175,
+      "gzip_bytes": 639
+    },
+    "SettingsPage-CW4eT3Dj.js": {
+      "bytes": 8151,
+      "gzip_bytes": 2644
+    },
+    "SystemInformationPage-CN3r_gW3.js": {
+      "bytes": 2780,
+      "gzip_bytes": 1063
+    },
+    "TransactionAnalysisPage-Dh92pOh8.js": {
+      "bytes": 4179,
+      "gzip_bytes": 1685
+    },
+    "TransactionExplorerPage-DNd3_Ien.js": {
+      "bytes": 7286,
+      "gzip_bytes": 2479
+    }
+  }
+}

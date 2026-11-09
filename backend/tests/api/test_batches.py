@@ -370,10 +370,11 @@ def test_safe_cell(value, expected):
 
 
 def test_csv_lines_neutralise_formulas_and_stream():
-    lines = list(csv_lines(["a", "b"], [["=1+1", 2], ["x", -3]]))
-    assert len(lines) == 3
-    assert "'=1+1" in lines[1]
-    assert lines[2].strip() == "x,-3"
+    # Since Phase 5 M2 pieces hold many lines; a tiny piece size shows it still streams.
+    lines = "".join(csv_lines(["a", "b"], [["=1+1", 2], ["x", -3]])).splitlines()
+    assert lines == ["a,b", "'=1+1,2", "x,-3"]
+    pieces = list(csv_lines(["a"], [[str(n)] for n in range(5)], chunk_chars=1))
+    assert len(pieces) > 1
 
 
 @pytest.mark.parametrize(
