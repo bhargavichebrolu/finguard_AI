@@ -19,11 +19,11 @@ from app.database.session import get_db
 from app.models.records import User
 from app.security.permissions import Permission, has_permission
 from app.security.sessions import (
-    SESSION_COOKIE,
     UNSAFE_METHODS,
     find_active_session,
     require_allowed_origin,
     require_csrf_token,
+    session_cookie_name,
 )
 from app.security.tokens import TokenClaims, decode_access_token
 from app.services.model_service import ServingModel
@@ -52,7 +52,7 @@ def get_current_user(
             raise AuthenticationError()
         return _load_user(db, claims)
 
-    cookie = request.cookies.get(SESSION_COOKIE)
+    cookie = request.cookies.get(session_cookie_name())
     if cookie is None:
         raise AuthenticationError()
     claims = decode_access_token(cookie)

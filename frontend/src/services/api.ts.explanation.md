@@ -40,6 +40,9 @@ Registers the function to call when a request is refused with 401, meaning the s
 - **Internal processing:** sends cookies. On POST, PUT, PATCH and DELETE it copies the `finguard_csrf` cookie into `X-CSRF-Token`. Every error becomes an `ApiError`. A 401 calls the registered handler, except for a failed sign-in, which the form reports itself.
 - **Error handling:** rejects with `ApiError`. **Calls:** `readCookie`, `toApiError`. **Used by:** the module's `api` instance, tests.
 
+### `readCsrfToken`
+Returns the CSRF token from `__Host-finguard_csrf` when present (production), otherwise from `finguard_csrf`. `CSRF_COOKIE_NAMES` lists both, in that order.
+
 ## E. Classes Explained
 ### `ApiError`
 - **Purpose:** an API failure in one shape. **Attributes:** `status`, `requestId`, `fieldErrors`, `retryAfterSeconds`, and `message`. **Methods:** constructor only. **Inheritance:** `Error`.

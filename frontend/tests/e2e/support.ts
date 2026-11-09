@@ -83,9 +83,11 @@ export function restartApiContainer(): void {
 }
 
 /** Headers a changing request needs from a signed-in browser: its CSRF token and origin. */
-export async function changeHeaders(context: BrowserContext): Promise<Record<string, string>> {
-  const csrf = (await context.cookies(BASE_URL)).find((cookie) => cookie.name === "finguard_csrf");
-  return { "X-CSRF-Token": csrf?.value ?? "", Origin: BASE_URL };
+export async function changeHeaders(context: BrowserContext, origin = BASE_URL): Promise<Record<string, string>> {
+  // Prefixed __Host- when cookies are Secure, as on the HTTPS production-like stack.
+  const names = ["__Host-finguard_csrf", "finguard_csrf"];
+  const csrf = (await context.cookies()).find((cookie) => names.includes(cookie.name));
+  return { "X-CSRF-Token": csrf?.value ?? "", Origin: origin };
 }
 
 /** Call the API with the page's session, as the interface would. */

@@ -34,6 +34,12 @@ The browser-test stack. Same image and settings as `api`, through the `<<: *api-
 ### `WEB_CONCURRENCY`, `RATE_LIMIT_STORE` (Phase 5 M3)
 The API environment passes `WEB_CONCURRENCY` (default 1) to Uvicorn as its worker count. The browser-test services take `E2E_WEB_CONCURRENCY` and `E2E_RATE_LIMIT_STORE`, used only for the comparison measurements.
 
+### `migrate-prodlike`, `api-prodlike`, `caddy-prodlike` (profile `prodlike`, Phase 5 M5)
+The production-like stack: the API with `APP_ENV=production` on its own database `finguard_prodlike_test`, a signing key from `PRODLIKE_SECRET_KEY`, the HTTPS origin as the only allowed origin, and `TRUSTED_PROXY_IPS` set to Caddy's fixed address on the `prodlike` network (172.30.250.0/24). Caddy (pinned by digest) serves `frontend/dist` and forwards `/api`. The API's port 8012 exists only for the bypass test.
+
+### `networks.prodlike`, `volumes.caddy_prodlike_data`
+A fixed subnet so Caddy's address is known, and Caddy's certificate store.
+
 ## E. Classes Explained
 None.
 

@@ -129,6 +129,20 @@ The app calls the API on its own origin. The Vite servers forward `/api` and `/h
 
 Every API process runs one batch worker. `BATCH_LEASE_SECONDS` (60) is how long a crashed process holds a job before another resumes it, `BATCH_MAX_ATTEMPTS` (3) how many interrupted attempts a job gets, `BATCH_POLL_SECONDS` (2) how often an idle worker looks for work. A graceful stop gives the job back at once. Uploads are stored in the database until their job ends, so no shared disk is needed.
 
+### Production-like HTTPS stack (Phase 5)
+
+```powershell
+uv run --project backend python scripts/prodlike_stack.py up   # https://127.0.0.1:8443
+cd frontend; npm run test:prodlike
+cd ..; uv run --project backend python scripts/prodlike_stack.py down
+```
+
+Caddy serves the built frontend over HTTPS with its own local certificate (browsers will warn), and forwards `/api` to an API running with production settings on its own test database. Plain HTTP on 8082 redirects to HTTPS. Windows `curl` cannot complete the handshake with this certificate; browsers and Python can.
+
+### Maintenance
+
+`python -m app.commands.retention` reports what retention would delete; add `--apply` to delete it. `uv run --project backend python scripts/scan_secrets.py` scans all history for secrets.
+
 ### Browser tests
 
 ```powershell

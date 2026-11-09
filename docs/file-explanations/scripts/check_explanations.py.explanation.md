@@ -124,6 +124,7 @@ Find source files, check each document, look for orphans, print the results, exi
 Input: the repository tree. Output: one line per problem, a total, and an exit code.
 
 ## H. Important Technical Concepts
+- **`frontend/playwright.prodlike.config.ts` and `docker/caddy/Caddyfile`** joined `SOURCE_FILES` in Phase 5 M5.
 - **`frontend/playwright.perf.config.ts`** joined `SOURCE_FILES` in Phase 5 M2.
 - **Two locations:** Phases 1 and 2 mirrored the source tree under `docs/file-explanations/` (`docs/decisions/0001-phase-1-decisions.md`). The Phase 3 authorisation asked for a sibling document, so new files use that (`docs/decisions/0003-phase-3-decisions.md`). Existing documents were not moved.
 - **Scope:** Python, TypeScript, CSS, SQL and migration-template sources, plus the listed configuration files. Lockfiles, generated output and data are not authored by hand and are not covered. Frontend configuration such as `package.json` is outside `SOURCE_FILES` because Phase 3 makes no frontend changes.

@@ -102,5 +102,67 @@ services:
       migrate-e2e:
         condition: service_completed_successfully
 
+  # Production-like stack (profile "prodlike", Phase 5 M5): HTTPS through Caddy, one origin,
+  # APP_ENV=production. Started by scripts/prodlike_stack.py with a fresh PRODLIKE_SECRET_KEY.
+  # Its own test database; production settings (Secure cookies, database rate limits) apply.
+  migrate-prodlike:
+    image: finguard-api:local
+    profiles: ["prodlike"]
+    command: ["alembic", "upgrade", "head"]
+    environment: &prodlike-environment
+      <<: *api-environment
+      APP_ENV: production
+      DATABASE_URL: postgresql+psycopg://${APP_DB_USER}:${APP_DB_PASSWORD}@db:5432/${PRODLIKE_DB_NAME:-finguard_prodlike_test}
+      SECRET_KEY: ${PRODLIKE_SECRET_KEY:-}
+      CORS_ALLOWED_ORIGINS: https://127.0.0.1:8443
+      # Only Caddy's fixed address. Anything else's X-Forwarded-For is ignored.
+      TRUSTED_PROXY_IPS: 172.30.250.10
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api-prodlike:
+    image: finguard-api:local
+    profiles: ["prodlike"]
+    restart: "no"
+    environment: *prodlike-environment
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    networks:
+      default: {}
+      prodlike:
+        ipv4_address: 172.30.250.20
+    ports:
+      # Exposed only so tests can show that requests bypassing the proxy cannot spoof addresses.
+      - "127.0.0.1:8012:8000"
+    depends_on:
+      migrate-prodlike:
+        condition: service_completed_successfully
+
+  caddy-prodlike:
+    image: caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
+    profiles: ["prodlike"]
+    restart: "no"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend/dist:/srv:ro
+      - caddy_prodlike_data:/data
+    networks:
+      prodlike:
+        ipv4_address: 172.30.250.10
+    ports:
+      - "127.0.0.1:8443:8443"
+      - "127.0.0.1:8082:8082"
+    depends_on:
+      - api-prodlike
+
+networks:
+  prodlike:
+    ipam:
+      config:
+        - subnet: 172.30.250.0/24
+
 volumes:
   finguard_pgdata:
+  caddy_prodlike_data:

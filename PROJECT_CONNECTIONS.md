@@ -174,6 +174,8 @@ Phase 1 and 2 files have documents in [docs/file-explanations/](docs/file-explan
 | `frontend/playwright.config.ts`, `frontend/tests/e2e/*` | Browser tests against the real API and `finguard_e2e_test` at three viewports |
 | `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Start the browser-test API; create, seed and adjust its database (refuses non-`_test` names) |
 | `scripts/verify_clean_clone.py`, `scripts/test_report.py` | Clean-clone reproducibility check and pytest report reading |
+| `scripts/prodlike_stack.py`, `docker/caddy/Caddyfile`, `frontend/playwright.prodlike.config.ts`, `frontend/tests/prodlike/*` | HTTPS production-like stack and its tests |
+| `scripts/scan_secrets.py`, `backend/app/commands/retention.py` | Secret scan of all history; retention command |
 | `scripts/measure_performance.py`, `frontend/playwright.perf.config.ts`, `frontend/tests/perf/*` | Measured performance against the browser-test stack; results in `docs/performance/` |
 | `frontend/src/styles/tokens.css` | PRD colour tokens |
 | `frontend/vite.config.ts` | Build tool config |
@@ -322,6 +324,17 @@ scripts/verify_clean_clone.py   git clone --no-local -> temp folder; confirm .en
 backend/Dockerfile, compose     base images pinned by digest; uv pinned exactly
 export_model_report.py          source hashes over content with line endings normalised
 ```
+
+### Production-like stack (Phase 5 M5)
+```
+scripts/prodlike_stack.py up   create finguard_prodlike_test; npm run build; compose profile "prodlike"
+browser -> https://127.0.0.1:8443  caddy-prodlike (172.30.250.10): HSTS, CSP, frontend/dist, SPA fallback
+                                     /api/*, /health -> api-prodlike:8000 (APP_ENV=production,
+                                     TRUSTED_PROXY_IPS=172.30.250.10, Secure prefixed cookies)
+http://127.0.0.1:8082           -> 308 to HTTPS
+frontend/playwright.prodlike.config.ts -> tests/prodlike/* (reseeds finguard_prodlike_test)
+```
+Security tooling: `scripts/scan_secrets.py` (history), `pip-audit`, `npm audit`, `python -m app.commands.retention`.
 
 ### Rate limits and processes (Phase 5 M3)
 ```

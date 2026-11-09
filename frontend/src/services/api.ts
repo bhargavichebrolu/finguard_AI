@@ -8,6 +8,8 @@
 import axios, { AxiosError, type AxiosInstance } from "axios";
 
 export const CSRF_COOKIE = "finguard_csrf";
+/** In production the cookie is Secure and carries the browser-enforced __Host- prefix (Phase 5 M5). */
+export const CSRF_COOKIE_NAMES = [`__Host-${CSRF_COOKIE}`, CSRF_COOKIE];
 export const CSRF_HEADER = "X-CSRF-Token";
 const UNSAFE_METHODS = new Set(["post", "put", "patch", "delete"]);
 const SIGN_IN_PATH = "/api/v1/auth/session";
@@ -42,6 +44,15 @@ export class ApiError extends Error {
 }
 
 /** Read one cookie by name from document.cookie. HttpOnly cookies are invisible here by design. */
+/** The CSRF token, from the prefixed cookie when cookies are Secure, otherwise the plain one. */
+export function readCsrfToken(): string | null {
+  for (const name of CSRF_COOKIE_NAMES) {
+    const value = readCookie(name);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 export function readCookie(name: string): string | null {
   for (const part of document.cookie.split(";")) {
     const [key, ...rest] = part.trim().split("=");
@@ -104,7 +115,7 @@ export function createApiClient(baseURL: string = import.meta.env.VITE_API_BASE_
   const client = axios.create({ baseURL, withCredentials: true, timeout: REQUEST_TIMEOUT_MS });
   client.interceptors.request.use((config) => {
     if (UNSAFE_METHODS.has((config.method ?? "get").toLowerCase())) {
-      const token = readCookie(CSRF_COOKIE);
+      const token = readCsrfToken();
       if (token) {
         config.headers.set(CSRF_HEADER, token);
       }
