@@ -82,10 +82,13 @@ def require_permission(permission: Permission) -> Callable[[User], User]:
 
 
 def rate_limited(permission: Permission, bucket: str, per_minute: Callable[[], int]):
-    """Build a dependency that checks a permission, then counts the call against a limit."""
+    """Build a dependency that checks a permission, then counts the call against a limit.
+
+    Uses a fixed one-minute window: one database round trip per request (Phase 5 M3).
+    """
 
     def check(user: Annotated[User, Depends(require_permission(permission))]) -> User:
-        limiter.hit(f"{bucket}:{user.id}", per_minute(), 60)
+        limiter.hit_window(f"{bucket}:{user.id}", per_minute(), 60)
         return user
 
     return check

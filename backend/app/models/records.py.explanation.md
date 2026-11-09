@@ -26,6 +26,12 @@ All inherit from `Base`.
 ### `UserSession`
 One browser sign-in, added in Phase 4: user, CSRF token hash, expiry and revocation time. Logout sets `revoked_at` on this row only.
 
+### `RateLimitEvent`
+One counted sliding-window event, such as a failed sign-in: key and `occurred_at` (Phase 5 M3).
+
+### `RateLimitWindow`
+A fixed-window counter: key, window start and count, one row per key per minute (Phase 5 M3).
+
 ### `ModelVersion`
 Filled from the frozen metadata at start-up. `uq_model_versions_single_active` is a partial unique index that allows only one active row.
 

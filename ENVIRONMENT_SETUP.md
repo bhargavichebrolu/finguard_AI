@@ -121,6 +121,10 @@ npm run preview   # http://127.0.0.1:4173, the built app with its Content Securi
 
 The app calls the API on its own origin. The Vite servers forward `/api` and `/health` to `FINGUARD_API_PROXY_TARGET`, which defaults to `http://127.0.0.1:8010`. Sign in with an account made by `scripts/create_admin.py`. After an API change, run `uv run --project backend python scripts/export_openapi.py`, then `npm run gen:api`.
 
+### Worker processes and rate limits (Phase 5)
+
+`WEB_CONCURRENCY` sets the API's worker processes (default 1). Each loads the model, about 170 MiB; two workers nearly doubled concurrent throughput in measurement, four were slower than two (`docs/performance/phase-5-m3-rate-limits-and-workers.md`). Rate limits are shared through PostgreSQL, so any number of workers or containers enforce one limit. `RATE_LIMIT_STORE=memory` exists only for comparison measurements and is refused in production.
+
 ### Browser tests
 
 ```powershell

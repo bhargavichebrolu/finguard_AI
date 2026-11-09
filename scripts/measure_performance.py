@@ -448,11 +448,58 @@ def command_latency(label: str, out: Path) -> int:
         "label": label,
         "environment": environment(),
         "prediction_latency": prediction_latency(clients, rng, run_id),
+        "memory_after": container_memory(),
     }
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result["prediction_latency"], indent=2))
     return 0
+
+
+# The M3 budget, fixed in docs/performance/phase-5-baseline.md before any M3 code was written.
+BUDGET = {"p50_ms": 0.10, "p95_ms": 0.15}
+BUDGET_FLOOR_MS = 2.0
+
+
+def compare_runs(baseline: list[dict], candidate: list[dict]) -> dict[str, Any]:
+    """Apply the budget: for each mode and statistic, the median over all runs and rounds."""
+    checks = {}
+    for mode in ("sequential", "concurrent"):
+        for statistic, share in BUDGET.items():
+
+            def median_of(runs: list[dict], mode: str = mode, statistic: str = statistic) -> float:
+                return statistics.median(
+                    values[statistic]
+                    for run in runs
+                    for name, values in run["prediction_latency"].items()
+                    if name.startswith(mode)
+                )
+
+            a, b = median_of(baseline), median_of(candidate)
+            allowed = max(share * a, BUDGET_FLOOR_MS)
+            checks[f"{mode}_{statistic}"] = {
+                "baseline_ms": round(a, 2),
+                "candidate_ms": round(b, 2),
+                "overhead_ms": round(b - a, 2),
+                "allowed_ms": round(allowed, 2),
+                "within_budget": b - a <= allowed,
+            }
+    return {"checks": checks, "accepted": all(c["within_budget"] for c in checks.values())}
+
+
+def command_compare(baseline: list[Path], candidate: list[Path], out: Path) -> int:
+    def load(paths: list[Path]) -> list[dict]:
+        return [json.loads(path.read_text(encoding="utf-8")) for path in paths]
+
+    result = {
+        "rule": "overhead <= max(share x baseline, 2 ms); share 10% for p50, 15% for p95",
+        "baseline_runs": [path.name for path in baseline],
+        "candidate_runs": [path.name for path in candidate],
+        **compare_runs(load(baseline), load(candidate)),
+    }
+    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(result, indent=2))
+    return 0 if result["accepted"] else 1
 
 
 def command_render(source: Path, pages: Path | None) -> int:
@@ -579,9 +626,15 @@ def main(argv: list[str] | None = None) -> int:
     show = commands.add_parser("render")
     show.add_argument("source", type=Path)
     show.add_argument("--pages", type=Path, help="page timings from playwright.perf.config.ts")
+    compare = commands.add_parser("compare", help="apply the M3 latency budget to paired runs")
+    compare.add_argument("--baseline", type=Path, nargs="+", required=True)
+    compare.add_argument("--candidate", type=Path, nargs="+", required=True)
+    compare.add_argument("--out", type=Path, required=True)
     arguments = parser.parse_args(argv)
     if arguments.command == "run":
         return command_run(arguments.out)
+    if arguments.command == "compare":
+        return command_compare(arguments.baseline, arguments.candidate, arguments.out)
     if arguments.command == "queries":
         return command_queries(arguments.label, arguments.out, not arguments.no_export)
     if arguments.command == "latency":

@@ -47,6 +47,18 @@ def test_production_refuses_localhost_origins():
         build(app_env="production", cors_allowed_origins="http://localhost:5173")
 
 
+def test_production_refuses_per_process_rate_limits():
+    # Phase 5 M3: per-process counts multiply the limits and reset on every restart.
+    with pytest.raises(ValidationError, match="rate limits must be stored in the database"):
+        build(
+            app_env="production",
+            cors_allowed_origins="https://a.example",
+            rate_limit_store="memory",
+        )
+    assert build(rate_limit_store="memory").rate_limit_store == "memory"  # allowed outside it
+    assert build().rate_limit_store == "database"
+
+
 def test_production_accepts_a_real_origin():
     settings = build(
         app_env="production", cors_allowed_origins="https://a.example, https://b.example"

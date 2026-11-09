@@ -92,7 +92,7 @@ Read-only properties of `ServingModel`, giving access to the loaded model's valu
 ### `register_active_model`
 - **Purpose:** keep `model_versions` in step with what is being served.
 - **Parameters / types:** `session: Session`, `model: ServingModel`. **Returns / type:** `None`.
-- **Internal processing:** deactivates other rows, inserts or updates this one, and commits.
+- **Internal processing:** takes a transaction-scoped advisory lock (`_REGISTRATION_LOCK`), then deactivates other rows, inserts or updates this one, and commits. The lock was added in Phase 5 M3: without it, processes starting together could both insert the row, and in a check two of three runs failed that way.
 - **Error handling:** database errors propagate and stop start-up.
 - **Calls:** `session`. **Used by:** `app/main.py`.
 

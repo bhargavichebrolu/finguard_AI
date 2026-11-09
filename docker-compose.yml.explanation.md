@@ -31,6 +31,9 @@ Starts only after `migrate` succeeds. `./artifacts` is mounted read-only, so the
 ### `migrate-e2e` and `api-e2e` services (profile `e2e`)
 The browser-test stack. Same image and settings as `api`, through the `<<: *api-environment` merge, but with `APP_ENV=test`, the test database (`TEST_DB_NAME`), only `http://127.0.0.1:4173` allowed as an origin, no trusted proxies, and port 127.0.0.1:8011. `SECRET_KEY` comes from `E2E_SECRET_KEY`, which `scripts/e2e_stack.py` generates per start; without it the API refuses to start. Profiles keep these out of a plain `docker compose up`. Since Phase 5 they use their own database, `${E2E_DB_NAME:-finguard_e2e_test}`, created by `scripts/e2e_stack.py`.
 
+### `WEB_CONCURRENCY`, `RATE_LIMIT_STORE` (Phase 5 M3)
+The API environment passes `WEB_CONCURRENCY` (default 1) to Uvicorn as its worker count. The browser-test services take `E2E_WEB_CONCURRENCY` and `E2E_RATE_LIMIT_STORE`, used only for the comparison measurements.
+
 ## E. Classes Explained
 None.
 

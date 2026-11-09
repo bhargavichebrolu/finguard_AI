@@ -6,11 +6,13 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     Numeric,
@@ -62,6 +64,37 @@ class UserSession(Base):
     created_at: Mapped[datetime] = created_at_column()
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RateLimitEvent(Base):
+    """One counted event for a rate limit, such as a failed sign-in (Phase 5 M3).
+
+    Kept in the database so every API process, and every restart, sees the same counts. Rows
+    older than the longest window are deleted as keys are used and by the retention command.
+    """
+
+    __tablename__ = "rate_limit_events"
+    __table_args__ = (Index("ix_rate_limit_events_key_occurred_at", "key", "occurred_at"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    key: Mapped[str] = mapped_column(String(320), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.clock_timestamp()
+    )
+
+
+class RateLimitWindow(Base):
+    """A per-key counter for one fixed time window, used for per-request limits (Phase 5 M3).
+
+    One atomic upsert per request, chosen because the sliding-window events above exceeded the
+    prediction latency budget. Old windows are removed by the retention command.
+    """
+
+    __tablename__ = "rate_limit_windows"
+
+    key: Mapped[str] = mapped_column(String(320), primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class ModelVersion(Base):

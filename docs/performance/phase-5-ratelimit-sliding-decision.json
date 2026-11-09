@@ -1,0 +1,44 @@
+{
+  "rule": "overhead <= max(share x baseline, 2 ms); share 10% for p50, 15% for p95",
+  "baseline_runs": [
+    "phase-5-ratelimit-sliding-1-memory.json",
+    "phase-5-ratelimit-sliding-3-memory.json"
+  ],
+  "candidate_runs": [
+    "phase-5-ratelimit-sliding-2-database.json",
+    "phase-5-ratelimit-sliding-4-database.json"
+  ],
+  "checks": {
+    "sequential_p50_ms": {
+      "baseline_ms": 23.57,
+      "candidate_ms": 26.66,
+      "overhead_ms": 3.08,
+      "allowed_ms": 2.36,
+      "within_budget": false
+    },
+    "sequential_p95_ms": {
+      "baseline_ms": 27.66,
+      "candidate_ms": 33.09,
+      "overhead_ms": 5.43,
+      "allowed_ms": 4.15,
+      "within_budget": false
+    },
+    "concurrent_p50_ms": {
+      "baseline_ms": 177.06,
+      "candidate_ms": 208.02,
+      "overhead_ms": 30.96,
+      "allowed_ms": 17.71,
+      "within_budget": false
+    },
+    "concurrent_p95_ms": {
+      "baseline_ms": 229.26,
+      "candidate_ms": 263.65,
+      "overhead_ms": 34.38,
+      "allowed_ms": 34.39,
+      "within_budget": true
+    }
+  },
+  "accepted": false,
+  "candidate": "sliding window: pooled connection, advisory lock, then count-and-insert (4 round trips)",
+  "decision": "rejected for the prediction path: three of four checks over budget"
+}

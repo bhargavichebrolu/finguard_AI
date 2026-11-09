@@ -3,73 +3,88 @@
 Source: [backend/app/core/rate_limit.py](rate_limit.py)
 
 ## A. File Purpose
-Limits how often something can happen, such as failed logins per client and account, or uploads per user.
+Counts requests and failed sign-ins against their limits, in PostgreSQL by default, so every API process and every restart see the same counts.
 
 ## B. Why This File Exists
-PRD section 10 asks for rate limiting where supported. Unlimited login attempts would allow password guessing, and unlimited uploads could exhaust a small server.
+Phase 5 M3 found that per-process counts let each process allow the full limit and forgot every count on restart, so sign-in guessing could continue across restarts. The approval required shared counts, within a latency budget measured beforehand.
 
 ## C. Dependencies
-- **Libraries:** `threading`, `time`, `collections`.
-- **Internal modules:** `app.core.errors`.
-- **External services / database:** none.
-- **Depended on by:** `auth_service.py`, `security/dependencies.py`.
+- **Libraries:** SQLAlchemy (`text`), Python standard library.
+- **Internal modules:** `app.core.errors`, `app.core.config` and `app.database.session` (imported late, to keep `core` free of import cycles).
+- **External services / database:** PostgreSQL tables `rate_limit_events` and `rate_limit_windows`.
+- **Depended on by:** `app/security/dependencies.py` (`rate_limited`), `app/services/auth_service.py` (sign-in), API test fixtures (`reset`).
 
 ## D. Every Function Explained
 
-### `__init__`
-Creates the empty event store and its lock.
-
-### `_recent`
-- **Purpose:** return a key's events still inside the window.
-- **Parameters / types:** `key: str`, `window_seconds: int`, `now: float`. **Returns / type:** `deque[float]`.
-- **Internal processing:** removes expired events from the front. The caller holds the lock.
-- **Error handling:** none needed. **Calls:** none. **Used by:** `require_below_limit`.
+### `_refuse`
+Raises `RateLimitedError` with a whole-second wait of at least one second.
 
 ### `require_below_limit`
-- **Purpose:** check without counting.
-- **Parameters / types:** `key: str`, `limit: int`, `window_seconds: int`. **Returns / type:** `None`.
-- **Internal processing:** works out when the oldest event expires, for the `Retry-After` header.
-- **Error handling:** raises `RateLimitedError`.
-- **Calls:** `_recent`. **Used by:** `hit`, `auth_service`.
+Raises if the key has reached its limit within the sliding window, without counting this call. Memory and database versions.
 
 ### `record`
-Counts one event. Login uses it separately, so only failures count.
+Counts one event. The database version commits immediately in its own transaction, so a failing request still counts.
 
 ### `hit`
-Checks, then counts. Used for prediction and upload limits, where every call counts.
+Sliding-window check and count. The database version takes a transaction-scoped advisory lock on the key, then counts and inserts in a second statement, whose fresh snapshot includes events committed by other processes while it waited.
+
+### `hit_window`
+- **Purpose:** the per-request limit for predictions and uploads.
+- **Parameters / types:** `key`, `limit`, `window_seconds`. **Returns / type:** `None`.
+- **Internal processing:** database: one autocommit `INSERT … ON CONFLICT DO UPDATE SET count = count + 1 WHERE count < limit RETURNING count` on the current fixed window; no row back means the limit is reached, and only then is the wait read from database time. Memory: the sliding-window `hit`.
+- **Error handling:** `RateLimitedError`. **Calls:** `_refuse`. **Used by:** `rate_limited`.
 
 ### `clear`
-Forgets one key's events, used after a successful login.
+Forgets a key, such as after a successful sign-in.
 
 ### `reset`
-Forgets everything, so tests start clean.
+Forgets everything; tests use it.
+
+### `_engine`
+The application's database engine, imported late.
+
+### `store`
+Returns the database or memory store, as `RATE_LIMIT_STORE` says.
+
+### `__init__`
+Two constructors: `MemoryRateLimiter` creates its event lists and lock; `ConfiguredRateLimiter` creates one memory and one database store.
+
+### `_recent`
+Memory store: drops a key's events older than the window and returns the rest.
 
 ## E. Classes Explained
+### `RateLimitStore`
+A protocol listing what a store must do.
 
-### `RateLimiter`
-- **Purpose:** the counter. **Attributes:** `_events`, `_lock`. **Methods:** those above. **Inheritance:** none.
+### `MemoryRateLimiter`
+Counts in this process only, with a lock. Kept for comparison measurements and code without a database; production refuses it.
 
-`limiter` is the shared instance.
+### `DatabaseRateLimiter`
+Counts in PostgreSQL using database time, so separate processes and machines agree.
+
+### `ConfiguredRateLimiter`
+The `limiter` object the application uses; delegates to the configured store.
 
 ## F. Execution Flow
-A route's dependency or a service calls `hit` or `require_below_limit`. If the limit is reached, the error handler returns 429.
+A request's dependency calls `hit_window`; sign-in calls `require_below_limit`, then `record` on failure or `clear` on success.
 
 ## G. Input and Output
-Input: a key and limits. Output: nothing, or `RateLimitedError`.
+Input: a key such as `predict:<user id>` or `login:<address>:<email>`, a limit and a window. Output: nothing, or `RateLimitedError` (HTTP 429 with `Retry-After`).
 
 ## H. Important Technical Concepts
-- **`time.monotonic`:** unaffected by changes to the computer's clock.
-- **Sliding window:** counts events in the last N seconds, which avoids the burst possible at the boundary of fixed windows.
+- **Two window kinds.** Failed sign-ins use a sliding window (every failure counts for exactly 60 seconds), because a fixed window could allow up to twice the limit across a boundary, which matters for guessing. Predictions and uploads use a fixed one-minute window, which costs one round trip.
+- **Why two designs:** the sliding-window design on the prediction path exceeded the latency budget in a paired comparison (`docs/performance/phase-5-ratelimit-sliding-decision.json`: +3.1 ms sequential median against 2.4 ms allowed) and was rejected. The fixed-window design passed every check, with differences inside run-to-run noise (`phase-5-ratelimit-window-decision.json`).
+- **`_LOCK`, `_RECENT`, `_WAIT`, `_CHECK`, `_HIT`, `_WINDOW_HIT`, `_WINDOW_WAIT`** are the SQL statements.
+- **Concurrency:** 20 simultaneous attempts on one key admit exactly the limit in both designs (`test_rate_limits.py`); separate processes and restarts share counts (`test_multiprocess.py`).
 
 ## I. Example
 ```python
-limiter.hit(f"upload:{user.id}", limit=10, window_seconds=60)
+limiter.hit_window(f"predict:{user.id}", 120, 60)
 ```
 
 ## J. Maintenance Notes
-**Known limitation:** counts are per process and reset on restart, so several workers would each have their own count. Moving to several workers needs a shared store such as Redis. Keys are never removed except by `clear`, which is acceptable at this scale but is a slow growth to watch if run for a long time with many distinct clients.
+Expired rows are removed as keys are used (sliding) and by the retention command (M5). Keep production on the database store; the setting refuses anything else there.
 
 ## K. Related Files
-- [auth_service.py](../services/auth_service.py.explanation.md): login limits.
-- [dependencies.py](../security/dependencies.py.explanation.md): request limits.
-- [ADR 0003](../../../docs/decisions/0003-phase-3-decisions.md): decision 11.
+- [dependencies.py](../security/dependencies.py.explanation.md): per-request limits.
+- [auth_service.py](../services/auth_service.py.explanation.md): sign-in limits.

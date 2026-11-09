@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     session_cookie_secure: bool | None = None
     # Comma-separated proxy addresses whose X-Forwarded-For is believed. Empty trusts nobody.
     trusted_proxy_ips: str = ""
+    # Where rate-limit counts live. "database" is shared by every process and survives restarts;
+    # "memory" is per process, kept for comparison measurements. Production requires "database".
+    rate_limit_store: Literal["database", "memory"] = "database"
 
     @field_validator("secret_key")
     @classmethod
@@ -89,6 +92,8 @@ class Settings(BaseSettings):
             raise ValueError("Production session cookies must be Secure")
         if "*" in self.trusted_proxies:
             raise ValueError("TRUSTED_PROXY_IPS must list proxies, not a wildcard")
+        if self.app_env == "production" and self.rate_limit_store != "database":
+            raise ValueError("Production rate limits must be stored in the database")
         return self
 
     @property

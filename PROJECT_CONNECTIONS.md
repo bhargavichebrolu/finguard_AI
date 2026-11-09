@@ -323,6 +323,14 @@ backend/Dockerfile, compose     base images pinned by digest; uv pinned exactly
 export_model_report.py          source hashes over content with line endings normalised
 ```
 
+### Rate limits and processes (Phase 5 M3)
+```
+rate_limited dependency -> limiter.hit_window -> INSERT ... ON CONFLICT on rate_limit_windows (autocommit)
+verify_login             -> limiter.require_below_limit / record / clear -> rate_limit_events (sliding)
+start-up (each process)  -> register_active_model under a pg advisory lock
+WEB_CONCURRENCY          -> Uvicorn worker count (default 1)
+```
+
 ### Performance measurement (Phase 5)
 ```
 scripts/measure_performance.py run      reseed finguard_e2e_test -> 40 synthetic analysts (admin API)

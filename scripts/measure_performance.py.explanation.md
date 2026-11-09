@@ -103,6 +103,18 @@ Parses the `run`, `latency` and `render` commands.
 ### `command_queries`
 Times the explorer, dashboard, queue and (unless `--no-export`) export queries at the volume already stored, without reseeding, and records memory. Used for before-and-after comparisons on the same data.
 
+### `compare_runs`
+Applies the M3 budget: for sequential and concurrent requests, the median p50 and p95 across all runs and rounds of each condition; the candidate may exceed the baseline by at most 10 % (p50) or 15 % (p95) of the baseline, with a 2 ms floor.
+
+### `median_of`
+Nested in `compare_runs`: the median of one statistic over runs.
+
+### `command_compare`
+Loads paired run files, applies `compare_runs`, writes the decision and exits 1 if rejected.
+
+### `load`
+Nested in `command_compare`: reads the run files.
+
 ## E. Classes Explained
 None.
 
@@ -113,6 +125,7 @@ Reseed, create accounts, measure, write JSON; later, render Markdown from the JS
 Output: a JSON results file. `render` prints Markdown.
 
 ## H. Important Technical Concepts
+- **`BUDGET` and `BUDGET_FLOOR_MS`** hold the rule fixed in `docs/performance/phase-5-baseline.md` before M3 code existed.
 - **Same limits as production:** load is spread over many accounts rather than raising the per-user rate limits.
 - **Server-side batch timing:** rows per second use the job's own `created_at` and `completed_at`.
 - **Direct path:** requests go straight to the API, not through the preview proxy, so these are API figures.

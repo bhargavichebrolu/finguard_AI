@@ -19,7 +19,7 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | CORS | Explicit origin list, with credentials allowed only for those origins. Wildcards are refused, and production also refuses `localhost`. |
 | Content Security Policy | `default-src 'none'` on API responses, with a narrow allowance for `/docs` (Phase 4). The frontend's own policy is served with the frontend. |
 | Proxy trust | Off by default. Forwarded addresses are honoured only from `TRUSTED_PROXY_IPS`, and Uvicorn's built-in trust of 127.0.0.1 is turned off with `--no-proxy-headers` (Phase 4). |
-| Rate limiting | Failed logins (5 per minute per address and email), predictions and uploads. Held in memory per process. |
+| Rate limiting | Failed logins (5 per minute per address and email, sliding window), predictions and uploads (fixed one-minute window per user). Counted in PostgreSQL since Phase 5 M3, so every API process and every restart share the counts; production refuses the per-process memory store. Tested with real separate processes and restarts. |
 | Safe error responses | One JSON format with a request ID. Validation errors omit submitted values, and unexpected errors return a generic message. |
 | Audit logging | Logins, user changes, predictions, uploads, investigation changes and settings. No passwords, emails of failed logins or note text. |
 | Export safety | Exported CSV cells starting with `=`, `+`, `-` or `@` are prefixed so spreadsheets treat them as text. |
@@ -36,7 +36,7 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 
 | Limitation | Effect | When to address |
 |---|---|---|
-| Rate limits are per process and reset on restart | Several workers would each allow the full limit | If more than one process is used |
+| Fixed windows for prediction and upload limits | Up to twice the per-minute limit can pass across a minute boundary | Accepted: chosen to meet the latency budget; failed sign-ins keep the strict sliding window |
 | Proxy address must be configured per host | Until `TRUSTED_PROXY_IPS` is set, login limits behind a proxy are shared by all users | Phase 6, when the host is known |
 | Bearer tokens cannot be revoked individually | A stolen bearer token works for up to 30 minutes unless the account is deactivated or the password changed. Browser sessions can be revoked. | Accepted for this scale |
 | `/docs` needs `'unsafe-inline'` scripts | Its CSP is looser than the rest of the API | Could self-host Swagger UI later |

@@ -33,6 +33,7 @@ Start-up validation is a security control only if it actually rejects bad values
 | `test_database_url_cannot_be_the_template_value` | The template's password is refused. |
 | `test_wildcard_cors_is_refused_everywhere` | `*` is refused in every environment. |
 | `test_production_refuses_localhost_origins` | Production cannot allow `localhost`. |
+| `test_production_refuses_per_process_rate_limits` | Production must store rate limits in the database (Phase 5 M3). |
 | `test_production_accepts_a_real_origin` | Real origins are parsed into a list. |
 | `test_secrets_do_not_appear_when_settings_are_printed` | `repr` hides the password and key. |
 | `test_validation_error_does_not_contain_the_secret` | The error detail, without its input field, omits a rejected key. |

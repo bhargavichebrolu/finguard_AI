@@ -21,6 +21,8 @@ The PRD 9.1 tables are marked PRD. The others close gaps the PRD's list left ope
 | `ground_truth_labels` | added | transaction_id (primary key), is_fraud, source, created_at |
 | `app_settings` | added | key, value, updated_by, updated_at |
 | `user_sessions` | added in Phase 4 (revision `0002`) | id, user_id, csrf_token_hash, created_at, expires_at, revoked_at |
+| `rate_limit_events` | added in Phase 5 M3 (revision `0003`) | id, key, occurred_at (index on key and time): sliding-window events such as failed sign-ins |
+| `rate_limit_windows` | added in Phase 5 M3 (revision `0003`) | key and window_start (primary key), count: fixed-window counters for predictions and uploads |
 
 `predictions.fraud_probability` from PRD 9.1 is named `model_score`, as the Phase 3 authorisation requires, because the score is not calibrated. See [ADR 0003](docs/decisions/0003-phase-3-decisions.md).
 

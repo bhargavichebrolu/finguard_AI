@@ -45,6 +45,8 @@ services:
       MODEL_REPORT_PATH: /app/artifacts/metadata/model_v1_report.json
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
       UPLOAD_TMP_DIR: /tmp/finguard-uploads
+      # Uvicorn reads this as its worker count (Phase 5 M3). Each worker loads the model.
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
     depends_on:
       db:
         condition: service_healthy
@@ -79,6 +81,9 @@ services:
       # Only the preview server the browser tests use. The browser reaches the API through it.
       CORS_ALLOWED_ORIGINS: http://127.0.0.1:4173
       TRUSTED_PROXY_IPS: ""
+      # For measurements only: compare stores and worker counts on the browser-test stack.
+      RATE_LIMIT_STORE: ${E2E_RATE_LIMIT_STORE:-database}
+      WEB_CONCURRENCY: ${E2E_WEB_CONCURRENCY:-1}
     depends_on:
       db:
         condition: service_healthy
