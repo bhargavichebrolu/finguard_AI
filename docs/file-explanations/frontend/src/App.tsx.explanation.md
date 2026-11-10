@@ -39,6 +39,7 @@ None.
 Input: the browser address. Output: the matching page.
 
 ## H. Important Technical Concepts
+- **Error boundaries (Phase 5 M7, finding F7):** each page sits in an `ErrorBoundary` keyed by its path, and the whole application in another, so a failed page download or rendering error shows a reload prompt instead of a blank page.
 - **Separated for tests:** `AppRoutes` is exported apart from `App`, so tests can use a memory router.
 - **Limitations load after sign-in:** `ModelLimitsProvider` sits inside `RequireAuth`, because the metrics route needs a session.
 

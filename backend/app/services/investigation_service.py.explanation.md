@@ -52,6 +52,7 @@ Permission check in the route, then lock, change, history, audit, commit.
 Input: a change or note. Output: the updated records.
 
 ## H. Important Technical Concepts
+- **Stale changes (Phase 5 M7):** with `expected_status`, `update_investigation` compares it with the status under the row lock and raises `ConflictError` (409) naming the current status if they differ, changing nothing. Without it, behaviour is unchanged for API clients.
 - **No feedback into the model.** Marking something `FALSE_ALARM` changes neither its stored score, its prediction nor any metric. Those are separate kinds of truth (PRD 6.1).
 - **Why not `now()`:** PostgreSQL's `now()` is the start of the transaction, and a request starts its transaction before waiting for the row lock. A test with many simultaneous changes showed history rows ordered by start time rather than by when they took effect. `clock_timestamp()` is read after the lock is held, which fixed it.
 - **Any status can move to any other.** The PRD lists statuses but no transitions, and investigators may need to reopen a closed case. The history records each move.

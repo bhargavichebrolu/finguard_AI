@@ -1,7 +1,7 @@
 /** Model Performance, Reports and Settings, including administrator account management. */
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { AxiosError, AxiosHeaders } from "axios";
+import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,7 +9,8 @@ import { familyName, ruleName } from "../../src/pages/ModelPerformancePage";
 import { REPORTS } from "../../src/pages/ReportsPage";
 import { checkBoundary } from "../../src/pages/SettingsPage";
 import { PAGES } from "../../src/pages/registry";
-import { readBlobError, type User } from "../../src/services/endpoints";
+import { ApiError, createApiClient } from "../../src/services/api";
+import type { User } from "../../src/services/endpoints";
 import { SCORE_MEANING } from "../../src/components/ScoreDisclosure";
 import { reportFixture, settingsFixture, TEST_NOTE_RECALL, userFixture } from "./fixtures";
 import { renderApp } from "./render";
@@ -124,32 +125,27 @@ describe("Reports", () => {
     server.use(http.get("/api/v1/reports/export", () => errorBody("Export failed.", 500)));
     renderApp("/reports");
     await userEvent.click(await screen.findByRole("button", { name: "Download model evaluation" }));
-    // jsdom's XMLHttpRequest drops blob bodies, so only the status reaches the page here.
-    expect(await screen.findByText(/server had a problem/)).toBeInTheDocument();
+    // Since Phase 5 M7 the client reads the Blob body, so the API's message and reference show.
+    expect(await screen.findByText("Export failed.")).toBeInTheDocument();
+    expect(screen.getByText("Reference: req-123")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download model evaluation" })).toBeEnabled();
   });
 
-  it("reads the API's message out of a blob error body", async () => {
-    const body = new Blob([JSON.stringify({ detail: "Export failed.", request_id: "req-9" })], { type: "application/json" });
-    const caught = new AxiosError("failed", "ERR_BAD_RESPONSE", undefined, undefined, {
-      status: 500,
-      statusText: "",
-      headers: {},
-      config: { headers: new AxiosHeaders() },
-      data: body,
-    });
-    const error = await readBlobError(caught);
-    expect(error.message).toBe("Export failed.");
-    expect(error.requestId).toBe("req-9");
+  it("reads the API's message out of a blob error body, through the real client", async () => {
+    // Through createApiClient's interceptor, as downloads really go. Phase 5 M7 found that the
+    // interceptor mapped errors before the Blob was read, so downloads lost the API's message;
+    // the earlier test called the reader directly and missed it. A custom adapter delivers the
+    // Blob body, which jsdom's XMLHttpRequest would drop.
+    const answering = (status: number, data: Blob) => (config: InternalAxiosRequestConfig) =>
+      Promise.reject(new AxiosError("failed", "ERR_BAD_RESPONSE", config, null, { status, statusText: "", headers: {}, config, data }));
+    const client = createApiClient("");
+    client.defaults.adapter = answering(503, new Blob([JSON.stringify({ detail: "The database could not be reached.", request_id: "req-9" })]));
+    const error = (await client.get("/api/v1/reports/export", { responseType: "blob" }).catch((caught: unknown) => caught)) as ApiError;
+    expect([error.status, error.message, error.requestId]).toEqual([503, "The database could not be reached.", "req-9"]);
 
-    const unreadable = new AxiosError("failed", "ERR_BAD_RESPONSE", undefined, undefined, {
-      status: 502,
-      statusText: "",
-      headers: {},
-      config: { headers: new AxiosHeaders() },
-      data: new Blob(["<html>"]),
-    });
-    expect((await readBlobError(unreadable)).message).toMatch(/server had a problem/);
+    client.defaults.adapter = answering(502, new Blob(["<html>Bad Gateway</html>"]));
+    const unreadable = (await client.get("/api/v1/reports/export", { responseType: "blob" }).catch((caught: unknown) => caught)) as ApiError;
+    expect(unreadable.message).toBe("The server is unavailable at the moment. Try again shortly.");
   });
 
   it("is closed to the demo role", async () => {

@@ -58,6 +58,7 @@ Validate (schema), build the table, score, classify, explain, store, commit, res
 Input: a `TransactionInput`. Output: a `PredictionView`, and rows in the tables above.
 
 ## H. Important Technical Concepts
+- **Scoring failures (Phase 5 M7):** `create_prediction` scores before writing anything; if the model raises, it logs the trace and raises `ScoringError`, so nothing is stored and the user gets a reference to quote.
 - **Labels cannot reach the model:** `inputs_frame` names its four fields, and `ScoredInput` carries no label.
 - **`float(payload.amount)`:** the same conversion the data pipeline used for amounts.
 - **Investigations mean review, not guilt.** A `NEW` investigation means a person should look at it. With a test precision of 40.7%, most of those opened will not be labelled fraud.

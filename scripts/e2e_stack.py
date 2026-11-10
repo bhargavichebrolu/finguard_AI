@@ -3,6 +3,9 @@
   python scripts/e2e_stack.py up     create the browser-test database if needed, build the image,
                                      migrate that database, start the API
   python scripts/e2e_stack.py down   stop and remove the browser-test containers
+  python scripts/e2e_stack.py database off|on
+                                     simulate a database outage for the browser-test database
+                                     only: refuse new connections and end open ones; "on" ends it
 
 The browser tests use finguard_e2e_test (or E2E_DB_NAME), apart from finguard_test, which the
 backend suite empties. Both names must end in _test.
@@ -39,6 +42,20 @@ fi
 """
 
 
+# Phase 5 M7: an outage of one database, leaving the others in the container untouched. Runs as
+# the superuser inside the container, like _CREATE_IF_MISSING.
+_SET_CONNECTIONS = r"""
+export PGPASSWORD="$POSTGRES_PASSWORD"
+run() { psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -tAc "$1"; }
+run "ALTER DATABASE \"$E2E_DB\" ALLOW_CONNECTIONS $ALLOW" > /dev/null
+if [ "$ALLOW" = "false" ]; then
+  run "SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity
+       WHERE datname = '$E2E_DB'" > /dev/null
+fi
+echo "Connections to $E2E_DB allowed: $ALLOW"
+"""
+
+
 def database_name() -> str:
     """The browser-test database name, refusing anything not clearly a test database."""
     name = os.environ.get("E2E_DB_NAME", DEFAULT_DATABASE)
@@ -63,9 +80,29 @@ def ensure_database(name: str) -> int:
     return compose("exec", "-T", "-e", f"E2E_DB={name}", "db", "sh", "-c", _CREATE_IF_MISSING)
 
 
+def set_connections(name: str, allow: bool) -> int:
+    """Allow or refuse connections to the browser-test database, as a real outage would."""
+    flag = "true" if allow else "false"
+    return compose(
+        "exec",
+        "-T",
+        "-e",
+        f"E2E_DB={name}",
+        "-e",
+        f"ALLOW={flag}",
+        "db",
+        "sh",
+        "-c",
+        _SET_CONNECTIONS,
+    )
+
+
 def up() -> int:
     name = database_name()
     if ensure_database(name) != 0 or compose("build", "migrate") != 0:
+        return 1
+    # Ends any outage a stopped test run left behind.
+    if set_connections(name, allow=True) != 0:
         return 1
     env = {**os.environ, "E2E_SECRET_KEY": secrets.token_urlsafe(48), "E2E_DB_NAME": name}
     # migrate-e2e runs first, as a dependency; the running database container is not recreated.
@@ -80,8 +117,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument("action", choices=["up", "down"])
+    parser.add_argument("action", choices=["up", "down", "database"])
+    parser.add_argument("state", nargs="?", choices=["on", "off"], help="for database")
     arguments = parser.parse_args(argv)
+    if arguments.action == "database":
+        if arguments.state is None:
+            parser.error("database needs on or off")
+        return set_connections(database_name(), allow=arguments.state == "on")
     return up() if arguments.action == "up" else down()
 
 

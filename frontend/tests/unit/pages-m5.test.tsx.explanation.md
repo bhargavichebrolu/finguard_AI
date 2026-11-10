@@ -43,6 +43,7 @@ The mock API keeps a case in memory, so changes, history and notes behave as the
 | is not available to demo users | Permission guard. |
 
 ## H. Important Technical Concepts
+- **Expected status (Phase 5 M7):** status changes now carry `expected_status`, the status shown when the change was made, so the expected PATCH bodies include it.
 - **Stateful mock:** each PATCH updates the in-memory case and appends history, as the API does.
 
 ## I. Example

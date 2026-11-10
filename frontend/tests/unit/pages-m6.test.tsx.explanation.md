@@ -43,6 +43,9 @@ A local value, not a function: the chart card under test.
 ### `submit`
 A local value, not a function: the Create account button.
 
+### `answering`
+In the blob test: an axios adapter that fails with a given status and Blob body, so the real client's interceptor handles it.
+
 ## E. Classes Explained
 None.
 
@@ -59,8 +62,8 @@ Each test sets a role, replaces the handlers it needs and renders the page throu
 | shows a chart as a table on request | Table view. |
 | reports a failure to load the report | Error state. |
 | downloads each report type from its path | One button per type and the right query. |
-| shows an error when a download fails | Error state and buttons re-enabled. |
-| reads the API's message out of a blob error body | `readBlobError`, including a non-JSON body. |
+| shows an error when a download fails | The API's message and reference, and buttons re-enabled. |
+| reads the API's message out of a blob error body, through the real client | The interceptor reads a Blob body (503 message and reference); a non-JSON body gives the status message. |
 | is closed to the demo role | Permission guard. |
 | checks the high risk boundary against the frozen threshold | `checkBoundary`. |
 | shows settings read-only to an analyst | No edit or account controls. |
@@ -70,7 +73,7 @@ Each test sets a role, replaces the handlers it needs and renders the page throu
 | creates an account once the password is long enough | Disabled until valid, then the POST body. |
 
 ## H. Important Technical Concepts
-- **Blob error bodies:** jsdom's XMLHttpRequest returns no body for blob requests, so the page test can only see the status message. `readBlobError` is therefore tested directly, and the browser tests in M7 cover the real path.
+- **Blob error bodies (corrected in Phase 5 M7):** this note used to say jsdom drops blob bodies, so the page test saw only the status message. The real cause was the client mapping errors before the body was read, which the earlier direct test of `readBlobError` could not catch; the browser test with a database outage did. With the fix the page test shows the API's message.
 
 ## I. Example
 ```powershell

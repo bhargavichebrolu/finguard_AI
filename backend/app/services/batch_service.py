@@ -31,7 +31,12 @@ from sqlalchemy.orm import Session
 
 from app.api.schemas.transactions import TransactionInput
 from app.core.config import Settings, get_settings
-from app.core.errors import InvalidInputError, NotFoundError, PayloadTooLargeError
+from app.core.errors import (
+    InvalidInputError,
+    NotFoundError,
+    PayloadTooLargeError,
+    is_connection_error,
+)
 from app.database.session import session_scope
 from app.ml.schema import (
     ACCOUNT_IDENTIFIER_COLUMNS,
@@ -441,7 +446,12 @@ def process_job(
     settings: Settings,
     stop: threading.Event | None = None,
 ) -> str:
-    """Work a claimed job to the end. Returns "completed", "failed", "released" or "lost"."""
+    """Work a claimed job to the end.
+
+    Returns "completed", "failed", "released", "lost" or "interrupted". A lost database connection
+    interrupts the job rather than failing it: chunks are idempotent, so it is resumed from the
+    last stored chunk, within the attempt limit (Phase 5 M7).
+    """
     lease = timedelta(seconds=settings.batch_lease_seconds)
     try:
         with session_scope() as session:
@@ -489,10 +499,25 @@ def process_job(
             )
             session.commit()
             return "completed"
-    except Exception:
+    except Exception as error:
+        if is_connection_error(error):
+            logger.warning("Batch %s interrupted: the database connection was lost", job_id)
+            _release_after_interruption(job_id, worker_id)
+            return "interrupted"
         logger.exception("Batch %s processing failed", job_id)
         _mark_failed(job_id, worker_id, FAILED_MESSAGE)
         return "failed"
+
+
+def _release_after_interruption(job_id: uuid.UUID, worker_id: str) -> None:
+    """Give an interrupted job back. If the database is still down, its lease expiring does."""
+    try:
+        with session_scope() as session:
+            release_job(session, job_id, worker_id)
+    except Exception as error:
+        if not is_connection_error(error):
+            raise
+        logger.warning("Batch %s will be resumed when its lease expires", job_id)
 
 
 def release_job(session: Session, job_id: uuid.UUID, worker_id: str) -> None:
@@ -538,7 +563,9 @@ def process_available_jobs(
         if job_id is None:
             break
         claimed += 1
-        process_job(job_id, worker_id, model, settings, stop)
+        if process_job(job_id, worker_id, model, settings, stop) == "interrupted":
+            # Wait for the next poll rather than reclaiming at once against a failing database.
+            break
     return claimed
 
 

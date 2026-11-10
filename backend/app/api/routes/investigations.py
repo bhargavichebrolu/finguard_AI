@@ -57,12 +57,15 @@ def read_one(_user: Viewer, db: DbSession, investigation_id: uuid.UUID) -> Inves
 @router.patch(
     "/{investigation_id}",
     response_model=InvestigationDetail,
-    responses={404: {"model": ErrorResponse}},
+    responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
 )
 def update(
     user: Investigator, db: DbSession, investigation_id: uuid.UUID, body: InvestigationUpdate
 ) -> InvestigationDetail:
-    """Change the status or assignee. Status changes are added to the history."""
+    """Change the status or assignee. Status changes are added to the history.
+
+    With expected_status, the change is refused (409) if the status has changed since.
+    """
     investigation = investigation_service.update_investigation(db, investigation_id, body, user)
     return InvestigationDetail.model_validate(investigation)
 

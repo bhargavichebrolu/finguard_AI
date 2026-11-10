@@ -167,6 +167,53 @@ The same browser tests run in Playwright's Firefox and WebKit builds as well as 
 
 **Assistive technology.** `accessibility-tree.spec.ts` checks the tree screen readers receive on key screens: landmarks, the ten links in order, names, the invalid state and its description, a named modal dialog, and chart tables. It passes in all three engines. It shows what is exposed, not what is spoken. **Screen-reader behaviour is UNTESTED:** the Narrator and NVDA checklist in [docs/accessibility/screen-reader-checklist.md](docs/accessibility/screen-reader-checklist.md) has not been run.
 
+## Integration failure results (Phase 5 M7)
+
+Failures are produced for real wherever possible: the browser-test API container is stopped or restarted, and the browser-test database refuses connections (`python scripts/e2e_stack.py database off`, which affects `finguard_e2e_test` only). Faults that cannot be produced on demand otherwise (a page's code failing to download, a delayed or dropped response, a connection lost inside one chunk) are injected, and the code behind them is real.
+
+| Requirement | Where it is tested | Result |
+|---|---|---|
+| API unavailable, slow or returning errors | `resilience.spec.ts` (API stopped and started; delayed answer; dropped answer; failed page download), `resilience.test.tsx` (timeout, no answer, 503, proxy 502) | Passed |
+| Session ending during a task | `resilience.spec.ts` (expired on the server mid-form: sign-in, back to the same page, nothing stored); `auth.spec.ts` (expiry, revocation) | Passed |
+| Database lost and recovered | `test_failures.py` (real connection failure gives 503; all connections ended, next request succeeds); `resilience.spec.ts` (outage: actionable message with reference, still signed in, recovers without a restart) | Passed |
+| Batch failures, interruptions, retries, duplicate submissions | `test_failures.py` (lost connection resumes with every row once; lease recovery while still down; other errors still fail), `test_batch_queue.py` (crashes, leases, attempt limit), `batches.spec.ts` (database off mid-job: resumes at attempt 2, 20,000 rows once; same file twice stores each identified row once; API restart mid-job) | Passed |
+| Model loading and inference failures | `test_model_service.py` (start-up refuses altered, missing or mismatched model files), `test_failures.py` (scoring failure: 500 with a reference, nothing stored, retry succeeds), `test_batches.py` (scoring failure in a batch fails the job without revealing the cause) | Passed |
+| Report download failures | `resilience.spec.ts` (download during the outage: message and reference, no file; works after), `pages-m6.test.tsx` | Passed |
+| Concurrent investigation updates and history | `test_failures.py` (stale status refused; of eight simultaneous changes from one status exactly one applies), `test_investigations.py` (16 simultaneous changes keep the history chain), `investigations.spec.ts` (stale page refused, current status shown, fresh decision succeeds) | Passed |
+| Errors safe and actionable | `assert_safe` in `test_failures.py` and `expectSafeAlert` in `resilience.spec.ts`: no SQL, driver, host, trace or password text; a reference to quote | Passed |
+| No duplicate predictions, no silently lost jobs | Batch resume tests count rows and predictions per job; double-pressing Score stores one transaction; an interrupted job is resumed, never left or failed silently | Passed |
+
+**Browser runs, 2026-11-10, all seven projects, one worker:**
+
+| Run | Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| First full run | 311 | 310 | 1 | 0 |
+| Final full run | 311 | 311 | 0 | 0 |
+
+Per project in the final run: setup 5, desktop 83, tablet 19, mobile 19, firefox 83, webkit 83, webkit-mobile 19, all passed.
+
+**An unexplained intermittent failure.** In the first run, the Phase 4 test "assigns a case to a colleague, to me and to nobody" failed once in Firefox: after "Assign to me", the case still showed the colleague for 10 seconds. It was investigated and not reproduced: the batch and investigation specs were rerun in Firefox in the same order, building the same large queue, with every request logged. All 18 tests passed, and each action sent exactly one PATCH, answered 200 within about 60 ms, so a stray second change from the select is ruled out. The test passed in four repeated runs and in the final full run. Its cause is not known; the test is unchanged and still asserts the same thing. If it recurs, record the request log in the same way.
+
+**Defects found and fixed, each with a regression test that failed before the fix:**
+
+| Defect | Fix | Regression test |
+|---|---|---|
+| A database outage answered `500 Internal server error`, which says nothing useful | Connection errors answer 503 "The database could not be reached. Try again in a moment; if this continues, tell an administrator." with `Retry-After` | `test_failures.py` (two outage tests), `resilience.spec.ts` |
+| A batch whose database connection dropped mid-job was marked FAILED, although its stored chunks made it resumable | A lost connection gives the job back for resumption (within the attempt limit); other errors still fail it | `test_failures.py` (two batch tests), `batches.spec.ts` |
+| A model failure while scoring answered a bare 500 | `ScoringError`: nothing stored, a message saying so and a reference | `test_failures.py` |
+| A stale investigation page could silently override a colleague's newer status | `expected_status`: a change from a stale status is refused with 409 naming the current status; the page reloads the case | `test_failures.py`, `investigations.spec.ts`, `pages-m5.test.tsx` |
+| Reloading during an API restart or database outage sent a signed-in user to the sign-in page | Only a 401 means signed out; otherwise "FinGuard AI is unavailable" with Try again, keeping the session and the page | `resilience.test.tsx`, `resilience.spec.ts` |
+| A page whose code failed to download blanked the whole interface (finding F7) | `ErrorBoundary` per page and around the app, with a reload prompt | `resilience.test.tsx`, `resilience.spec.ts` |
+| Failed downloads showed only a default message, without the API's text or reference (since Phase 4) | The client reads Blob error bodies before mapping them | `pages-m6.test.tsx` (two tests), `resilience.spec.ts` |
+| A request with no answer could not say it timed out, nor warn that a change may have been saved | Timeout and no-answer messages; "may still have been saved" for changes | `resilience.test.tsx` |
+
+**Known limitations from this milestone:**
+
+- A prediction submitted **without** a transaction identifier whose answer is lost may already be stored; submitting it again stores a second record. The interface warns that the change may have been saved; giving an identifier makes a repeat a refused duplicate (409).
+- If the database is still down when a batch is interrupted, the job resumes when its lease runs out (60 seconds) rather than at once. A job interrupted three times is failed, with its stored rows kept.
+- Assignment changes carry no expected value: the last one wins, and each is audited.
+- The reload prompt reloads the page, so unsaved input on that page is lost.
+
 ## Clean-clone results (Phase 5 M1)
 
 `scripts/verify_clean_clone.py` on a fresh clone without `.env`, the model binary or the dataset: lockfile installs, backend 421 passed, 0 failed, 270 skipped (1 deselected); repository checks passed; frontend 98 passed and the build succeeded. Every skip has one of two reasons:

@@ -34,6 +34,9 @@ Stops and removes the two browser-test containers.
 ### `main`
 Parses `up` or `down`.
 
+### `set_connections`
+Allows or refuses connections to the browser-test database, as the superuser inside the database container; refusing also ends open connections. `up` always allows them, ending an outage a stopped test run left behind (Phase 5 M7).
+
 ## E. Classes Explained
 None.
 
@@ -44,6 +47,7 @@ Build, migrate, start, wait for health.
 Output: the `finguard-api-e2e-1` container on 127.0.0.1:8011.
 
 ## H. Important Technical Concepts
+- **`database off|on` (Phase 5 M7):** simulates a database outage for `finguard_e2e_test` only, using `ALTER DATABASE ... ALLOW_CONNECTIONS`; other databases in the container are untouched.
 - **Own database (Phase 5 M1):** the browser tests use `finguard_e2e_test`, so running the backend suite no longer forces a restart of this stack.
 - **The signing key** exists only in this process's environment for the Compose call. Without it the API refuses to start, because `SECRET_KEY` must have 32 characters.
 

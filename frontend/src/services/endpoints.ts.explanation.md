@@ -22,15 +22,6 @@ Pages should not build URLs or guess response shapes. The types come from `api.g
 - **Internal processing:** fetches the file as a blob, so the session cookie is sent, takes the file name from `Content-Disposition`, and saves it through a temporary link.
 - **Error handling:** a failed request rejects with `ApiError`. **Calls:** `api.get`. **Used by:** batch, report and investigation pages.
 
-### `blobText`
-Returns a Blob's text, using `Blob.text()` where it exists and `FileReader` otherwise, as in jsdom.
-
-### `readBlobError`
-- **Purpose:** keep the API's message when a download fails.
-- **Parameters / types:** `caught: unknown`. **Returns / type:** `Promise<ApiError>`.
-- **Internal processing:** a download asks for a Blob, so an error body arrives as a Blob too. This reads it, parses it as JSON and puts it back on the error before `toApiError` maps it. A body that is not JSON becomes empty, giving the status's default message.
-- **Error handling:** never throws. **Calls:** `blobText`, `toApiError`. **Used by:** `downloadFile`, tests.
-
 ### `response`
 A local value in `downloadFile`, not a function: the successful response.
 
@@ -44,6 +35,7 @@ A page calls, for example, `transactionsApi.predict(input)`. That calls `api.pos
 Input: arguments matching the API's request schemas. Output: the API's response types, re-exported under short names such as `Prediction` and `ModelReport`.
 
 ## H. Important Technical Concepts
+- **Download errors (Phase 5 M7):** `readBlobError` and `blobText` moved into the client's response interceptor (`api.ts`). Here they never ran on a real failure: the interceptor had already turned the error into an `ApiError`, so downloads lost the API's message and reference. `downloadFile` now lets the client's `ApiError` through.
 - **Groups:** `authApi`, `transactionsApi`, `batchesApi`, `investigationsApi`, `modelsApi`, `reportsApi`, `settingsApi`, `systemApi`, `usersApi` and `auditApi`. Each method maps to one route in `API_DOCUMENTATION.md`.
 - **One module, not ten:** the plan proposed one module per area. They are grouped in one file instead, because each group is a few lines, and one document describes them better than ten thin ones.
 - **`downloadPaths`:** builds the CSV export addresses, so pages never assemble them.

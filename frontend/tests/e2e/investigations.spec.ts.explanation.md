@@ -50,6 +50,7 @@ Each test signs in through a saved state and works through the real interface an
 | keeps history in order under concurrent updates from two people | 8 status changes and 8 notes sent at once by two users: every history entry starts where the previous ended, times never go backwards, the last entry matches the status, all notes kept. |
 
 ## H. Important Technical Concepts
+- **Stale page (Phase 5 M7):** a colleague escalates a case while this page shows New; closing it from the stale page is refused with a message naming the current status, the history keeps only the escalation, and a fresh decision then succeeds.
 - **Why ordering holds:** the service locks the investigation row and stamps entries with `clock_timestamp()` after taking the lock (`investigation_service.py`).
 
 ## I. Example

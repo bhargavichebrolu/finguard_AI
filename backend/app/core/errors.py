@@ -10,9 +10,16 @@ from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import DBAPIError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger("finguard.errors")
+
+DATABASE_RETRY_AFTER_SECONDS = 5
+DATABASE_UNAVAILABLE_MESSAGE = (
+    "The database could not be reached. Try again in a moment; "
+    "if this continues, tell an administrator."
+)
 
 
 class AppError(Exception):
@@ -77,6 +84,30 @@ class RateLimitedError(AppError):
         )
 
 
+class ScoringError(AppError):
+    """The model failed while scoring. Nothing was stored; the cause is in the server log."""
+
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    def __init__(self) -> None:
+        super().__init__(
+            "The model could not score this transaction, so nothing was stored. "
+            "Give an administrator the reference below."
+        )
+
+
+def is_connection_error(error: BaseException) -> bool:
+    """True when a database error means the database could not be reached (Phase 5 M7).
+
+    That is a failure while connecting (no statement was sent) or a connection lost mid-use,
+    which SQLAlchemy marks as invalidated. Other database errors, such as a statement timeout
+    or a deadlock, are not outages and are handled as unexpected errors.
+    """
+    return isinstance(error, DBAPIError) and (
+        error.connection_invalidated or error.statement is None
+    )
+
+
 def _request_id(request: Request) -> str | None:
     return getattr(request.state, "request_id", None)
 
@@ -121,16 +152,39 @@ def register_exception_handlers(app: FastAPI) -> None:
             headers=error.headers,
         )
 
-    @app.exception_handler(Exception)
-    async def handle_unexpected_error(request: Request, error: Exception) -> JSONResponse:
-        logger.error(
-            "Unhandled error on %s %s",
+    @app.exception_handler(DBAPIError)
+    async def handle_database_error(request: Request, error: DBAPIError) -> JSONResponse:
+        if not is_connection_error(error):
+            return _unexpected(request, error)
+        # The driver's message can name the host and role, so only its type is logged.
+        logger.warning(
+            "Database unavailable on %s %s (%s)",
             request.method,
             request.url.path,
-            exc_info=error,
+            type(error.orig).__name__,
             extra={"request_id": _request_id(request)},
         )
         return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "Internal server error.", "request_id": _request_id(request)},
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"detail": DATABASE_UNAVAILABLE_MESSAGE, "request_id": _request_id(request)},
+            headers={"Retry-After": str(DATABASE_RETRY_AFTER_SECONDS)},
         )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, error: Exception) -> JSONResponse:
+        return _unexpected(request, error)
+
+
+def _unexpected(request: Request, error: Exception) -> JSONResponse:
+    """Log the error on the server and give the client only a reference."""
+    logger.error(
+        "Unhandled error on %s %s",
+        request.method,
+        request.url.path,
+        exc_info=error,
+        extra={"request_id": _request_id(request)},
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error.", "request_id": _request_id(request)},
+    )

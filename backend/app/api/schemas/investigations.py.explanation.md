@@ -41,6 +41,7 @@ FastAPI validates requests against these before the route runs.
 `{"status": "UNDER_REVIEW"}` changes the status. `{"assigned_user_id": null}` unassigns.
 
 ## H. Important Technical Concepts
+- **`expected_status` (Phase 5 M7):** optional; the status the caller last saw. `_must_change_something` now requires `status` or `assigned_user_id`, so `expected_status` alone is refused.
 - **Three truths stay separate (PRD 6.1).** `prediction` is the model's output, and `status` is a person's workflow label. A list row shows both, under different names, and neither changes the other.
 
 ## I. Example

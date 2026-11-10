@@ -270,6 +270,8 @@ export interface paths {
         /**
          * Update
          * @description Change the status or assignee. Status changes are added to the history.
+         *
+         *     With expected_status, the change is refused (409) if the status has changed since.
          */
         patch: operations["update_api_v1_investigations__investigation_id__patch"];
         trace?: never;
@@ -961,10 +963,15 @@ export interface components {
         /**
          * InvestigationUpdate
          * @description A change to status or assignee. Send assigned_user_id as null to unassign.
+         *
+         *     expected_status, when given, is the status the caller last saw. If someone has changed it
+         *     since, the update is refused with 409 and nothing changes, so a stale page cannot silently
+         *     override a colleague's decision (Phase 5 M7).
          */
         InvestigationUpdate: {
             /** Assigned User Id */
             assigned_user_id?: string | null;
+            expected_status?: components["schemas"]["InvestigationStatus"] | null;
             status?: components["schemas"]["InvestigationStatus"] | null;
         };
         /**
@@ -2281,6 +2288,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

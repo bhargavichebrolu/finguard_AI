@@ -172,6 +172,8 @@ Phase 1 and 2 files have documents in [docs/file-explanations/](docs/file-explan
 | `frontend/src/services/`, `hooks/`, `components/`, `layouts/`, `types/`, `utils/` | API client, state, shared components, layout, typed contracts, formatting |
 | `frontend/tests/unit/*` | Component tests against a mock API |
 | `frontend/playwright.config.ts`, `frontend/tests/e2e/*` | Browser tests against the real API and `finguard_e2e_test` at three viewports in Chromium, and in Firefox and WebKit (Phase 5 M6); `accessibility-tree.spec.ts` checks what assistive technology is given |
+| `frontend/src/components/ErrorBoundary.tsx` | Reload prompt when a page fails to download or render (Phase 5 M7) |
+| `backend/tests/api/test_failures.py`, `frontend/tests/unit/resilience.test.tsx`, `frontend/tests/e2e/resilience.spec.ts` | Integration failure tests: outages, recovery, stale changes, safe messages (Phase 5 M7) |
 | `docs/accessibility/screen-reader-checklist.md` | Manual Narrator and NVDA steps; UNTESTED until the owner runs it |
 | `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Start the browser-test API; create, seed and adjust its database (refuses non-`_test` names) |
 | `scripts/verify_clean_clone.py`, `scripts/test_report.py` | Clean-clone reproducibility check and pytest report reading |
@@ -358,6 +360,26 @@ measure_performance.py render           Markdown tables only from saved JSON
 ```
 Dashboard summary: `report_service.build_summary` -> `repositories/reports.model_flag_breakdown` (one grouped pass). CSV exports: `utils/csv_safety.csv_lines` (64 KB pieces) fed by server-side-cursor queries.
 
+### Failure handling (Phase 5 M7)
+```
+database unreachable   any route -> SQLAlchemy DBAPIError -> core/errors.is_connection_error?
+                         yes: 503 + Retry-After 5, "The database could not be reached. ..." + request_id
+                         no (timeout, deadlock): 500 "Internal server error." + request_id, trace in log
+                       recovery: pool_pre_ping reconnects on the next request; no restart
+model fails to score   prediction_service.create_prediction -> ScoringError 500, nothing stored
+batch loses database   process_job -> "interrupted": job given back (or lease expires) -> resumed
+                         from processed_records; attempts + 1; other errors still -> FAILED
+stale status change    PATCH /investigations/{id} {status, expected_status}
+                         expected != current (under row lock) -> 409 naming the current status
+frontend               services/api.toApiError: timeout / unreachable / proxy 502-504 messages;
+                         "may still have been saved" for a change with no answer
+                       hooks/useAuth: start-up 401 -> signed out; anything else -> "unavailable" + Try again
+                       components/ErrorBoundary: per page (keyed) and whole app -> reload prompt
+                       InvestigationCentrePage: sends expected_status; 409 -> message + reload case
+browser-test outages   scripts/e2e_stack.py database off|on (finguard_e2e_test only)
+                       support.ts stopApiContainer / startApiContainer / restartApiContainer
+```
+
 ## 15. Database architecture (implemented)
 PostgreSQL 17 with the tables, constraints and indexes in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md). Two roles: a superuser for administration, and `finguard_app` without superuser rights for the API, migrations and tests. SCRAM applies to every connection, set by `POSTGRES_INITDB_ARGS` at first initialisation.
 
@@ -399,6 +421,7 @@ BatchWorker (one thread in every API process, Phase 5 M4)
   |   insert ON CONFLICT DO NOTHING, predictions, investigations, labels, row errors, progress
   | final status, owner cleared, batch_uploads row deleted, audit entry
   | crash: lease expires -> any worker resumes after the last commit; after 3 attempts -> FAILED
+  | lost database connection: job given back, not failed; resumed the same way (Phase 5 M7)
   | shutdown: finish chunk, release lease -> another process resumes at once
 ```
 Results, export and the error report are separate routes. Start-up only removes temporary files older than an hour; it never touches jobs.
@@ -407,7 +430,7 @@ Results, export and the error report are separate routes. Start-up only removes 
 Every prediction stores `model_version`, `threshold_used` and `high_risk_boundary_used`, so old results stay interpretable after a model or setting change. The database refuses a stored decision that contradicts the score and threshold.
 
 ## 21. Investigation workflow (implemented)
-A flagged prediction outside demo mode opens an investigation with status `NEW`. Investigators and admins change status and assignee, and add notes. Each status change is a new history row, stamped after the row lock is held, so the order is right even under simultaneous changes. Statuses are workflow labels: they never change a score, a decision or a metric.
+A flagged prediction outside demo mode opens an investigation with status `NEW`. Investigators and admins change status and assignee, and add notes. Each status change is a new history row, stamped after the row lock is held, so the order is right even under simultaneous changes. Since Phase 5 M7 the interface sends `expected_status`, so a change made from a stale page is refused (409) instead of silently overriding a colleague's decision. Statuses are workflow labels: they never change a score, a decision or a metric.
 
 ## 22. Explainability flow (implemented)
 Phase 2: `explainability.py` produced global importance, saved in the metrics bundle. Phase 3: `ServingModel.explain` uses XGBoost's own TreeSHAP values (`pred_contribs`), which tests show match the `shap` library and add up to the score on the log-odds scale. They are stored for every single prediction and for flagged batch rows, and returned with Phase 2's limitations. SHAP does not establish causality. The interface that shows them is Phase 4.

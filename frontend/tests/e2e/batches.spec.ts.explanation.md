@@ -43,6 +43,12 @@ A local value, not a function: the most recent job read back after the resume te
 ### `label`
 Inside the progress test's poll: the status word before the colon in the progress label (for example Processing or Completed). The poll ends when it reads Completed.
 
+### `second`
+In the duplicate-file test: the second job's counts, which must show nothing stored and every row failed.
+
+### `stored`
+In the duplicate-file test: how many transactions carry the first row's identifier (must be one).
+
 ## E. Classes Explained
 None.
 
@@ -59,6 +65,7 @@ Each test signs in through a saved state and works through the real interface an
 | resumes a batch after the API restarts mid-job, storing every row once | Phase 5 M4: a graceful container restart mid-job; the page shows the resume, and all 20,000 rows are stored once, on attempt 2. |
 
 ## H. Important Technical Concepts
+- **Database outage and duplicates (Phase 5 M7):** one test switches the database off mid-job: the page says it lost contact, and the job resumes (attempt 2) and completes with every row once, never failed. Another submits the same file twice: the second job stores nothing and reports every row as already existing.
 - **Progress polled to completion (Phase 5 M6):** the progress test polls until the status label reads Completed, not until the bar reads 100. The last chunk is stored (100%) a moment before the job is marked completed, so stopping at 100 made the check that the label changed depend on timing; it failed once in WebKit.
 - **Formula safety:** the error report records the row, column and message, never the submitted text, so formula-shaped input cannot reach a spreadsheet; the check covers every exported cell anyway.
 

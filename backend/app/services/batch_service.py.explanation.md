@@ -132,6 +132,9 @@ Streams row errors as CSV. It opens its own session, because streaming continues
 ### `rows`
 Nested inside `error_report_lines`. Yields the error rows.
 
+### `_release_after_interruption`
+Gives an interrupted job back for immediate resumption. If the database is still unreachable, it logs that the job will resume when its lease expires; any other error is raised.
+
 ## E. Classes Explained
 ### `BatchWorker`
 One background thread per API process that works the queue. Started and stopped by `lifespan` in `app/main.py`.
@@ -150,6 +153,7 @@ Upload: check extension, save, inspect, create job, respond 202. Background: chu
 Input: a CSV with `amount`, `transaction_type`, `step`, `destination_category` and optionally `external_transaction_id`. Output: stored results, an error report, and progress.
 
 ## H. Important Technical Concepts
+- **Lost connections interrupt, never fail (Phase 5 M7):** in `process_job`, a connection error (`is_connection_error`) returns "interrupted" and gives the job back instead of marking it failed, because chunks are idempotent and progress is stored; the next claim resumes it and counts an attempt, so `batch_max_attempts` still stops a job that keeps failing. `process_available_jobs` then waits for the next poll rather than reclaiming at once. Any other error still fails the job.
 - **`FAILED_MESSAGE`** is the safe message for an unexpected error; **`_STALE_UPLOAD_SECONDS`** is one hour.
 - **Removed in M4:** `process_batch` (in-process background task) and `recover_interrupted_jobs`, which assumed one process and failed every unfinished job, deleting files, at each start-up.
 - **PRD 9.2 and storage.** Upload bytes live in the database only within the 10 MB and 50,000-row limits and only until the job ends (completed, failed or exhausted): controlled temporary storage that every container can reach, as PRD 11.7 and the Phase 5 approval require. The temporary file on disk exists only while the upload request runs.

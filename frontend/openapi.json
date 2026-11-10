@@ -707,7 +707,7 @@
       },
       "InvestigationUpdate": {
         "additionalProperties": false,
-        "description": "A change to status or assignee. Send assigned_user_id as null to unassign.",
+        "description": "A change to status or assignee. Send assigned_user_id as null to unassign.\n\nexpected_status, when given, is the status the caller last saw. If someone has changed it\nsince, the update is refused with 409 and nothing changes, so a stale page cannot silently\noverride a colleague's decision (Phase 5 M7).",
         "properties": {
           "assigned_user_id": {
             "anyOf": [
@@ -720,6 +720,16 @@
               }
             ],
             "title": "Assigned User Id"
+          },
+          "expected_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestigationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "anyOf": [
@@ -3300,7 +3310,7 @@
         ]
       },
       "patch": {
-        "description": "Change the status or assignee. Status changes are added to the history.",
+        "description": "Change the status or assignee. Status changes are added to the history.\n\nWith expected_status, the change is refused (409) if the status has changed since.",
         "operationId": "update_api_v1_investigations__investigation_id__patch",
         "parameters": [
           {
@@ -3344,6 +3354,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "422": {
             "content": {

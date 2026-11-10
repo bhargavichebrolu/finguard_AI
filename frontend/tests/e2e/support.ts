@@ -78,8 +78,49 @@ export function runDatabaseScript(...args: string[]): string {
  * Needs the Docker CLI on PATH. The container keeps its environment, so sessions stay valid.
  */
 export function restartApiContainer(): void {
-  const container = process.env.FINGUARD_E2E_CONTAINER ?? "finguard-api-e2e-1";
-  execFileSync("docker", ["restart", "--time", "30", container], { stdio: "ignore" });
+  execFileSync("docker", ["restart", "--time", "30", API_CONTAINER], { stdio: "ignore" });
+}
+
+const API_CONTAINER = process.env.FINGUARD_E2E_CONTAINER ?? "finguard-api-e2e-1";
+
+/** Stop the browser-test API, as a crash or a deploy in progress would leave it (Phase 5 M7). */
+export function stopApiContainer(): void {
+  execFileSync("docker", ["stop", "--time", "30", API_CONTAINER], { stdio: "ignore" });
+}
+
+/** Start the browser-test API again and wait until it answers. */
+export async function startApiContainer(): Promise<void> {
+  execFileSync("docker", ["start", API_CONTAINER], { stdio: "ignore" });
+  await waitForApi();
+}
+
+/** Wait until the browser-test API answers its health check. */
+export async function waitForApi(): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        try {
+          return (await fetch(`${API_URL}/health`)).status;
+        } catch {
+          return 0;
+        }
+      },
+      { timeout: 120_000, intervals: [500] },
+    )
+    .toBe(200);
+}
+
+/**
+ * Simulate an outage of the browser-test database only: new connections are refused and open
+ * ones ended, as when a database server restarts (Phase 5 M7). Other databases are untouched.
+ * Always pair with setDatabaseAvailable(true) in a finally block; `e2e_stack.py up` also ends
+ * any outage a stopped run left behind.
+ */
+export function setDatabaseAvailable(available: boolean): void {
+  execFileSync(pythonPath(), ["-I", path.join(REPO_ROOT, "scripts", "e2e_stack.py"), "database", available ? "on" : "off"], {
+    cwd: REPO_ROOT,
+    stdio: "ignore",
+  });
 }
 
 /** Headers a changing request needs from a signed-in browser: its CSRF token and origin. */

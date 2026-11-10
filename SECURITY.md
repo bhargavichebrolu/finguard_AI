@@ -20,7 +20,7 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | Content Security Policy | `default-src 'none'` on API responses, with a narrow allowance for `/docs` (Phase 4). The frontend's own policy is served with the frontend. |
 | Proxy trust | Off by default. Forwarded addresses are honoured only from `TRUSTED_PROXY_IPS`, and Uvicorn's built-in trust of 127.0.0.1 is turned off with `--no-proxy-headers` (Phase 4). |
 | Rate limiting | Failed logins (5 per minute per address and email, sliding window), predictions and uploads (fixed one-minute window per user). Counted in PostgreSQL since Phase 5 M3, so every API process and every restart share the counts; production refuses the per-process memory store. Tested with real separate processes and restarts. |
-| Safe error responses | One JSON format with a request ID. Validation errors omit submitted values, and unexpected errors return a generic message. |
+| Safe error responses | One JSON format with a request ID. Validation errors omit submitted values, and unexpected errors return a generic message. Since Phase 5 M7, a database that cannot be reached answers 503 with an actionable message and `Retry-After`, logging only the driver error's type (its message can name the host and role); a model failure answers a message saying nothing was stored. Tests check error bodies for SQL, driver, host, trace and password text, in the API and in the browser. |
 | Audit logging | Logins, user changes, predictions, uploads, investigation changes and settings. No passwords, emails of failed logins or note text. |
 | Export safety | Exported CSV cells starting with `=`, `+`, `-` or `@` are prefixed so spreadsheets treat them as text. |
 | Security headers | `nosniff`, `DENY` framing, no referrer, and `no-store` on API responses. |
@@ -29,7 +29,7 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | Container | Runs as an ordinary user, with no training libraries, tests or `.env` in the image. |
 | Data stays out of Git | Datasets and model binaries are ignored. |
 | Dependencies pinned | `uv.lock` and `package-lock.json`. |
-| Dependency audits (Phase 5) | `pip-audit` and `npm audit`: 0 known vulnerabilities on 2026-11-09; run in CI. |
+| Dependency audits (Phase 5) | `pip-audit` and `npm audit`: 0 known vulnerabilities on 2026-11-09. To run in CI once it exists (Phase 5 M8); until then, run by hand. |
 | Secrets in history (Phase 5) | `scripts/scan_secrets.py` scans every line ever added on every branch; clean on 2026-11-09. |
 | Retention (Phase 5) | `python -m app.commands.retention [--apply]`: ended sessions after 7 days, audit records after 365, rate-limit rows after 1 day. |
 | Production-like verification (Phase 5) | HTTPS through Caddy with production settings: prefixed Secure cookies, HSTS, CSP, CSRF, origin, CORS and forwarded-header rules, tested end to end. See [docs/security/phase-5-review.md](docs/security/phase-5-review.md). |

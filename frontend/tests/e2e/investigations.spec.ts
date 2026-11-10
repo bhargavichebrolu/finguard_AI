@@ -175,3 +175,35 @@ test("keeps history in order under concurrent updates from two people", async ({
   await expect(panel(page).locator(".timeline li")).toHaveCount(history.length);
   await expect(panel(page).locator(".notes li")).toHaveCount(8);
 });
+
+test("refuses a change made from a stale page, shows what changed, then allows a fresh decision", async ({ page, browser }) => {
+  // Phase 5 M7: without the expected status, this page would have closed the case over the
+  // colleague's escalation without either of them knowing.
+  const { id } = await openNewCase(page);
+  await page.goto(`/investigations?open=${id}`);
+  const caseFile = panel(page);
+  await expect(caseFile.locator(".badge-status").first()).toHaveText("New");
+
+  const colleague = await browser.newContext({ storageState: statePath("colleague") });
+  const other = await colleague.newPage();
+  await other.goto("/investigations");
+  expect((await apiCall(other, "PATCH", `/api/v1/investigations/${id}`, { status: "ESCALATED" })).status()).toBe(200);
+  await colleague.close();
+
+  await caseFile.getByLabel("Change status").selectOption("CLOSED");
+  await caseFile.getByRole("button", { name: "Update status" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Mark as closed" }).click();
+  await expect(caseFile.getByRole("alert")).toContainText(
+    "Someone else changed this investigation: its status is now Escalated. Review it and try again.",
+  );
+  await expect(caseFile.locator(".badge-status").first()).toHaveText("Escalated");
+  await expect(caseFile.locator(".timeline li")).toHaveCount(2);
+  await expect(caseFile.locator(".timeline li").nth(1)).toContainText("New to Escalated");
+
+  await caseFile.getByLabel("Change status").selectOption("CLOSED");
+  await caseFile.getByRole("button", { name: "Update status" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Mark as closed" }).click();
+  await expect(caseFile.locator(".badge-status").first()).toHaveText("Closed");
+  await expect(caseFile.locator(".timeline li")).toHaveCount(3);
+  await expect(caseFile.locator(".timeline li").nth(2)).toContainText("Escalated to Closed");
+});
