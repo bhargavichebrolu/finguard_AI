@@ -40,8 +40,8 @@ A local value, not a function: the score column of the first results page.
 ### `job`
 A local value, not a function: the most recent job read back after the resume test.
 
-### `label`
-Inside the progress test's poll: the status word before the colon in the progress label (for example Processing or Completed). The poll ends when it reads Completed.
+### `snapshot`
+Inside the progress test's poll: the bar's value and the status word before the colon in its label (for example Processing or Completed), read together in one `evaluate` call from the same render. The poll ends when the label reads Completed.
 
 ### `second`
 In the duplicate-file test: the second job's counts, which must show nothing stored and every row failed.
@@ -67,6 +67,7 @@ Each test signs in through a saved state and works through the real interface an
 ## H. Important Technical Concepts
 - **Database outage and duplicates (Phase 5 M7):** one test switches the database off mid-job: the page says it lost contact, and the job resumes (attempt 2) and completes with every row once, never failed. Another submits the same file twice: the second job stores nothing and reports every row as already existing.
 - **Progress polled to completion (Phase 5 M6):** the progress test polls until the status label reads Completed, not until the bar reads 100. The last chunk is stored (100%) a moment before the job is marked completed, so stopping at 100 made the check that the label changed depend on timing; it failed once in WebKit.
+- **Bar and label read together (Phase 5 gate investigation):** the poll used to read the bar's value, then the label, in two separate browser calls. A re-render could fall between them: the bar was read at 95 while Processing, the next API answer brought Completed at 100, and the label was then read as Completed. The poll ended with 95 as the last value, and `seen[seen.length - 1]` failed although the page never showed Completed beside 95. Traces of the two failures (Firefox, 2 of 13 investigation runs) show the API going from Processing at 95% straight to Completed at 100%; it never reported Completed below 100. Both are now read in one `evaluate` call, which sees one render. Every assertion is unchanged.
 - **Formula safety:** the error report records the row, column and message, never the submitted text, so formula-shaped input cannot reach a spreadsheet; the check covers every exported cell anyway.
 
 ## I. Example

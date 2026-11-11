@@ -1,8 +1,10 @@
 # Phase 5 completion: integration hardening, quality assurance and reliability
 
-Status: all nine milestones committed on branch `phase-5-hardening`, awaiting review at the gate. Not merged into `main`, not pushed, and Phase 6 has not started.
+Status: all nine milestones committed on branch `phase-5-hardening`. M9 was accepted as a documentation commit, but **the gate was not accepted**, pending a Firefox reliability investigation. That investigation is complete ([phase-5-firefox-investigation.md](phase-5-firefox-investigation.md)), and its follow-up commit awaits review. Not merged into `main`, not pushed, and Phase 6 has not started.
 
-**One open item for the reviewer:** the first browser run at the gate had two unexplained Firefox failures. A full rerun passed 311 of 311. The investigation-panel symptom has now appeared in two separate runs, so it is reported as open, not as passed (see Results).
+**Open item for the reviewer:** the first browser run at the gate had two Firefox failures.
+- **The teardown hang** is now reproduced and bounded. It is a hang in Playwright's Firefox build under CPU starvation, not an application defect.
+- **The status-change failure** was not reproduced in 33 runs. Its residual risk needs the reviewer's explicit decision.
 
 Plan: [phase-5-plan.md](phase-5-plan.md), approved 2026-11-08. Decisions: [ADR 0005](../decisions/0005-phase-5-decisions.md).
 
@@ -74,7 +76,11 @@ The CI workflow itself has **not** run on GitHub.
 - "changes status, asks before concluding, and keeps the history": a status change did not show within 10 seconds. This is the same symptom as M7's assignment failure, and both came after the batch tests.
 - "the navigation menu opens, works by keyboard, and hides its links when closed": closing the browser context hung in Firefox.
 
-Neither reproduced. No test or assertion was changed. In the rerun the API's request log was kept: all 87 status and assignment changes were answered within 210 ms. Details are in [TESTING_GUIDE.md](../../TESTING_GUIDE.md#phase-5-gate-results-m9-2026-11-11).
+At M9 neither reproduced, and no test or assertion was changed. In the rerun the API's request log was kept: all 87 status and assignment changes were answered within 210 ms. Details are in [TESTING_GUIDE.md](../../TESTING_GUIDE.md#phase-5-gate-results-m9-2026-11-11).
+
+The follow-up investigation ([phase-5-firefox-investigation.md](phase-5-firefox-investigation.md)) changed two tests, keeping every original assertion.
+- The status test now checks the request and the API's answer before the badge.
+- A race in the batch progress test was fixed: it was found during the investigation, and it had failed in 2 of 13 Firefox runs.
 
 ## Multi-process and batch-recovery evidence
 
@@ -142,6 +148,6 @@ See the Phase 5 entry in [CHANGELOG.md](../../CHANGELOG.md) and [SECURITY.md](..
 
 ## Git
 
-- **Branch:** `phase-5-hardening`, ten commits ahead of `main` (`5c392a5`): the approved plan (`dac5bd5`), then M1 to M9.
-- **HEAD:** the M9 commit adding this file, on top of `1621449`. Its hash and the working-tree status after committing are given in the gate report, because a commit cannot contain its own hash.
+- **Branch:** `phase-5-hardening`, ahead of `main` (`5c392a5`) by the approved plan (`dac5bd5`), M1 to M9 (M9 is `80d228c`), and the Firefox investigation follow-up.
+- **HEAD:** the follow-up commit, on top of `80d228c`. Its hash and the working-tree status after committing are given in the report, because a commit cannot contain its own hash.
 - **Not pushed, and not merged into `main`.**

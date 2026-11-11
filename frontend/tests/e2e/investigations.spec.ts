@@ -90,7 +90,19 @@ test("changes status, asks before concluding, and keeps the history", async ({ p
   const caseFile = panel(page);
 
   await caseFile.getByLabel("Change status").selectOption("UNDER_REVIEW");
-  await caseFile.getByRole("button", { name: "Update status" }).click();
+  // Each step of the first change is checked on its own: the click sends the change, the API
+  // accepts it, then the page shows it. This test failed once in Firefox with the badge still
+  // "New" and could not be reproduced (Phase 5 gate investigation), so if it recurs, the failing
+  // line says which step broke: no request, a refusal, or a page that did not show the answer.
+  const isStatusChange = (request: { method(): string; url(): string }) =>
+    request.method() === "PATCH" && new URL(request.url()).pathname === `/api/v1/investigations/${id}`;
+  const [request] = await Promise.all([
+    page.waitForRequest(isStatusChange, { timeout: 10_000 }),
+    caseFile.getByRole("button", { name: "Update status" }).click(),
+  ]);
+  const response = await request.response();
+  expect(response?.status(), "the API's answer to the status change").toBe(200);
+  expect(((await response!.json()) as { status: string }).status).toBe("UNDER_REVIEW");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(caseFile.locator(".badge-status").first()).toHaveText("Under review");
 

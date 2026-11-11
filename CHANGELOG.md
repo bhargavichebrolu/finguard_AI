@@ -73,6 +73,7 @@ The tests for each fix are named in TESTING_GUIDE.md and in the milestone's comm
   - Failed downloads lost the API's message (since Phase 4).
   - No answer gave no hint that a change might have been saved.
 - **M8:** a skip-reason check that would have accepted a database-caused skip.
+- **Gate follow-up:** the batch progress test read the bar and its label in two calls, which could straddle a re-render (2 of 13 Firefox runs). They are now read in one call, with the same assertions.
 
 ### Results at the gate
 | Suite | Passed | Failed | Skipped | Deselected |
@@ -104,10 +105,10 @@ Frozen model hash `69813c17…` unchanged. Nothing under `data/`, `artifacts/` o
 - **WebKit SameSite:** whether WebKit enforces SameSite=Strict is not established. These tests check only that the server sends it.
 - **CI:** it has not run on GitHub, and it cannot run real-model, API, browser or HTTPS tests, because the model binary is not in Git.
 - **Secure cookies:** `Secure` and the cookie prefixes are verified in Chromium only, on a local certificate authority.
-- **Intermittent Firefox failures:**
-  - A case change in the Investigation Centre did not show within 10 seconds, once in M7 (assignment) and once in the first gate run (status). Both came straight after the batch tests.
-  - In the first gate run, one test's browser context failed to close within 60 seconds.
-  - Neither reproduced in reruns, and the causes are unknown. TESTING_GUIDE.md has the details.
+- **Intermittent Firefox failures** (investigated after the gate; see [phase-5-firefox-investigation.md](docs/plans/phase-5-firefox-investigation.md)):
+  - A case change in the Investigation Centre did not show within 10 seconds, once in M7 (assignment) and once in the first gate run (status). It was not reproduced in 33 runs, and its cause is not identified. The status test now checks the request and the API's answer in turn, so a recurrence would show which step broke. **Residual risk awaiting the reviewer's decision.**
+  - Closing a browser context can hang in Playwright's Firefox build under CPU starvation (11 hangs in 3 loaded runs, none in 30 without load). This is a test-infrastructure limitation, not an application defect.
+- **Stored test sessions last 30 minutes:** a browser run slower than that fails with Sign in pages.
 - **Duplicates without an identifier:** a prediction without an identifier whose answer was lost can be stored twice if resubmitted. The interface warns about this.
 - **Last writer wins on assignment:** assignment changes carry no expected value; every change is audited.
 - **Interrupted batches while the database is down:** they resume after the 60-second lease rather than at once.

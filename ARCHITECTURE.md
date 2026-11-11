@@ -1,6 +1,6 @@
 # Architecture
 
-**Implemented through Phase 5:** the offline data pipeline, experiments and model artefacts, the FastAPI service and PostgreSQL database, the React interface, browser tests in three engines, an HTTPS production-like stack, and a CI workflow (written, not yet run on GitHub). Everything runs locally in Docker. Deployment is the target design from the [PRD](docs/PRD.md), planned for Phase 6.
+**Implemented through Phase 5** (Phases 1–4 accepted; Phase 5 implemented on branch `phase-5-hardening`, with acceptance pending): the offline data pipeline, experiments and model artefacts, the FastAPI service and PostgreSQL database, the React interface, browser tests in three engines, an HTTPS production-like stack, and a CI workflow (written, not yet run on GitHub). Everything runs locally in Docker. Deployment is the target design from the [PRD](docs/PRD.md), planned for Phase 6.
 
 ## Target system
 
@@ -51,7 +51,7 @@ Training and live inference are separate processes. The API loads an already-tra
 3. **Separated labels.** Partitions store labels in their own column, and `load_partition` returns them apart from features.
 4. **Fixed direction of dependencies.** `schema` depends on nothing. `features` and `splitting` build on it, then `dataset_preparation`, `eda` and `leakage_audit`, then `scripts`. Lower layers never import higher ones.
 5. **Library code takes paths as arguments.** Only `scripts/` uses repository defaults, which is what lets tests run on small fixtures.
-6. **Saved outputs are the source of truth.** Charts render from saved summaries, and documentation and the planned UI report saved results.
+6. **Saved outputs are the source of truth.** Charts render from saved summaries, and the documentation and the interface report saved results.
 7. **Three kinds of truth stay separate** (PRD 6.1): ground-truth labels, model predictions and investigation outcomes.
 8. **The serving path is light.** `model_artifacts`, `preprocessing`, `features` and `schema` import no training-only code, which a test checks in a new process.
 9. **One choke point per rule.** Oversampling happens only in `fit_candidate`. The test partition is read only by `final_evaluation`. The served model is loaded only by `load_verified_model`.

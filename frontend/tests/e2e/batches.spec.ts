@@ -153,13 +153,22 @@ test("shows processing progress for a larger file until it completes", async ({ 
   // Polled until the status completes, not until the bar reads 100: the last chunk is stored
   // (100%) a moment before the job is marked completed, so stopping at 100 could end while the
   // label still said Processing, and the test then depended on timing (Phase 5 M6, WebKit).
+  // The bar and its label are read in one step, from the same render. Read separately, a re-render
+  // could fall between the two reads: the bar read at 95 while Processing, then the label read
+  // after the response that brought Completed at 100, so the poll ended with 95 as the last value
+  // although the page never showed "Completed" beside 95 (Phase 5 gate investigation, Firefox).
   await expect
     .poll(
       async () => {
-        seen.push(Number(await progress.getAttribute("value")));
-        const label = (await status.locator("label[for=processing-progress]").innerText()).split(":")[0];
-        labels.add(label);
-        return label;
+        const snapshot = await status.evaluate((article) => {
+          const bar = article.querySelector("#processing-progress");
+          const text = article.querySelector<HTMLElement>("label[for=processing-progress]");
+          if (!bar || !text) throw new Error("the progress bar or its label is missing");
+          return { value: Number(bar.getAttribute("value")), label: text.innerText.split(":")[0] };
+        });
+        seen.push(snapshot.value);
+        labels.add(snapshot.label);
+        return snapshot.label;
       },
       { timeout: 120_000, intervals: [250] },
     )

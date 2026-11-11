@@ -355,9 +355,31 @@ Rerun per project: setup 5, desktop 83, tablet 19, mobile 19, firefox 83, webkit
    - The browser-test API was recreated after the run, so its request log for that moment was lost.
    - In the rerun the API's request log was kept. All 87 status and assignment changes were answered within 210 ms, and the test passed. A slow or failed request is therefore not shown.
    - Whether the change request was sent in the failed run is not known.
-2. **"the navigation menu opens, works by keyboard, and hides its links when closed"** (`responsive.spec.ts`, desktop width). The test's steps completed. Closing the browser context then took longer than the 60-second limit. Firefox's own log shows its slow-script watchdog stopping the page's start-up script, and repeated internal driver errors. This looks like a hang in Firefox or Playwright's driver rather than an application failure, but that is not proven.
+2. **"the navigation menu opens, works by keyboard, and hides its links when closed"** (`responsive.spec.ts`, desktop width). The test's steps completed. Closing the browser context then took longer than the 60-second limit. (This section first said Firefox's log showed its slow-script watchdog stopping a script. That was wrong: Playwright's Firefox build disables the watchdog, and those lines come from Playwright closing a page while its script runs. See the follow-up below.)
 
-**Why they are left open.** Neither test was changed, and no assertion was removed or relaxed. Neither failure could be reproduced. Because the investigation symptom has now appeared twice, it is listed as an open item at the gate, not as a pass. If it recurs, keep the API container's log, and record the browser's requests from the start of `investigations.spec.ts`.
+**Why they were left open at M9.** Neither test was changed, and no assertion was removed or relaxed. Neither failure could be reproduced. The reviewer did not accept the gate, and asked for the investigation below.
+
+## Phase 5 Firefox investigation follow-up (2026-11-11)
+
+Full record: [docs/plans/phase-5-firefox-investigation.md](docs/plans/phase-5-firefox-investigation.md).
+
+| Item | Result |
+|---|---|
+| Status-change failure | Not reproduced in 33 runs: alone, after the batch tests, in full order, and under heavy CPU load. Server, database, reload and remount causes excluded. Remaining candidates: no request sent, or a refused request. The test now checks the request, the API's answer and the page in turn. **Residual risk awaiting the reviewer's decision.** |
+| Teardown hang | 11 in 3 runs under CPU load, 0 in 30 without. Every test step had passed; Playwright's "Close context" was never answered by its Firefox build, which then had to be force-killed. Not an application defect. |
+| Batch progress test | Fixed a race: the bar and label were read in two calls, straddling a re-render (2 of 13 Firefox runs). They are now read in one `evaluate`, with the same assertions. |
+| Stored sessions | Sessions signed in by the setup project last 30 minutes; runs slower than that fail with Sign in pages. Recorded, not changed. |
+
+Verification after the changes:
+
+| Run | Passed | Failed | Skipped |
+|---|---|---|---|
+| Both changed tests ×10 each in Chromium, Firefox and WebKit, with setup | 65 | 0 | 0 |
+| Complete browser suite, all seven projects (`npm run test:e2e`) | 311 | 0 | 0 |
+
+Per project: setup 5, desktop 83, tablet 19, mobile 19, firefox 83, webkit 83, webkit-mobile 19 (17.8 minutes). An earlier attempt was invalid. It was started from a shell without Docker on its PATH, so the 15 tests that restart the API or switch off the database (5 per engine) failed at once with `spawnSync docker ENOENT`. The other 296 passed. It was rerun as above.
+
+If the status failure recurs, the failing line says which step broke. Keep the API container's log (`docker logs finguard-api-e2e-1`) before restarting the stack.
 
 ## Latest recorded results
 
