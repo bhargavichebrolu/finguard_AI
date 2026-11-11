@@ -1,6 +1,6 @@
 # Security
 
-FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemented the PRD section 10 controls for the backend and database. The API runs locally only and has not been deployed or independently reviewed.
+FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemented the PRD section 10 controls for the backend and database, Phase 4 added browser sessions, and Phase 5 reviewed the production settings over HTTPS ([docs/security/phase-5-review.md](docs/security/phase-5-review.md)). The application runs locally only. It has not been deployed, penetration-tested or independently reviewed.
 
 ## Implemented
 
@@ -49,6 +49,8 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | HTTPS | The production-like stack uses Caddy's local certificate authority; a real host needs a public certificate | Phase 6, by the host |
 | Sign-in limit behind unlisted platform proxies | Keyed by address and email; if the host's proxies are not in `TRUSTED_PROXY_IPS`, it becomes per email only | Phase 6 configuration |
 | `Secure` and the cookie prefixes are checked in Chromium only | Since Phase 5 M5 the HTTPS stack's browser tests (`npm run test:prodlike`) confirm `Secure`, `__Secure-`, `__Host-` and host-only scope in Chromium; the main browser tests run over plain HTTP, where Secure is off | Phase 6, on the real host |
+| CI has not run on GitHub | The workflow's checks (tests, audits, secret scan) have only been rehearsed locally; nothing is pushed | First push, with the owner's permission |
+| Screen readers untested | No Narrator, NVDA or VoiceOver run has been performed; the checklist is marked UNTESTED | When the owner runs [the checklist](docs/accessibility/screen-reader-checklist.md) |
 | WebKit's stored SameSite attribute | Playwright's WebKit build on Windows reports these cookies as `SameSite=None`, although the server sends `Strict` (checked from the `Set-Cookie` header in every engine). Whether Safari applies Strict is untested; the CSRF token and origin check protect changes either way | Check in Safari on macOS when one is available |
 
 ## Rules

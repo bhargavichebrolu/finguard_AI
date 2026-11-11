@@ -139,6 +139,10 @@ cd ..; uv run --project backend python scripts/prodlike_stack.py down
 
 Caddy serves the built frontend over HTTPS with its own local certificate (browsers will warn), and forwards `/api` to an API running with production settings on its own test database. Plain HTTP on 8082 redirects to HTTPS. Windows `curl` cannot complete the handshake with this certificate; browsers and Python can.
 
+### Continuous integration (Phase 5)
+
+`.github/workflows/ci.yml` runs on GitHub after a push; it has not run there yet. Its commands can be run locally as listed in [TESTING_GUIDE.md](TESTING_GUIDE.md#continuous-integration-phase-5-m8).
+
 ### Maintenance
 
 `python -m app.commands.retention` reports what retention would delete; add `--apply` to delete it. `uv run --project backend python scripts/scan_secrets.py` scans all history for secrets.
@@ -153,7 +157,7 @@ npm run test:e2e                                          # builds, serves on 12
 cd ..; uv run --project backend python scripts/e2e_stack.py down
 ```
 
-`e2e_stack.py up` creates `finguard_e2e_test` if it is missing, and global setup reseeds it (refusing any name not ending in `_test`), so nothing in development data is touched. The backend suite uses `finguard_test` instead, so the two suites can run one after the other without restarting anything. Generated passwords, saved test sessions and screenshots go to `frontend/.e2e/`, which Git ignores. The browser-test API uses its own random signing key on each start and allows only `http://127.0.0.1:4173` as an origin.
+`python scripts/e2e_stack.py database off` makes `finguard_e2e_test` refuse connections, and `database on` restores it, for outage tests (Phase 5 M7); `up` always restores it. `e2e_stack.py up` creates `finguard_e2e_test` if it is missing, and global setup reseeds it (refusing any name not ending in `_test`), so nothing in development data is touched. The backend suite uses `finguard_test` instead, so the two suites can run one after the other without restarting anything. Generated passwords, saved test sessions and screenshots go to `frontend/.e2e/`, which Git ignores. The browser-test API uses its own random signing key on each start and allows only `http://127.0.0.1:4173` as an origin.
 
 ## Environment variables
 
@@ -161,7 +165,7 @@ Run `scripts/generate_env.py` rather than copying `.env.example` by hand. It fil
 
 ## Configuration files
 
-From Phase 3, configuration files that are authored by hand have their own explanation documents beside them, for example `docker-compose.yml.explanation.md` ([why](docs/decisions/0003-phase-3-decisions.md)). The frontend configuration below is still described only here, because Phase 3 made no frontend changes.
+From Phase 3, configuration files that are authored by hand have their own explanation documents beside them, for example `docker-compose.yml.explanation.md` ([why](docs/decisions/0003-phase-3-decisions.md)). Since Phase 4 the frontend configuration files have them too, and since Phase 5 the CI files (`.github/workflows/ci.yml`, `.github/expected-tests.json`).
 
 | File | Purpose | Maintenance |
 |---|---|---|
@@ -174,6 +178,7 @@ From Phase 3, configuration files that are authored by hand have their own expla
 | `experiments/experiment-configs/experiments_v1.json` | Seeds, threads, model settings, search budgets, threshold objective, selection limits | Do not edit after results exist. Add a new version instead |
 | `.gitignore` | Excludes secrets, data, model binaries and build output | Review before adding any new data location |
 | `.env.example` | Placeholder configuration only | Never put a real value here |
+| `.github/expected-tests.json` | Tests CI expects to skip on a clean checkout, and minimum passes | Change only with `scripts/check_test_run.py --update` on a fresh clone, and review the diff |
 
 ## Troubleshooting
 

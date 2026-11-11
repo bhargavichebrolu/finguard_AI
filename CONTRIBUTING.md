@@ -20,6 +20,8 @@ uv run --project backend python scripts/check_explanations.py
 
 For frontend changes, also run `npm run typecheck`, `npm test` and `npm run build` in `frontend/`, and the browser tests (`npm run test:e2e`, see [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md#browser-tests)) when a change affects pages, layout, sessions or permissions. Fix accessibility violations in the code; never disable an axe rule to pass.
 
+CI (`.github/workflows/ci.yml`, Phase 5) repeats the clean-checkout checks after a push, but it cannot run the API, browser or real-model tests, because the model binary is not in Git. Run those locally before committing. If a change makes tests skip or run differently on a clean checkout, update `.github/expected-tests.json` with `scripts/check_test_run.py --update` from a fresh clone and explain the change; never edit it to make CI pass ([TESTING_GUIDE.md](TESTING_GUIDE.md#continuous-integration-phase-5-m8)).
+
 ## Where explanation documents live
 
 The project has two locations, by decision ([ADR 0001](docs/decisions/0001-phase-1-decisions.md), [ADR 0003](docs/decisions/0003-phase-3-decisions.md)):

@@ -317,6 +317,8 @@ The first run found four problems, all fixed in M1: the report's source hashes d
 | `backend/tests/api/` | The real application through HTTP, on real PostgreSQL with the frozen model | Hand-written requests |
 | `frontend/tests/unit/` | Components and pages with Vitest and a mock API | Typed fixtures with invented values |
 | `frontend/tests/e2e/` | The built app in Chromium, Firefox and WebKit against the real API and `finguard_e2e_test` | Seeded accounts and data created by each test |
+| `frontend/tests/prodlike/` | The production-like stack over HTTPS through Caddy, Chromium (Phase 5 M5) | `finguard_prodlike_test`, reseeded per run |
+| `frontend/tests/perf/` | Page readiness timings for the performance record, run on demand (Phase 5 M2) | The browser-test stack's data |
 
 ## Manual checks run in Phase 3
 
@@ -331,6 +333,31 @@ Not automated, so they are listed here with their results:
 - A check that can fail must have a test proving it fails.
 - A test that loops over something must also assert that it found something. Phase 3 found two tests checking nothing this way, because the route list they walked was empty in this FastAPI version.
 - Update an expected value only when the behaviour change is intended.
+
+## Phase 5 gate results (M9, 2026-11-11)
+
+Run on the code at `1621449` (M8). M9 changed documents only.
+
+| Suite | Passed | Failed | Skipped | Deselected |
+|---|---|---|---|---|
+| Backend, full, with the model | 778 | 0 | 0 | 1 (rereads the test partition) |
+| Browser, first gate run, all seven projects | 309 | **2 (Firefox)** | 0 | 0 |
+| Browser, rerun, all seven projects | 311 | 0 | 0 | 0 |
+| HTTPS production-like (`npm run test:prodlike`) | 6 | 0 | 0 | 0 |
+| CI rehearsal on a fresh clone, final tree (19 of 19 steps passed) | backend 480, frontend 111 | 0 | 298 backend, exactly the expected list | 1 |
+
+Rerun per project: setup 5, desktop 83, tablet 19, mobile 19, firefox 83, webkit 83, webkit-mobile 19.
+
+**The two first-run failures, both in Firefox, both unexplained:**
+
+1. **"changes status, asks before concluding, and keeps the history"** (`investigations.spec.ts`). The test selected "Under review" and clicked "Update status". Playwright only clicks an enabled button, so the selection had registered. The case still showed "New" ten seconds later.
+   - This is the same symptom as M7's unexplained Firefox failure of "assigns a case to a colleague, to me and to nobody". In both runs the failure came straight after the batch tests, which store three 20,000-row jobs.
+   - The browser-test API was recreated after the run, so its request log for that moment was lost.
+   - In the rerun the API's request log was kept. All 87 status and assignment changes were answered within 210 ms, and the test passed. A slow or failed request is therefore not shown.
+   - Whether the change request was sent in the failed run is not known.
+2. **"the navigation menu opens, works by keyboard, and hides its links when closed"** (`responsive.spec.ts`, desktop width). The test's steps completed. Closing the browser context then took longer than the 60-second limit. Firefox's own log shows its slow-script watchdog stopping the page's start-up script, and repeated internal driver errors. This looks like a hang in Firefox or Playwright's driver rather than an application failure, but that is not proven.
+
+**Why they are left open.** Neither test was changed, and no assertion was removed or relaxed. Neither failure could be reproduced. Because the investigation symptom has now appeared twice, it is listed as an open item at the gate, not as a pass. If it recurs, keep the API container's log, and record the browser's requests from the start of `investigations.spec.ts`.
 
 ## Latest recorded results
 

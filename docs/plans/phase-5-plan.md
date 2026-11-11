@@ -1,6 +1,6 @@
 # Phase 5 plan: integration hardening, system-wide QA and reliability
 
-**Status: proposed, awaiting approval (2026-11-08).** No Phase 5 code has been written. `main` is at `5c392a5` (Phase 4, merged fast-forward). The items marked **Decision needed** are for the reviewer; the plan states a recommendation for each.
+**Status: approved on 2026-11-08 with every recommendation accepted, and implemented in milestones M1–M9 on branch `phase-5-hardening`; see [phase-5-completion.md](phase-5-completion.md) and [ADR 0005](../decisions/0005-phase-5-decisions.md).** The text below is the plan as proposed. When it was written, no Phase 5 code existed. `main` is at `5c392a5` (Phase 4, merged fast-forward). The items marked **Decision needed** are for the reviewer; the plan states a recommendation for each.
 
 ## 1. Constraints carried into Phase 5
 

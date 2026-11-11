@@ -1,6 +1,6 @@
 # Phase 4 plan: React frontend
 
-**Status: proposed, awaiting approval (2026-11-08).** No frontend code has been written. This plan answers the items raised at the Phase 3 gate. The decisions marked **Decision needed** are for the reviewer.
+**Status: approved and implemented; Phase 4 was accepted and merged into `main` at `5c392a5` on 2026-11-08 ([phase-4-completion.md](phase-4-completion.md)).** The text below is the plan as proposed. When it was written, no frontend code existed. This plan answers the items raised at the Phase 3 gate. The decisions marked **Decision needed** are for the reviewer.
 
 ## 1. Constraints carried into Phase 4
 

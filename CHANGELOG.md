@@ -1,5 +1,125 @@
 # Changelog
 
+## Phase 5: integration hardening, quality assurance and reliability (2026-11-11)
+
+Branch `phase-5-hardening`, nine milestones. Awaiting review at the gate: not merged into `main`, not pushed. Decisions are in [ADR 0005](docs/decisions/0005-phase-5-decisions.md), and evidence is in the [completion record](docs/plans/phase-5-completion.md).
+
+### Added
+- **M1, isolation and reproducibility:**
+  - Browser tests have their own database, `finguard_e2e_test`.
+  - `scripts/verify_clean_clone.py` records what a clean checkout skips.
+  - Base images are pinned by digest.
+- **M2, performance baseline:** `scripts/measure_performance.py` and `npm run perf:pages`, using synthetic inputs only. Two measured fixes:
+  - Dashboard summary at 500,000 predictions: p50 862 ms to 434 ms.
+  - CSV export of 500,000 rows: 109.5 s to 10.4 s, with the same bytes.
+- **M3, multi-process correctness:**
+  - Rate limits are counted in PostgreSQL, within the latency budget fixed in M2. A first, sliding-window design was over budget and rejected.
+  - `WEB_CONCURRENCY` sets the worker count, default 1.
+  - Model registration at start-up is serialised with an advisory lock.
+- **M4, batch queue:**
+  - Upload bytes are stored in `batch_uploads`.
+  - One worker per process claims jobs with `FOR UPDATE SKIP LOCKED` and holds a 60-second lease.
+  - Each 1,000-row chunk is idempotent, and a job gets at most 3 attempts.
+  - A crashed or restarted process's job resumes from its last committed chunk, with no duplicates.
+- **M5, production security review:**
+  - An HTTPS production-like stack runs through Caddy.
+  - Production cookies use `__Secure-` and `__Host-` prefixes.
+  - A history-wide secret scan.
+  - `pip-audit` and `npm audit`.
+  - A retention command: sessions after 7 days, audit records after 365.
+  - 15 findings recorded in [docs/security/phase-5-review.md](docs/security/phase-5-review.md).
+- **M6, cross-browser:**
+  - Playwright Firefox and WebKit projects.
+  - Accessibility-tree tests.
+  - A Narrator/NVDA checklist, marked UNTESTED.
+- **M7, integration error handling:**
+  - A database outage answers 503 and the API recovers without a restart.
+  - A batch whose database connection drops is resumed, not failed.
+  - A model failure while scoring says that nothing was stored.
+  - Investigation status changes accept `expected_status`, and a stale one answers 409.
+  - The interface says "unavailable" instead of signing out, has error boundaries per page, shows timeout and no-answer messages, and shows the API's message on failed downloads.
+- **M8, CI:**
+  - `.github/workflows/ci.yml` checks a clean checkout with a PostgreSQL database.
+  - `scripts/check_test_run.py` fails on any change to the 298 expected skips, or on missing tests.
+  - It has not run on GitHub.
+- **M9:**
+  - Every document checked against the implementation.
+  - ADR 0005.
+  - The completion record.
+
+### Fixed
+The tests for each fix are named in TESTING_GUIDE.md and in the milestone's commit message.
+
+- **M1:**
+  - The model report's source hashes depended on checkout line endings.
+  - Three model tests failed instead of skipping without the binary.
+  - `export_openapi.py --check` needed `.env`.
+  - Component tests timed out on a cold start.
+- **M3 and M4:**
+  - Memory rate limits multiplied with processes and reset on restart.
+  - Start-up failed every unfinished batch job and deleted files in every process (F1).
+  - Concurrent start-ups could fail to register the model.
+- **M5:** cookies had no browser-enforced prefixes.
+- **M6:**
+  - The phone menu button showed on desktop in every engine.
+  - Large Dashboard totals overflowed their tile in WebKit.
+- **M7:**
+  - A database outage gave a bare 500.
+  - A lost connection failed a resumable batch.
+  - A scoring failure gave a bare 500.
+  - A stale page could override a colleague's status.
+  - A reload during an outage signed the user out.
+  - A failed page download blanked the app (F7).
+  - Failed downloads lost the API's message (since Phase 4).
+  - No answer gave no hint that a change might have been saved.
+- **M8:** a skip-reason check that would have accepted a database-caused skip.
+
+### Results at the gate
+| Suite | Passed | Failed | Skipped | Deselected |
+|---|---|---|---|---|
+| Backend, full, with the model | 778 | 0 | 0 | 1 (rereads the test partition) |
+| Frontend unit and component (Vitest) | 111 | 0 | 0 | 0 |
+| Browser, first gate run (all seven projects) | 309 | **2, both Firefox, unexplained** | 0 | 0 |
+| Browser, full rerun (all seven projects) | 311 | 0 | 0 | 0 |
+| HTTPS production-like | 6 | 0 | 0 | 0 |
+| CI rehearsal, fresh clone: backend | 480 | 0 | 298, exactly the expected list | 1 |
+| CI rehearsal, fresh clone: frontend | 111 | 0 | 0 | 0 |
+
+Browser rerun by project: setup 5, desktop 83, tablet 19, mobile 19, firefox 83, webkit 83, webkit-mobile 19.
+
+Other checks, all passed on the CI rehearsal of the final tree (all 19 workflow steps):
+- `ruff check`, and `ruff format --check` (167 files).
+- Explanation checker: 235 files, 0 problems.
+- `export_openapi.py --check` and `export_model_report.py --check`.
+- `scan_secrets.py`: 0 findings, 0 secret files.
+- `pip-audit` and `npm audit`: 0 known vulnerabilities.
+- Type check and production build.
+
+The CI workflow itself has **not** run on GitHub.
+
+Frozen model hash `69813c17…` unchanged. Nothing under `data/`, `artifacts/` or `experiments/` changed in Phase 5, apart from M1's correction of the source hashes in the derived `model_v1_report.json`, where every value is identical. Also, the threshold is unchanged and the test partition was not read.
+
+### Known limitations
+- **Not tested:** Safari itself, and any screen reader. The Narrator/NVDA checklist is UNTESTED until the owner runs it.
+- **WebKit SameSite:** whether WebKit enforces SameSite=Strict is not established. These tests check only that the server sends it.
+- **CI:** it has not run on GitHub, and it cannot run real-model, API, browser or HTTPS tests, because the model binary is not in Git.
+- **Secure cookies:** `Secure` and the cookie prefixes are verified in Chromium only, on a local certificate authority.
+- **Intermittent Firefox failures:**
+  - A case change in the Investigation Centre did not show within 10 seconds, once in M7 (assignment) and once in the first gate run (status). Both came straight after the batch tests.
+  - In the first gate run, one test's browser context failed to close within 60 seconds.
+  - Neither reproduced in reruns, and the causes are unknown. TESTING_GUIDE.md has the details.
+- **Duplicates without an identifier:** a prediction without an identifier whose answer was lost can be stored twice if resubmitted. The interface warns about this.
+- **Last writer wins on assignment:** assignment changes carry no expected value; every change is audited.
+- **Interrupted batches while the database is down:** they resume after the 60-second lease rather than at once.
+- **Deep explorer pages are slow:** they use `OFFSET`.
+- **Limits around the minute boundary:** prediction and upload limits use fixed windows, so up to twice the limit can pass across a minute boundary.
+- **Left for Phase 6:**
+  - deployment;
+  - a public certificate;
+  - the trusted proxy list for the host;
+  - whether to keep `/docs` in production;
+  - the 1.92 GB API image.
+
 ## Phase 4: React frontend (2026-11-08)
 
 ### Added

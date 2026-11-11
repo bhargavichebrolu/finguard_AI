@@ -63,7 +63,7 @@ PRD 8.2 endpoints, plus additions marked with an asterisk.
 | `GET /api/v1/batches/{batch_id}/errors` * | any role | Row error report as CSV |
 | `GET /api/v1/investigations` | analyst and above | Queue, filter by `investigation_status` or `assigned_user_id` |
 | `GET /api/v1/investigations/{investigation_id}` * | analyst and above | Notes and status history |
-| `PATCH /api/v1/investigations/{investigation_id}` | investigator, admin | Change status or assignee |
+| `PATCH /api/v1/investigations/{investigation_id}` | investigator, admin | Change status or assignee. With `status`, an optional `expected_status` (the status the caller last saw) makes a stale change answer 409 naming the current status (Phase 5 M7); `expected_status` alone is 422 |
 | `POST /api/v1/investigations/{investigation_id}/notes` | investigator, admin | Add a note |
 | `GET /api/v1/models` | any role | Registered versions |
 | `GET /api/v1/models/active` | any role | The model in use |
@@ -157,7 +157,7 @@ The threshold cannot be changed through the API. Administrators can move the hig
 | Ignored and reported | `isFraud`, `isFlaggedFraud`. `isFraud` values of 0 or 1 are kept in a separate table and never reach the model. |
 | Refused | Balance and account columns, and any unknown column |
 
-The response is 202 with a `BatchView`. Processing continues in the background in chunks of 1,000 rows. Poll `GET /batches/{id}` for `processed_records`, `failed_records`, `succeeded_records` and `progress_percent`. Bad rows do not stop good ones. The error report lists row number, column and reason, without the rejected value. Status ends as `COMPLETED`, `COMPLETED_WITH_ERRORS` or `FAILED`. A job interrupted by a restart is marked `FAILED` at the next start-up and must be uploaded again.
+The response is 202 with a `BatchView`. Processing continues in the background in chunks of 1,000 rows. Poll `GET /batches/{id}` for `processed_records`, `failed_records`, `succeeded_records` and `progress_percent`. Bad rows do not stop good ones. The error report lists row number, column and reason, without the rejected value. Status ends as `COMPLETED`, `COMPLETED_WITH_ERRORS` or `FAILED`. Since Phase 5 the upload's bytes are queued in the database and any API process may process the job. A job interrupted by a restart, crash or lost database connection is resumed from its last committed chunk, by any process, once its 60-second lease expires (at once after a graceful stop). No row is stored twice. `attempts` counts how often the job has been started; after 3 interrupted attempts it is `FAILED`, keeping the rows already stored.
 
 ## Errors
 
@@ -168,11 +168,12 @@ Every error is JSON with `detail` and `request_id`. Validation errors also carry
 | 401 | Missing, invalid or outdated token, or wrong credentials |
 | 403 | Your role does not allow this, or a cookie request lacked a valid CSRF token or allowed origin |
 | 404 | Not found, or outside your demo scope |
-| 409 | The identifier already exists |
+| 409 | The identifier already exists, or an investigation's status changed since `expected_status` was read |
 | 413 | Upload too large, or too many rows |
 | 422 | Invalid input |
 | 429 | Rate limited, with `Retry-After`. Login: 5 failures per minute per address and email. Predict: 120 per minute. Upload: 10 per minute. |
-| 500 | "Internal server error." Details are logged on the server only. |
+| 500 | "Internal server error." Details are logged on the server only. A model failure while scoring says that nothing was stored. |
+| 503 | The database cannot be reached (Phase 5 M7), with `Retry-After: 5`: "The database could not be reached. Try again in a moment; if this continues, tell an administrator." Only the driver error's type is logged. A statement timeout is not an outage and stays 500. |
 
 ## Model metrics
 

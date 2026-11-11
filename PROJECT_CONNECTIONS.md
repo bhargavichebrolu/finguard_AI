@@ -1,6 +1,6 @@
 # Project Connections
 
-How FinGuard AI fits together, from raw data to the screen. **Each section states whether it describes implemented code or a plan.** Current state: Phases 1 to 3 are implemented. The model is frozen and evaluated, and the API and database run locally in Docker. Phases 4 to 6 are planned. Results are recorded in [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md).
+How FinGuard AI fits together, from raw data to the screen. **Each section states whether it describes implemented code or a plan.** Current state: Phases 1 to 5 are implemented. The model is frozen and evaluated; the API, database and React interface run locally in Docker; Phase 5 added the shared batch queue and rate limits, an HTTPS production-like stack, three browser engines, failure handling and a CI workflow (not yet run on GitHub). Phase 6 (deployment) is planned. Results are recorded in [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md).
 
 ## 1. Project introduction
 FinGuard AI analyses simulated mobile-money transactions, gives each an uncalibrated model score and a review decision, explains it and supports investigation through a dashboard. It uses the synthetic PaySim dataset and is for research and demonstration only. The point of the project is the connected system rather than any one model.
@@ -43,16 +43,16 @@ FastAPI model loading, after hash checks   [implemented] app/services/model_serv
 Prediction and batch endpoints              [implemented] app/api/routes/transactions.py, batches.py
     |
     v
-React application                           [planned: Phase 4]
+React application                           [implemented] frontend/src/
     |
     v
-User sees prediction and explanation        [planned: Phase 4]
+User sees prediction and explanation        [implemented] pages/TransactionAnalysisPage.tsx, ExplainabilityPage.tsx
     |
     v
 PostgreSQL stores prediction history        [implemented] app/models/records.py, migrations/
     |
     v
-Dashboard and reports retrieve stored results [planned: Phase 4]
+Dashboard and reports retrieve stored results [implemented] pages/DashboardPage.tsx, ReportsPage.tsx
 ```
 
 **Model training and live inference are separate processes.** Training runs offline on the full dataset and produces artefacts. The API only loads those artefacts. The one thing they share is `engineer_features`, which keeps feature calculations identical in both.
@@ -67,6 +67,8 @@ finguard-ai/
 |   |-- PRD.md                     specification
 |   |-- file-explanations/         Phase 1 and 2 documents, mirroring the source tree
 |   |-- decisions/                 architecture decision records
+|   |-- plans/                     phase plans and completion records
+|   |-- performance/, security/, accessibility/  Phase 5 measurements, review and checklist
 |   |-- diagrams/, research/       empty so far
 |-- data/
 |   |-- raw/                       PaySim CSV (Git-ignored)
@@ -89,19 +91,22 @@ finguard-ai/
 |   |-- app/ml/                    data pipeline and ML code
 |   |-- app/api/{routes,schemas}/  HTTP routes and request and response shapes
 |   |-- app/core/                  settings, frozen pins, errors, logging, middleware, rate limits
+|   |-- app/commands/              administrative commands (retention)
 |   |-- app/services/              business rules
 |   |-- app/repositories/          multi-table queries
 |   |-- app/models/                SQLAlchemy tables and enums
 |   |-- app/database/              engine, sessions, base class
 |   |-- app/security/              passwords, tokens, permissions, dependencies
 |   |-- app/utils/                 CSV safety
-|   |-- migrations/                Alembic environment and revision 0001
+|   |-- migrations/                Alembic environment and revisions 0001 to 0004
 |   |-- tests/{unit,integration,api}/
 |-- frontend/
 |   |-- package.json, vite.config.ts, tsconfig.json, index.html
 |   |-- src/                       main.tsx, App.tsx, styles/tokens.css
-|   |-- src/{components,pages,layouts,services,hooks,types,utils,assets}/ empty until Phase 4
+|   |-- src/{components,pages,layouts,services,hooks,types,utils,assets}/ the React application
+|   |-- tests/{unit,e2e,prodlike,perf}/ Vitest, Playwright (three engines), HTTPS stack, page timings
 |-- scripts/                       command-line entry points
+|-- docker/caddy/                  Caddyfile for the HTTPS production-like stack
 |-- .github/workflows/ci.yml      GitHub Actions (Phase 5 M8; not yet run on GitHub)
 |-- .github/expected-tests.json   skips and minimum passes CI expects on a clean checkout
 ```
@@ -450,7 +455,7 @@ Every prediction stores `model_version`, `threshold_used` and `high_risk_boundar
 A flagged prediction outside demo mode opens an investigation with status `NEW`. Investigators and admins change status and assignee, and add notes. Each status change is a new history row, stamped after the row lock is held, so the order is right even under simultaneous changes. Since Phase 5 M7 the interface sends `expected_status`, so a change made from a stale page is refused (409) instead of silently overriding a colleague's decision. Statuses are workflow labels: they never change a score, a decision or a metric.
 
 ## 22. Explainability flow (implemented)
-Phase 2: `explainability.py` produced global importance, saved in the metrics bundle. Phase 3: `ServingModel.explain` uses XGBoost's own TreeSHAP values (`pred_contribs`), which tests show match the `shap` library and add up to the score on the log-odds scale. They are stored for every single prediction and for flagged batch rows, and returned with Phase 2's limitations. SHAP does not establish causality. The interface that shows them is Phase 4.
+Phase 2: `explainability.py` produced global importance, saved in the metrics bundle. Phase 3: `ServingModel.explain` uses XGBoost's own TreeSHAP values (`pred_contribs`), which tests show match the `shap` library and add up to the score on the log-odds scale. They are stored for every single prediction and for flagged batch rows, and returned with Phase 2's limitations. SHAP does not establish causality. The Phase 4 interface shows them on Transaction Analysis and Explainable AI.
 
 ## 23. Deployment architecture (planned: Phase 6)
 Independently deployed frontend, backend container, managed PostgreSQL and separately stored artefacts. See [DEPLOYMENT.md](DEPLOYMENT.md).
@@ -465,6 +470,9 @@ docker-compose.yml
   migrate  finguard-api:local, alembic upgrade head, then exits
   api      finguard-api:local, non-root, ./artifacts mounted read-only, health check on /health
   migrate-e2e, api-e2e   profile "e2e" only: the same image against finguard_e2e_test on 127.0.0.1:8011
+  migrate-prodlike, api-prodlike, caddy-prodlike   profile "prodlike" only (Phase 5 M5): APP_ENV=production
+           behind Caddy on https://127.0.0.1:8443, finguard_prodlike_test
+  images   postgres and caddy pinned by digest (Phase 5 M1, M5)
 ```
 
 ## 26. Local setup instructions
