@@ -12,7 +12,7 @@ Phase 5 needs an exact record of which tests a clean checkout skips (M1), and CI
 - **Libraries:** Python standard library (`xml.etree`, `dataclasses`).
 - **Internal modules:** none.
 - **External services / database:** none.
-- **Depended on by:** `verify_clean_clone.py`; the CI skip check (M8).
+- **Depended on by:** `verify_clean_clone.py`; `check_test_run.py`, the CI skip check (M8).
 
 ## D. Every Function Explained
 
@@ -52,3 +52,4 @@ If pytest changes its JUnit layout, `test_reproducibility.py` fails first.
 
 ## K. Related Files
 - [verify_clean_clone.py](verify_clean_clone.py.explanation.md): the first user.
+- [check_test_run.py](check_test_run.py.explanation.md): the CI comparison (Phase 5 M8). It also reads Vitest reports, whose class names are file paths, so `node_id` keeps them as `file::name`.

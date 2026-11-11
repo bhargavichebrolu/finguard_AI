@@ -14,7 +14,7 @@ uv run --project backend pytest backend/tests --rootdir backend -c backend/pypro
 # Phase 3 and later: leave out the one test that rereads the test partition
 uv run --project backend pytest backend/tests --rootdir backend -c backend/pyproject.toml --deselect tests/integration/test_real_models.py::test_test_results_can_be_recalculated_from_the_saved_model
 
-# Without real data or a database, as CI will start
+# Without real data or a database
 uv run --project backend pytest backend/tests --rootdir backend -c backend/pyproject.toml -m "not real_data and not database"
 
 # Lint and format, from the repository root
@@ -32,6 +32,11 @@ cd frontend; npm run typecheck; npm test; npm run build
 
 # Clean-clone reproducibility check: no dataset, model binary or .env
 uv run --project backend python scripts/verify_clean_clone.py
+
+# CI skip check (Phase 5 M8): compare a JUnit report with .github/expected-tests.json
+uv run --project backend python scripts/check_test_run.py backend pytest.xml
+# After a deliberate change, on a fresh clone with a database only: record and review the diff
+uv run --project backend python scripts/check_test_run.py backend pytest.xml --update
 
 # HTTPS production-like stack (see ENVIRONMENT_SETUP.md)
 uv run --project backend python scripts/prodlike_stack.py up
@@ -213,6 +218,84 @@ Per project in the final run: setup 5, desktop 83, tablet 19, mobile 19, firefox
 - If the database is still down when a batch is interrupted, the job resumes when its lease runs out (60 seconds) rather than at once. A job interrupted three times is failed, with its stored rows kept.
 - Assignment changes carry no expected value: the last one wins, and each is audited.
 - The reload prompt reloads the page, so unsaved input on that page is lost.
+
+## Continuous integration (Phase 5 M8)
+
+**The workflow has not run on GitHub.** `.github/workflows/ci.yml` runs only once the branch is pushed, and nothing has been pushed. No GitHub Actions result is claimed. What follows is a local rehearsal.
+
+**What CI runs** on every push and pull request, on `ubuntu-24.04`:
+
+| Job | Steps |
+|---|---|
+| backend | confirm `.env`, the model binary and the dataset are absent; `uv sync --frozen`; generate `.env` and start PostgreSQL with `docker compose` (same pinned image, SCRAM, non-superuser role, `finguard_test`); `ruff check`; `ruff format --check`; pytest with JUnit; `check_test_run.py backend`; explanation checker; `export_openapi.py --check`; `export_model_report.py --check`; `scan_secrets.py`; `pip-audit` |
+| frontend | `npm ci`; type check; Vitest with JUnit; `check_test_run.py frontend`; build; `npm audit` |
+
+**What CI does not verify.** The frozen model binary and the dataset are not in Git, so:
+
+- Real-model inference is not verified in CI.
+- Every API test skips, because the application checks the frozen model at start-up and refuses to start without it. That includes the authentication, batch queue and failure tests.
+- Browser tests and the HTTPS production-like tests are not run.
+
+All of these run locally before each commit, as in every milestone so far. The job summary repeats this on every run.
+
+**Expected skips** (`.github/expected-tests.json`), recorded from a fresh clone with a database:
+
+| Reason | Tests | Where |
+|---|---|---|
+| `frozen model file is absent` | 289 | `tests/api/*` (265), `test_model_service.py` (19), `test_multiprocess.py` (5) |
+| `The frozen model binary is absent (not stored in Git)` | 3 | `test_real_models.py` |
+| `Full dataset and processed partitions are not present` | 6 | `test_real_data.py` |
+
+Backend: at least 480 must pass. Frontend: at least 111 must pass, and none may skip. `check_test_run.py` fails the job in any of these cases:
+
+- a skip that is not listed;
+- a listed skip that did not happen;
+- a skip with a different reason;
+- any failure or error;
+- fewer passing tests than recorded;
+- no tests at all;
+- no report.
+
+`test_ci.py` refuses any recorded reason other than the three above, so a database-caused skip cannot be recorded as expected.
+
+**Local rehearsal, 2026-11-11.** Every `run:` command in the workflow was run in order, on a fresh `git clone --no-local` of `5afdd37` with this milestone's changes applied. Its database was a separate Compose project (`finguard-ci`, port 5433), with a newly generated `.env`.
+
+| Step | Result |
+|---|---|
+| Absent inputs, `uv sync --frozen`, database start | Passed |
+| `ruff check`, `ruff format --check` | Passed |
+| pytest | 778 collected: 480 passed, 0 failed, 298 skipped, 1 deselected |
+| `check_test_run.py backend` | Passed: 298 skips as expected |
+| Explanation checker | 235 files, 0 problems |
+| `export_openapi.py --check`, `export_model_report.py --check` | Both match |
+| `scan_secrets.py` | 0 findings |
+| `pip-audit`, `npm audit` | 0 known vulnerabilities |
+| `npm ci`, type check, build | Passed |
+| Vitest | 111 passed, 10 files |
+| `check_test_run.py frontend` | Passed |
+
+**The check fails when it should,** shown on real runs in the same clone:
+
+| Scenario | pytest | `check_test_run.py` |
+|---|---|---|
+| No database configured (`.env` removed, no `TEST_DATABASE_URL`) | **exit 0**: 440 passed, 338 skipped | **exit 1**: 40 unexpected skips (`TEST_DATABASE_URL is not set`), 440 passed below the minimum of 480 |
+| Tests never ran (no report) | n/a | **exit 1**: "No test results were written" |
+
+The first row is why the check exists: pytest alone reports success while 40 database tests silently skip.
+
+**Differences between the rehearsal and GitHub.**
+
+| Rehearsal | GitHub runner |
+|---|---|
+| Windows (Git Bash) | Ubuntu |
+| Database on port 5433 | Port 5432 |
+| The skip check in the frontend job uses the backend's Python | The runner's `python3` |
+
+The skip list depends only on which files are absent, which is the same on both. Anything that does differ on Linux will be seen on the first real run.
+
+**Full local suite, with the model, 2026-11-11.** Run in the working copy, with the model binary present: 778 passed, 0 skipped, 1 deselected. That is M7's 765 plus the 13 tests in `test_ci.py`. The 298 tests that CI skips all ran here and passed.
+
+**Recording.** The expectations were written with `--update` from a rehearsal that deselected one test, `test_committed_expectations_are_consistent`. That test checks the expectations file itself, and the file was still empty at that point. The minimum was then set to 480, one more than recorded, to count that test. The check-mode rehearsal confirmed exactly 480 passing.
 
 ## Clean-clone results (Phase 5 M1)
 

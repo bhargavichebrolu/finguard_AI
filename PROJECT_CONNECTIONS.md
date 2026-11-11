@@ -102,7 +102,8 @@ finguard-ai/
 |   |-- src/                       main.tsx, App.tsx, styles/tokens.css
 |   |-- src/{components,pages,layouts,services,hooks,types,utils,assets}/ empty until Phase 4
 |-- scripts/                       command-line entry points
-|-- .github/workflows/             empty until Phase 5
+|-- .github/workflows/ci.yml      GitHub Actions (Phase 5 M8; not yet run on GitHub)
+|-- .github/expected-tests.json   skips and minimum passes CI expects on a clean checkout
 ```
 
 ## 4. Purpose of every major folder
@@ -177,6 +178,7 @@ Phase 1 and 2 files have documents in [docs/file-explanations/](docs/file-explan
 | `docs/accessibility/screen-reader-checklist.md` | Manual Narrator and NVDA steps; UNTESTED until the owner runs it |
 | `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Start the browser-test API; create, seed and adjust its database (refuses non-`_test` names) |
 | `scripts/verify_clean_clone.py`, `scripts/test_report.py` | Clean-clone reproducibility check and pytest report reading |
+| `.github/workflows/ci.yml`, `.github/expected-tests.json`, `scripts/check_test_run.py`, `backend/tests/unit/test_ci.py` | CI workflow, its expected skips and counts, the comparison that fails on unexpected skips or missing tests, and its tests (Phase 5 M8) |
 | `scripts/prodlike_stack.py`, `docker/caddy/Caddyfile`, `frontend/playwright.prodlike.config.ts`, `frontend/tests/prodlike/*` | HTTPS production-like stack and its tests |
 | `scripts/scan_secrets.py`, `backend/app/commands/retention.py` | Secret scan of all history; retention command |
 | `scripts/measure_performance.py`, `frontend/playwright.perf.config.ts`, `frontend/tests/perf/*` | Measured performance against the browser-test stack; results in `docs/performance/` |
@@ -380,6 +382,21 @@ browser-test outages   scripts/e2e_stack.py database off|on (finguard_e2e_test o
                        support.ts stopApiContainer / startApiContainer / restartApiContainer
 ```
 
+### Continuous integration (Phase 5 M8; not yet run on GitHub)
+```
+push / pull request -> .github/workflows/ci.yml
+  backend job   checkout (full history) -> uv sync --frozen -> generate_env.py (random, unprinted)
+                -> docker compose up db (same pinned image, SCRAM, finguard_app, finguard_test)
+                -> ruff check / format -> pytest --junitxml
+                -> scripts/check_test_run.py backend  <- .github/expected-tests.json
+                     (exact skip set and reasons, minimum passes; via scripts/test_report.py)
+                -> check_explanations, export_openapi --check, export_model_report --check,
+                   scan_secrets, pip-audit -> compose down
+  frontend job  npm ci -> typecheck -> vitest (JUnit) -> check_test_run.py frontend -> build -> npm audit
+not in CI       model binary and dataset (not in Git): model tests and every API test skip;
+                browser and HTTPS tests run locally before each commit
+```
+
 ## 15. Database architecture (implemented)
 PostgreSQL 17 with the tables, constraints and indexes in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md). Two roles: a superuser for administration, and `finguard_app` without superuser rights for the API, migrations and tests. SCRAM applies to every connection, set by `POSTGRES_INITDB_ARGS` at first initialisation.
 
@@ -486,7 +503,8 @@ Use the same partitions through `load_development_partition`, and change no feat
 | Test set is used once | `assert_ready_for_test` |
 | Reports match the results | `reporting.py` renders tables from saved files |
 | Training and serving agree | One `engineer_features`, `test_stored_features_match_a_direct_serving_call` |
-| Documentation stays synchronised | `scripts/check_explanations.py` |
+| Documentation stays synchronised | `scripts/check_explanations.py` (a CI step since Phase 5 M8) |
+| CI skips cannot change silently | `scripts/check_test_run.py`, `.github/expected-tests.json`, `test_ci.py` |
 | The served model is the frozen one | `frozen_model.py` pins, `load_verified_model`, `test_model_service.py` |
 | Labels never reach scoring | `inputs_frame`, `TransactionInput` refusing extra fields, `test_batches.py`, `test_model_service.py` |
 | Decisions match the threshold | `assess_score`, `ck_predictions_decision_matches_threshold`, tests |

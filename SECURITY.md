@@ -29,8 +29,9 @@ FinGuard AI is a demonstration platform using synthetic data. Phase 3 implemente
 | Container | Runs as an ordinary user, with no training libraries, tests or `.env` in the image. |
 | Data stays out of Git | Datasets and model binaries are ignored. |
 | Dependencies pinned | `uv.lock` and `package-lock.json`. |
-| Dependency audits (Phase 5) | `pip-audit` and `npm audit`: 0 known vulnerabilities on 2026-11-09. To run in CI once it exists (Phase 5 M8); until then, run by hand. |
-| Secrets in history (Phase 5) | `scripts/scan_secrets.py` scans every line ever added on every branch; clean on 2026-11-09. |
+| Dependency audits (Phase 5) | `pip-audit` and `npm audit`: 0 known vulnerabilities on 2026-11-09. Steps in the CI workflow since Phase 5 M8, which has not yet run on GitHub; until it does, they are run by hand. |
+| Secrets in history (Phase 5) | `scripts/scan_secrets.py` scans every line ever added on every branch; clean on 2026-11-09. Also a CI step (Phase 5 M8). |
+| CI permissions (Phase 5 M8) | The workflow has a read-only token, uses no repository secrets, does not keep the token in Git's configuration, pins every action to a commit hash, and starts its database with generated, unprinted passwords and SCRAM authentication. `test_ci.py` checks these rules. |
 | Retention (Phase 5) | `python -m app.commands.retention [--apply]`: ended sessions after 7 days, audit records after 365, rate-limit rows after 1 day. |
 | Production-like verification (Phase 5) | HTTPS through Caddy with production settings: prefixed Secure cookies, HSTS, CSP, CSRF, origin, CORS and forwarded-header rules, tested end to end. See [docs/security/phase-5-review.md](docs/security/phase-5-review.md). |
 | Browser-verified controls (Phase 4) | Playwright tests against the real API check cookie flags, that no token reaches browser storage, sign-out revocation, expiry, tampered cookies, CSRF and origin refusals, CORS, the sign-in rate limit, security headers, and that pages raise no Content Security Policy violations. |

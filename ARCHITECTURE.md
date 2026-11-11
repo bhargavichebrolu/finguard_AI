@@ -36,7 +36,7 @@ Training and live inference are separate processes. The API loads an already-tra
 | Database models and migrations | `backend/app/models/`, `backend/migrations/` | Implemented |
 | React application | `frontend/src/` | Implemented: ten pages, cookie sessions, code-split per page |
 | Browser tests | `frontend/tests/e2e/`, `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Implemented: real API and test database, three viewports, axe |
-| CI | `.github/workflows/` | Planned: Phase 5 |
+| CI | `.github/workflows/ci.yml`, `.github/expected-tests.json`, `scripts/check_test_run.py` | Written in Phase 5 M8 and rehearsed locally; not yet run on GitHub |
 | Containers | `backend/Dockerfile`, `docker-compose.yml` | Implemented for local use |
 | Deployment | | Planned: Phase 6 |
 

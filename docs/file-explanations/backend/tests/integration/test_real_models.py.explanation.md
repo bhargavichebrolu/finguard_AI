@@ -12,7 +12,7 @@ Synthetic tests show the code is correct. These show that the saved results real
 - **Libraries:** `json`, `subprocess`, `numpy`, `pytest`.
 - **Internal modules:** `app.ml.dataset_preparation`, `app.ml.experiments`, `app.ml.model_artifacts`, `app.ml.pipeline_io`, `app.ml.preprocessing`, `app.ml.reporting`.
 - **External services / database:** the local `git` command.
-- **Depended on by:** none; run by pytest. The `real_data` marker excludes these from CI.
+- **Depended on by:** none; run by pytest. In CI (Phase 5 M8) the tests needing the dataset or model binary skip, and each is listed in `.github/expected-tests.json`.
 
 ## D. Every Function Explained
 

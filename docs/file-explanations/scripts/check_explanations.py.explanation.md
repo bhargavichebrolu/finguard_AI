@@ -6,7 +6,7 @@ Source: [scripts/check_explanations.py](../../../scripts/check_explanations.py)
 Verifies PRD section 12: every authored source and configuration file has an explanation document with sections A to K, and that document names every function, class and method in the source. From Phase 3 it accepts a document beside its source as well as the Phase 1 and 2 mirrored location, and reports a source documented in both.
 
 ## B. Why This File Exists
-Documentation drifts unless something fails when it does. This script turns the most checkable part of the rule into a command, which Phase 5 will add to CI. It cannot judge whether the writing is good; that still needs a reviewer.
+Documentation drifts unless something fails when it does. This script turns the most checkable part of the rule into a command, which runs in CI since Phase 5 M8. It cannot judge whether the writing is good; that still needs a reviewer.
 
 ## C. Dependencies
 - **Libraries:** `ast`, `re`, `sys`, `pathlib` (standard library only).
@@ -126,6 +126,7 @@ Input: the repository tree. Output: one line per problem, a total, and an exit c
 ## H. Important Technical Concepts
 - **`frontend/playwright.prodlike.config.ts` and `docker/caddy/Caddyfile`** joined `SOURCE_FILES` in Phase 5 M5.
 - **`frontend/playwright.perf.config.ts`** joined `SOURCE_FILES` in Phase 5 M2.
+- **`.github/workflows/ci.yml` and `.github/expected-tests.json`** joined `SOURCE_FILES` in Phase 5 M8, when this checker became a CI step.
 - **Two locations:** Phases 1 and 2 mirrored the source tree under `docs/file-explanations/` (`docs/decisions/0001-phase-1-decisions.md`). The Phase 3 authorisation asked for a sibling document, so new files use that (`docs/decisions/0003-phase-3-decisions.md`). Existing documents were not moved.
 - **Scope:** Python, TypeScript, CSS, SQL and migration-template sources, plus the listed configuration files. Lockfiles, generated output and data are not authored by hand and are not covered. Frontend configuration such as `package.json` is outside `SOURCE_FILES` because Phase 3 makes no frontend changes.
 - **A name check is not a quality check:** it proves a function is mentioned, not that the explanation is correct.
