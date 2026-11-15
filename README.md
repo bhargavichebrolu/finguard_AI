@@ -13,7 +13,7 @@ An end-to-end machine learning application for monitoring simulated financial tr
 | 3 | Backend and database | Complete |
 | 4 | React frontend | Complete |
 | 5 | Integration hardening, quality assurance and reliability | Complete: accepted on 2026-11-13 with its documented residual risks ([completion record](docs/plans/phase-5-completion.md), [Firefox investigation](docs/plans/phase-5-firefox-investigation.md)) |
-| 6 | Deployment and portfolio release | Implemented: production configuration built and verified in a local rehearsal ([DEPLOYMENT.md](DEPLOYMENT.md), [completion record](docs/plans/phase-6-completion.md)). **Not deployed to a public host** |
+| 6 | Deployment and portfolio release | Complete: production configuration built and verified end to end in a local rehearsal from a fresh clone ([DEPLOYMENT.md](DEPLOYMENT.md), [completion record](docs/plans/phase-6-completion.md)); awaiting the owner's review. **Not deployed to a public host** |
 
 Phases 5 and 6 are on branch `phase-5-hardening`, which is not merged into `main` and not pushed.
 
@@ -67,7 +67,7 @@ A five-minute walk through the whole workflow, as an administrator:
 4. **Transaction Explorer:** filter by decision, risk or type; sort by score; open a transaction.
 5. **Investigation Centre:** open the new case, move it to Under review, add a note, then close it (a confirmation explains that statuses never change scores); the history keeps every step.
 6. **Model Performance and Explainable AI:** the saved evaluation of the frozen model (PR curves by regime, the 0.282% false positive rate against its 0.1% target) and global feature importance.
-7. **Reports and Settings:** export predictions as CSV; change the high-risk boundary (the decision threshold stays frozen); add an analyst account and sign in as them to see the restricted navigation.
+7. **Reports and Settings:** export predictions as CSV; change the high-risk boundary (the decision threshold stays frozen); add an analyst account and sign in as them. An analyst sees every page but cannot change investigations, settings or accounts, and the API refuses those changes whatever the interface shows.
 
 ## Documentation index
 

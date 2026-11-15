@@ -2,7 +2,7 @@
 
 ## Phase 6: deployment and release (2026-11-15)
 
-Branch `phase-5-hardening`, after Phase 5 was accepted. Not merged into `main`, not pushed, and **not deployed to a public host**: the production configuration was verified in a local rehearsal. Decisions are in [ADR 0006](docs/decisions/0006-phase-6-decisions.md), and evidence is in the [completion record](docs/plans/phase-6-completion.md).
+Branch `phase-5-hardening`: Step 1 `23dcb2f`, then the Step 2 verification commit. Not merged into `main`, not pushed, and **not deployed to a public host**: the production configuration was verified in a local rehearsal. Decisions are in [ADR 0006](docs/decisions/0006-phase-6-decisions.md), and evidence is in the [completion record](docs/plans/phase-6-completion.md).
 
 ### Added
 - **Production deployment on one Docker host:**
@@ -19,7 +19,7 @@ Branch `phase-5-hardening`, after Phase 5 was accepted. Not merged into `main`, 
 
 ### Changed
 - **API image:**
-  - Two-stage build; NVIDIA NCCL no longer installed; 1.92 GB to 981 MB.
+  - Two-stage build; NVIDIA NCCL no longer installed; 1.92 GB to 979 MB.
   - XGBoost 3.2.0 and scikit-learn 1.9.1 unchanged; identical scores and explanations on 550 synthetic inputs.
 - **Explorer pages use a deferred join:** at 180,285 rows, the last page went from 392 to 79 ms, with the same rows.
 - **Database init script:** creates a test database only when `TEST_DB_NAME` is set.
@@ -30,6 +30,28 @@ Branch `phase-5-hardening`, after Phase 5 was accepted. Not merged into `main`, 
 - **S14:** production refuses to start without a trusted proxy, and every environment refuses malformed or all-covering `TRUSTED_PROXY_IPS` entries.
 - **S15:** the production Caddyfile obtains a public certificate. This is untested without a public host.
 - **Chunked uploads:** Caddy caps request bodies at 11 MB while streaming.
+
+### Results (Step 2 verification, 2026-11-15)
+| Suite | Passed | Failed | Skipped |
+|---|---|---|---|
+| Backend, full, with the model | 835 | 0 | 0 (1 deselected: rereads the test partition) |
+| CI rehearsal, fresh clone: backend | 514 | 0 | 322, exactly the expected list |
+| Frontend unit and component (Vitest) | 111 | 0 | 0 |
+| Browser, all seven projects | 311 | 0 | 0 |
+| HTTPS production-like | 7 | 0 | 0 |
+| Production rehearsal checks (`verify_deployment.py --write`) | 26 | 0 | |
+| README demonstration in Chromium | 13 | 0 | |
+
+- **CI rehearsal:** all 23 workflow steps passed, including the explanation checker (245 files, 0 problems), the secret scan (0 findings), `pip-audit` and `npm audit` (0 vulnerabilities), and both image builds.
+- **Production rehearsal:** run from a fresh clone, with images built without cache. It survived a crash, a database outage, a full restart, and a backup with data loss and restore. Details are in [DEPLOYMENT.md](DEPLOYMENT.md#6-local-rehearsal-what-was-verified).
+- **Frozen model:** hash `69813c17…` and threshold `0.02841914258897305` unchanged; inference fingerprint identical in the old and new images.
+
+### Fixed during verification
+- **CI skip list:** the 24 new explorer cases were added to the expected list, and the minimum number of passing tests rose from 480 to 512.
+- **API image contents:** it contained explanation documents and bytecode caches; `.dockerignore` now excludes them at every depth.
+- **Backup commands:** the backup and restore commands lacked the database password.
+- **Model folder:** the deployment steps now create the model folder in a fresh clone.
+- **Demonstration wording:** the README demonstration misdescribed what an analyst sees.
 
 ### Known limitations
 - **Not deployed:** no public host, DNS name or public certificate exists.

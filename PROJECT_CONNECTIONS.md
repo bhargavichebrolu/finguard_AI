@@ -489,7 +489,7 @@ docker-compose.yml
   migrate-prodlike, api-prodlike, caddy-prodlike   profile "prodlike" only (Phase 5 M5): APP_ENV=production
            behind Caddy on https://127.0.0.1:8443, finguard_prodlike_test
   images   postgres and caddy pinned by digest (Phase 5 M1, M5); finguard-api built in two stages, without
-           uv or NVIDIA NCCL, 981 MB (Phase 6)
+           uv or NVIDIA NCCL, 979 MB (Phase 6)
   api-e2e  sessions last 120 minutes (E2E_ACCESS_TOKEN_MINUTES), so a slow run keeps its stored sessions
 ```
 

@@ -203,3 +203,11 @@ def test_the_fingerprint_changes_with_any_output(grid):
     assert grid.fingerprint(["0.1", "0.2"], [{"a": 1.0}]) == (payload, digest)
     assert grid.fingerprint(["0.1", "0.20000000000000004"], [{"a": 1.0}])[1] != digest
     assert grid.fingerprint(["0.1", "0.2"], [{"a": 1.0000001}])[1] != digest
+
+
+def test_the_api_build_context_excludes_nested_docs_and_caches():
+    # Phase 6: plain patterns match only at the context root, so the image used to contain the
+    # explanation documents and local bytecode caches from inside app/ and migrations/.
+    lines = (REPO_ROOT / "backend" / ".dockerignore").read_text(encoding="utf-8").splitlines()
+    for pattern in ("**/*.md", "**/__pycache__", "**/*.py[cod]", ".env", ".env.*", "tests"):
+        assert pattern in lines, pattern

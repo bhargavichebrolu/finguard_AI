@@ -21,7 +21,7 @@ browser --HTTPS--> web (Caddy: certificate, headers, built interface)
 | Service | Image | Published | Notes |
 |---|---|---|---|
 | `web` | `finguard-web`, built by `docker/web/Dockerfile` (92.7 MB) | 80 and 443 only | Public certificate from an ACME authority, renewed automatically, stored in the `caddy_data` volume |
-| `api` | `finguard-api`, built by `backend/Dockerfile` (981 MB) | Nothing | Trusts forwarded headers only from Caddy's fixed address, 172.30.240.10 |
+| `api` | `finguard-api`, built by `backend/Dockerfile` (979 MB) | Nothing | Trusts forwarded headers only from Caddy's fixed address, 172.30.240.10 |
 | `db` | `postgres:17-alpine`, pinned by digest | Nothing | SCRAM authentication; the API connects as a role without superuser rights; no test database |
 | `migrate` | `finguard-api` | Nothing | `alembic upgrade head`, then exits; the API starts only after it succeeds |
 | `retention` | `finguard-api` | Nothing | `python -m app.commands.retention --apply` once a day (sessions 7 days, audit 365 days) |
@@ -38,7 +38,10 @@ The database is on its own network, which Caddy cannot reach. Image sizes are as
 
 ```bash
 git clone <repository> finguard && cd finguard
-# Place the frozen model at artifacts/models/fraud_detector_v1/model.joblib (see section 2).
+# The frozen model (section 2). Git keeps only artifacts/models/.gitkeep, so create the folder.
+mkdir -p artifacts/models/fraud_detector_v1
+cp /path/to/model.joblib artifacts/models/fraud_detector_v1/model.joblib
+sha256sum artifacts/models/fraud_detector_v1/model.joblib   # must start 69813c17
 
 # 1. Settings with new secrets. Never commit .env.production (Git ignores it).
 python3 scripts/generate_production_env.py --domain finguard.example.com --tls ops@example.com
@@ -66,8 +69,10 @@ python3 scripts/verify_deployment.py --origin https://finguard.example.com --ema
 | Start again | `up -d --wait` |
 | Upgrade to a new commit | `git pull`, then `up -d --build --wait` (migrations run first) |
 | Keep the previous images | set `FINGUARD_RELEASE=<name>` in `.env.production` before building |
-| Back up the database | `exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > finguard.dump` |
-| Restore into an empty database | `exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < finguard.dump` |
+| Back up the database | `exec -T db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > finguard.dump` |
+| Restore (replaces the current data) | `exec -T db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < finguard.dump`, then `restart api` |
+
+Backup and restore pass the administrator password even inside the container, because the database uses SCRAM on its local socket as well. Both commands were run in the rehearsal (section 6).
 
 **Restarts and failures.** Every long-running service has `restart: unless-stopped`. The API's health check calls `/health`, which answers only after start-up has verified the model and registered it in the database. If the database becomes unavailable, requests that need it get 503 with `Retry-After`, the session is kept, and the pool reconnects when the database returns, without restarting the API. A batch job interrupted by a stop or crash resumes from its last stored chunk after its 60-second lease expires, in any API process.
 
@@ -89,12 +94,12 @@ python3 scripts/verify_deployment.py --origin https://finguard.example.com --ema
 
 ## 6. Local rehearsal (what was verified)
 
-Run on Windows 11 with Docker Desktop, on 2026-11-15:
+Run on Windows 11 with Docker Desktop, on 2026-11-15, from a **fresh clone**. The model file was copied in as in section 3, images were built with `--no-cache`, and volumes were new:
 
 ```bash
-python scripts/generate_production_env.py --domain 127.0.0.1 --tls internal \
-    --http-port 9080 --https-port 9443 --bind-address 127.0.0.1 --output <outside the repo>/env.production
-docker compose -f docker-compose.prod.yml --env-file <...>/env.production up -d --build --wait
+python scripts/generate_production_env.py --domain 127.0.0.1 --tls internal     --http-port 9080 --https-port 9443 --bind-address 127.0.0.1 --output <outside the repo>/env.production
+docker compose -f docker-compose.prod.yml --env-file <...>/env.production build --no-cache
+docker compose -f docker-compose.prod.yml --env-file <...>/env.production up -d --wait
 docker exec -e FINGUARD_ADMIN_PASSWORD=... finguard-prod-api-1 python -m app.commands.create_admin --email admin@finguard.example
 docker cp finguard-prod-web-1:/data/caddy/pki/authorities/local/root.crt <...>/root.crt
 python scripts/verify_deployment.py --origin https://127.0.0.1:9443 --ca-file <...>/root.crt --email admin@finguard.example --write
@@ -102,13 +107,22 @@ python scripts/verify_deployment.py --origin https://127.0.0.1:9443 --ca-file <.
 
 | Check | Result |
 |---|---|
-| Build from source and start | All five services healthy |
+| Without the model file (first attempt, before the folder was created) | The API refused to start; `up --wait` failed |
+| Build without cache and start | All services healthy 20 s after `up`; API image 979 MB, web image 92.7 MB |
+| Database state | Migration 0004; databases `postgres` and `finguard` only (no test database); `finguard_app` is not a superuser and cannot create databases; no API or database port published |
 | `verify_deployment.py --write` | 26 of 26 checks passed, with the certificate verified against Caddy's root (not skipped) |
+| The README demonstration, in Chromium | 13 of 13 steps passed: dashboard, flagged and unflagged scoring, a 40-row batch, the explorer, an investigation reviewed, noted and closed, model pages showing the 0.282% false positive rate, a report download, a new analyst who can view but not change |
 | Documentation routes, asked of the API inside its container | 404 for `/docs`, `/redoc`, `/openapi.json` |
-| Full stop (`down`) and start | Transactions, users and migration version unchanged |
-| Database stopped while the API ran | Sign-in answered 503 with `Retry-After: 5`; after the database returned, every check passed with no API restart |
-| Test database | None created |
-| Retention job | Ran on start and recorded its counts |
+| API process killed with SIGKILL (outside Docker, as a crash) | Restarted by its restart policy, healthy again, every check passed |
+| Caddy restarted | Every check passed |
+| Database stopped while the API ran | Sign-in answered 503 with `Retry-After: 5`; `/health` stayed up; after the database returned, every check passed without restarting the API |
+| Every container restarted at once (a host restart) | Every check passed |
+| Full stop (`down`) and start | Transactions, predictions, investigations, users and batches identical |
+| Backup, data loss, restore (section 4 commands) | 89 transactions and all dependent rows truncated, then restored with identical counts in every table and the same table owner; every check passed after an API restart |
+| Logs of all four services | No signing key, database password or administrator password; no tracebacks |
+| Request body over 11 MB, chunked, signed in | 413 from Caddy; a 9 MB file reached the API, which applied its own row limit |
+
+Two defects were found and fixed by this rehearsal: the backup commands lacked the database password (the database uses SCRAM on its local socket too), and the model step did not say that the folder must be created in a fresh clone.
 
 On a non-default HTTPS port such as 9443, Caddy's automatic HTTP redirect omits the port. An explicit HTTP site fixed that, but it turned off automatic HTTPS on the HTTP port, which certificate challenges use, so it was reverted. Production uses 80 and 443, where this does not arise.
 
@@ -121,7 +135,7 @@ On a non-default HTTPS port such as 9443, Caddy's automatic HTTP redirect omits 
 
 ## 8. Image size
 
-The API image went from 1.92 GB to 981 MB in Phase 6:
+The API image went from 1.92 GB to 979 MB in Phase 6:
 - NVIDIA NCCL (469 MB) is no longer installed. XGBoost's Linux wheel requires it, but it serves only multi-GPU training, and a `uv` override removes it.
 - uv is used in a build stage only.
 

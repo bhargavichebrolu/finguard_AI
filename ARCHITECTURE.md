@@ -41,7 +41,7 @@ Training and live inference are separate processes. The API loads an already-tra
 | Shared rate limits | `backend/app/core/rate_limit.py` | Implemented in Phase 5: counted in PostgreSQL |
 | Retention command | `backend/app/commands/retention.py` | Implemented in Phase 5: dry run by default |
 | HTTPS production-like stack | `docker/caddy/Caddyfile`, `scripts/prodlike_stack.py`, `frontend/tests/prodlike/` | Implemented in Phase 5, local only |
-| Containers | `backend/Dockerfile` (two stages, 981 MB), `docker-compose.yml` | Implemented; the same API image serves development and production |
+| Containers | `backend/Dockerfile` (two stages, 979 MB), `docker-compose.yml` | Implemented; the same API image serves development and production |
 | Production deployment | `docker-compose.prod.yml`, `docker/web/Dockerfile`, `docker/caddy/Caddyfile.production`, `scripts/generate_production_env.py`, `scripts/verify_deployment.py` | Implemented in Phase 6: one Docker host; verified in a local rehearsal, not on a public host |
 
 ## Design rules

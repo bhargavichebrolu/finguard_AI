@@ -247,11 +247,11 @@ All of these run locally before each commit, as in every milestone so far. The j
 
 | Reason | Tests | Where |
 |---|---|---|
-| `frozen model file is absent` | 289 | `tests/api/*` (265), `test_model_service.py` (19), `test_multiprocess.py` (5) |
+| `frozen model file is absent` | 313 | `tests/api/*` (289, of which 24 are Phase 6's explorer page cases), `test_model_service.py` (19), `test_multiprocess.py` (5) |
 | `The frozen model binary is absent (not stored in Git)` | 3 | `test_real_models.py` |
 | `Full dataset and processed partitions are not present` | 6 | `test_real_data.py` |
 
-Backend: at least 480 must pass. Frontend: at least 111 must pass, and none may skip. `check_test_run.py` fails the job in any of these cases:
+Backend: at least 512 must pass (480 until Phase 6 added tests that run without the model). Frontend: at least 111 must pass, and none may skip. `check_test_run.py` fails the job in any of these cases:
 
 - a skip that is not listed;
 - a listed skip that did not happen;
@@ -396,6 +396,8 @@ If the status failure recurs, the failing line says which step broke. Keep the A
 | `test_create_admin.py` (4) | The in-image administrator command: audited, hashed, never printed, refuses duplicates and bad input |
 | `test_deployment.py` (21 cases) | The production files: proxy trust, published ports, required secrets, read-only model, digests, build context, body limit, no API compression, CI image job, settings generator, reference grid |
 | `production.spec.ts` (1 new) | The production-like API serves no documentation over the real stack |
+
+**Results of the Phase 6 verification** (2026-11-15): backend 835 passed with the model; CI rehearsal on a fresh clone 514 passed and 322 expected skips, all 23 workflow steps passing; Vitest 111; browser 311 in all seven projects; HTTPS 7. See [docs/plans/phase-6-completion.md](docs/plans/phase-6-completion.md).
 
 Verified outside pytest, in the local production rehearsal ([DEPLOYMENT.md](DEPLOYMENT.md), section 6): `verify_deployment.py --write` 26 of 26; persistence across a full stop and start; recovery from a database outage without an API restart; a 12 MB chunked upload stopped by Caddy; identical inference fingerprints in the old and new API images.
 

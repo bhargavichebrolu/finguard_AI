@@ -33,7 +33,7 @@ Production refuses to start with an empty `TRUSTED_PROXY_IPS`, and every environ
 - NVIDIA NCCL is removed through a `uv` override.
 - uv is used only in a build stage.
 
-The image went from 1.92 GB to 981 MB.
+The image went from 1.92 GB to 979 MB.
 
 **Why not `xgboost-cpu`:** start-up checks the installed `xgboost` distribution's version against the model's metadata. Switching packages would mean changing that check, which protects the frozen model.
 

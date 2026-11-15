@@ -53,6 +53,7 @@ Returns the whole `handle @api` block of the production Caddyfile, up to the sta
 | `test_ci_builds_both_images_and_checks_the_production_configuration` | The CI `images` job builds both images and validates the Compose file. |
 | `test_the_reference_grid_covers_every_valid_input_kind` | The inference-parity grid has 550 rows, every type, and merchant only with PAYMENT. |
 | `test_the_fingerprint_changes_with_any_output` | The fingerprint is stable for equal outputs and changes when one score or one explanation value changes in its last digits. |
+| `test_the_api_build_context_excludes_nested_docs_and_caches` | `backend/.dockerignore` excludes documents and bytecode at every depth, and `.env` files and tests. |
 | `test_the_proxy_caps_request_bodies_above_the_upload_limit` | The API handler limits request bodies to 11 MB before proxying, so an upload without `Content-Length` is stopped while it streams. |
 
 ## E. Classes Explained
