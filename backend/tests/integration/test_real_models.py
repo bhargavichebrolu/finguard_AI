@@ -42,6 +42,18 @@ def load_metadata():
     return json.loads(MODEL_METADATA_PATH.read_text(encoding="utf-8"))
 
 
+def require_model_file(metadata):
+    """Skip when the frozen binary is absent, as in a clean clone or CI: it is not in Git."""
+    if not (MODELS_DIR / metadata["model_file"]).is_file():
+        pytest.skip("The frozen model binary is absent (not stored in Git)")
+
+
+def require_partition(name):
+    """Skip when a processed partition is absent: the dataset is not in Git."""
+    if not partition_path(PROCESSED_DIR, name).is_file():
+        pytest.skip(f"The {name} partition is absent (the dataset is not in Git)")
+
+
 def test_all_24_matrix_cells_were_attempted_and_recorded():
     runs = load_result("runs.json")
     matrix = [run for run in runs.values() if run["stage"] == "matrix"]
@@ -94,6 +106,7 @@ def test_no_result_is_implausibly_good_without_balances():
 
 def test_frozen_file_matches_recorded_hash_and_loads():
     metadata = load_metadata()
+    require_model_file(metadata)
     model_path = MODELS_DIR / metadata["model_file"]
     assert sha256_file(model_path) == metadata["model_sha256"]
     model = load_model_artifact(MODEL_METADATA_PATH, MODELS_DIR)
@@ -104,6 +117,8 @@ def test_frozen_file_matches_recorded_hash_and_loads():
 
 def test_frozen_model_reproduces_recorded_validation_results():
     thresholds = load_result("threshold_analysis.json")
+    require_model_file(load_metadata())
+    require_partition("validation")
     model = load_model_artifact(MODEL_METADATA_PATH, MODELS_DIR)
     validation = load_development_partition(PROCESSED_DIR, "validation")
     labels = validation.labels.to_numpy()
@@ -211,7 +226,8 @@ def test_documentation_tables_match_the_saved_results():
 
 
 def test_scores_are_not_constant():
-    load_metadata()
+    require_model_file(load_metadata())
+    require_partition("validation")
     model = load_model_artifact(MODEL_METADATA_PATH, MODELS_DIR)
     validation = load_development_partition(PROCESSED_DIR, "validation")
     assert np.unique(model.pipeline.predict_proba(validation.features.head(1000))[:, 1]).size > 1

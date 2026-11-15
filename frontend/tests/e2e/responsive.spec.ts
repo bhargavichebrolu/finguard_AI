@@ -33,8 +33,9 @@ const PAGES = [
   { path: "/system", heading: "System Information" },
 ];
 
+/** Narrow layouts (the menu button instead of the sidebar) start below 900 CSS pixels. */
 function narrow(testInfo: TestInfo): boolean {
-  return testInfo.project.name !== "desktop";
+  return (testInfo.project.use.viewport?.width ?? 1440) <= 900;
 }
 
 async function settle(page: Page, heading: string): Promise<void> {
@@ -70,6 +71,9 @@ async function expectNoHorizontalScroll(page: Page): Promise<void> {
 }
 
 async function screenshot(page: Page, testInfo: TestInfo, name: string): Promise<void> {
+  // Take screenshots after checking for CSP and console problems: in WebKit every Playwright
+  // screenshot injects a <style>, which the page's strict CSP rightly refuses (Phase 5 M6:
+  // nothing is reported on load or after axe, only after a screenshot, whatever its options).
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, `${testInfo.project.name}-${name}.png`), fullPage: true });
 }
 
@@ -112,8 +116,8 @@ test.describe("signed-in pages", () => {
       await expectNoHorizontalScroll(page);
       await expectNoAxeViolations(page);
       await expectTouchTargets(page);
-      await screenshot(page, testInfo, target.path.slice(1));
       expect(problems.list).toEqual([]);
+      await screenshot(page, testInfo, target.path.slice(1));
     });
   }
 
@@ -176,6 +180,44 @@ test.describe("signed-in pages", () => {
     expect(outside).toBe(0);
   });
 
+  test("only the navigation control for this width is shown", async ({ page }, testInfo) => {
+    // Phase 5 M6: `.button` overrode the visibility helpers, so the phone menu button also showed
+    // on desktop beside the collapse toggle, and took keyboard focus there.
+    await page.goto("/dashboard");
+    await settle(page, "Dashboard");
+    const open = page.getByRole("button", { name: "Open navigation" });
+    const collapse = page.getByRole("button", { name: "Collapse navigation" });
+    if (narrow(testInfo)) {
+      await expect(open).toBeVisible();
+      await expect(collapse).toBeHidden();
+    } else {
+      await expect(collapse).toBeVisible();
+      await expect(open).toBeHidden();
+    }
+  });
+
+  test("every figure fits its tile on one line", async ({ page }) => {
+    // Phase 5 M6: totals in the billions overflowed their tile in WebKit, and a first fix let them
+    // break mid-number. Each figure must fit, unbroken, in every engine and width.
+    // Stat tiles appear only on the Dashboard.
+    await page.goto("/dashboard");
+    await settle(page, "Dashboard");
+    const values = page.locator(".stat-value");
+    expect(await values.count(), "the Dashboard has figures").toBeGreaterThan(0);
+    const problems = await values.evaluateAll((elements) =>
+      elements.flatMap((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const lines = new Set(Array.from(range.getClientRects()).map((box) => Math.round(box.top))).size;
+        const tile = element.closest(".stat-tile")!.getBoundingClientRect();
+        const text = range.getBoundingClientRect();
+        const fits = text.left >= tile.left - 0.5 && text.right <= tile.right + 0.5;
+        return lines === 1 && fits ? [] : [`${element.textContent}: ${lines} lines, fits ${fits}`];
+      }),
+    );
+    expect(problems).toEqual([]);
+  });
+
   test("the navigation menu opens, works by keyboard, and hides its links when closed", async ({ page }, testInfo) => {
     await page.goto("/dashboard");
     await settle(page, "Dashboard");
@@ -217,11 +259,18 @@ test.describe("signed-in pages", () => {
     await expect(explorer).toBeHidden();
   });
 
-  test("the skip link and focus indicator work from the keyboard", async ({ page }) => {
+  test("the skip link and focus indicator work from the keyboard", async ({ page, browserName }) => {
     await page.goto("/dashboard");
     await settle(page, "Dashboard");
-    await page.keyboard.press("Tab");
     const skip = page.getByRole("link", { name: "Skip to content" });
+    if (browserName === "webkit") {
+      // Playwright's WebKit on Windows moves focus to no link with Tab or Option+Tab (Safari's
+      // default also skips links on Tab). Being first in the Tab order is checked in Chromium and
+      // Firefox; here the rest is checked: shown when focused, and Enter moves to the content.
+      await skip.focus();
+    } else {
+      await page.keyboard.press("Tab");
+    }
     await expect(skip).toBeFocused();
     await expect(skip).toBeInViewport();
     await page.keyboard.press("Enter");
@@ -241,7 +290,10 @@ test.describe("signed-in pages", () => {
     await page.goto("/settings");
     await settle(page, "Settings");
     const save = page.getByRole("button", { name: "Save boundary" });
-    await save.click();
+    // Opened from the keyboard, the path focus return serves. (In WebKit, as in Safari, a mouse
+    // click does not focus a button, so there is no control to return focus to.)
+    await save.focus();
+    await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Change the high risk boundary?" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
@@ -273,7 +325,7 @@ test.describe("sign-in page", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("alert")).toHaveText("Incorrect email or password.");
     await expectNoAxeViolations(page);
-    await screenshot(page, testInfo, "login");
     expect(problems.list).toEqual([]);
+    await screenshot(page, testInfo, "login");
   });
 });

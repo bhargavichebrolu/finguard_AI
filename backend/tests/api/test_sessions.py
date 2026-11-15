@@ -69,6 +69,44 @@ def test_cookies_are_secure_in_production(monkeypatch):
     assert settings.cookie_secure is False
 
 
+def test_secure_cookies_carry_browser_enforced_prefixes(
+    app_client, session, make_user, monkeypatch
+):
+    # Phase 5 M5: with Secure cookies, __Secure- and __Host- make browsers refuse look-alike
+    # cookies set without Secure, or (for __Host-) with a Domain or another path.
+    monkeypatch.setattr(get_settings(), "session_cookie_secure", True)
+    https = TestClient(app_client.app, base_url="https://testserver")
+    make_user(UserRole.ANALYST, email="secure@example.com")
+    response = sign_in(https, "secure@example.com")
+    assert response.status_code == 200
+    cookies = {
+        header.split("=", 1)[0]: header for header in response.headers.get_list("set-cookie")
+    }
+    assert set(cookies) == {"__Secure-finguard_session", "__Host-finguard_csrf"}
+    session_cookie, csrf_cookie = (
+        cookies["__Secure-finguard_session"],
+        cookies["__Host-finguard_csrf"],
+    )
+    assert (
+        "Secure" in session_cookie
+        and "HttpOnly" in session_cookie
+        and "Path=/api" in session_cookie
+    )
+    assert "Secure" in csrf_cookie and "Path=/" in csrf_cookie and "Domain" not in csrf_cookie
+
+    assert https.get(ME).status_code == 200
+    csrf = {"Origin": ORIGIN, CSRF_HEADER: https.cookies.get("__Host-finguard_csrf")}
+    assert https.post("/api/v1/transactions/predict", json=FLAGGED, headers=csrf).status_code == 201
+
+    # The unprefixed name is not read when cookies are Secure.
+    token = https.cookies.get("__Secure-finguard_session")
+    plain = TestClient(app_client.app, base_url="https://testserver")
+    assert plain.get(ME, headers={"Cookie": f"finguard_session={token}"}).status_code == 401
+    assert (
+        plain.get(ME, headers={"Cookie": f"__Secure-finguard_session={token}"}).status_code == 200
+    )
+
+
 def test_me_reports_permissions_and_expiry(browser, make_user):
     make_user(UserRole.INVESTIGATOR, email="iv@example.com")
     sign_in(browser, "iv@example.com")

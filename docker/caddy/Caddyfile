@@ -1,0 +1,42 @@
+# Production-like local stack (Phase 5 M5): HTTPS, one origin for the interface and the API.
+# The browser talks only to Caddy. Caddy serves the built frontend and forwards /api and
+# /health to the API, which trusts forwarded headers from Caddy's fixed address only.
+# Certificates come from Caddy's own local CA; a real host would use a public certificate.
+{
+	admin off
+	http_port 8082
+	https_port 8443
+	local_certs
+	# Clients send no server name (SNI) for an IP address, so tell Caddy which certificate to use.
+	default_sni 127.0.0.1
+}
+
+https://127.0.0.1:8443 {
+	tls internal
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	@api path /api/* /health
+	handle @api {
+		# Caddy replaces any X-Forwarded-For sent by the client with the client's real address,
+		# because no upstream proxy is trusted here.
+		reverse_proxy api-prodlike:8000
+	}
+
+	handle {
+		# Must match CONTENT_SECURITY_POLICY in frontend/vite.config.ts (a test compares them).
+		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+http://127.0.0.1:8082 {
+	redir https://127.0.0.1:8443{uri} 308
+}

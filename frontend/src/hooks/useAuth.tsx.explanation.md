@@ -36,6 +36,7 @@ On start-up the status is `checking`. If `/auth/me` succeeds it becomes `signedI
 Output: `status`, `user` (email, role, permissions and session expiry), `notice`, `signIn`, `signOut` and `can(permission)`.
 
 ## H. Important Technical Concepts
+- **`unavailable` (Phase 5 M7):** only a 401 from the start-up check means signed out. Any other failure sets status `unavailable` with `checkError`, and `recheck` repeats the check. Before, an API restart or database outage sent a user with a valid session to the sign-in page.
 - **Reloading keeps the session:** the cookie survives a reload, so `/auth/me` restores it. Nothing is read from browser storage.
 - **`can` mirrors the server.** Hiding a button is a convenience, and the API refuses the action anyway.
 - **The expiry timer** prevents a user working on a page whose session has already lapsed, then losing the work at the next request.

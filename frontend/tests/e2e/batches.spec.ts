@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 
 import { expect, test, type Page } from "@playwright/test";
 
-import { statePath, uniqueId, watchForProblems } from "./support";
+import { apiCall, restartApiContainer, setDatabaseAvailable, statePath, uniqueId, watchForProblems } from "./support";
 
 test.use({ storageState: statePath("analyst") });
 
@@ -150,20 +150,106 @@ test("shows processing progress for a larger file until it completes", async ({ 
   await expect(progress).toBeVisible();
   const seen: number[] = [];
   const labels = new Set<string>();
+  // Polled until the status completes, not until the bar reads 100: the last chunk is stored
+  // (100%) a moment before the job is marked completed, so stopping at 100 could end while the
+  // label still said Processing, and the test then depended on timing (Phase 5 M6, WebKit).
+  // The bar and its label are read in one step, from the same render. Read separately, a re-render
+  // could fall between the two reads: the bar read at 95 while Processing, then the label read
+  // after the response that brought Completed at 100, so the poll ended with 95 as the last value
+  // although the page never showed "Completed" beside 95 (Phase 5 gate investigation, Firefox).
   await expect
     .poll(
       async () => {
-        seen.push(Number(await progress.getAttribute("value")));
-        labels.add((await status.locator("label[for=processing-progress]").innerText()).split(":")[0]);
-        return seen[seen.length - 1];
+        const snapshot = await status.evaluate((article) => {
+          const bar = article.querySelector("#processing-progress");
+          const text = article.querySelector<HTMLElement>("label[for=processing-progress]");
+          if (!bar || !text) throw new Error("the progress bar or its label is missing");
+          return { value: Number(bar.getAttribute("value")), label: text.innerText.split(":")[0] };
+        });
+        seen.push(snapshot.value);
+        labels.add(snapshot.label);
+        return snapshot.label;
       },
       { timeout: 120_000, intervals: [250] },
     )
-    .toBe(100);
+    .toBe("Completed");
+  expect(seen[seen.length - 1]).toBe(100);
   await expect(status.getByText(`Completed: 20,000 of 20,000 rows`)).toBeVisible();
   // Progress only moves forward, and the page showed the job before it had finished.
   expect([...seen].sort((a, b) => a - b)).toEqual(seen);
   expect(seen[0]).toBeLessThan(100);
   expect(labels.size).toBeGreaterThan(1);
   await expect(page.getByText("1–25 of 20,000")).toBeVisible();
+});
+
+test("resumes a batch after the API restarts mid-job, storing every row once", async ({ page }) => {
+  test.setTimeout(240_000);
+  const prefix = uniqueId("R");
+  const rows = 20_000;
+  await page.goto("/batches");
+  await upload(page, csvFile(`${prefix.toLowerCase()}.csv`, `${HEADER}\n${goodRows(prefix, rows).join("\n")}\n`));
+  const status = page.getByRole("article", { name: "Batch status" });
+  const progress = status.locator("#processing-progress");
+  await expect.poll(async () => Number(await progress.getAttribute("value")), { timeout: 60_000 }).toBeGreaterThan(0);
+  const before = Number(await progress.getAttribute("value"));
+  expect(before).toBeLessThan(100);
+
+  // A graceful restart: the worker finishes its chunk and gives the job back (Phase 5 M4).
+  restartApiContainer();
+  await expect(status.getByText(/Resuming after an interruption:/)).toBeVisible({ timeout: 120_000 });
+  await expect(status.getByText("Completed: 20,000 of 20,000 rows")).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByText("1–25 of 20,000")).toBeVisible();
+
+  const jobs = await apiCall(page, "GET", "/api/v1/batches?limit=1");
+  const job = ((await jobs.json()) as { items: { attempts: number; succeeded_records: number }[] }).items[0];
+  expect(job.attempts).toBe(2);
+  expect(job.succeeded_records).toBe(rows);
+});
+
+test("resumes a batch after the database drops mid-job, storing every row once", async ({ page }) => {
+  // Phase 5 M7: a lost database connection interrupts the job instead of failing it.
+  test.setTimeout(300_000);
+  const prefix = uniqueId("D");
+  const rows = 20_000;
+  await page.goto("/batches");
+  await upload(page, csvFile(`${prefix.toLowerCase()}.csv`, `${HEADER}\n${goodRows(prefix, rows).join("\n")}\n`));
+  const status = page.getByRole("article", { name: "Batch status" });
+  const progress = status.locator("#processing-progress");
+  await expect.poll(async () => Number(await progress.getAttribute("value")), { timeout: 60_000 }).toBeGreaterThan(0);
+  expect(Number(await progress.getAttribute("value"))).toBeLessThan(100);
+
+  setDatabaseAvailable(false);
+  try {
+    await expect(status.getByText("Lost contact with the server. Still checking; work already done is kept.")).toBeVisible({ timeout: 30_000 });
+  } finally {
+    setDatabaseAvailable(true);
+  }
+  // Resumed from the last stored chunk once the database is back (at the latest when the lease
+  // of 60 seconds runs out), never marked failed.
+  await expect(status.getByText(/Resuming after an interruption:/)).toBeVisible({ timeout: 150_000 });
+  await expect(status.getByText("Completed: 20,000 of 20,000 rows")).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByText("1–25 of 20,000")).toBeVisible();
+  const job = ((await (await apiCall(page, "GET", "/api/v1/batches?limit=1")).json()) as {
+    items: { attempts: number; succeeded_records: number; failed_records: number; status: string }[];
+  }).items[0];
+  expect(job).toMatchObject({ status: "COMPLETED", attempts: 2, succeeded_records: rows, failed_records: 0 });
+});
+
+test("a file submitted twice stores each identified row once", async ({ page }) => {
+  const prefix = uniqueId("TWICE");
+  const body = `${HEADER}\n${goodRows(prefix, 10).join("\n")}\n`;
+  await page.goto("/batches");
+  await upload(page, csvFile("twice.csv", body));
+  const status = page.getByRole("article", { name: "Batch status" });
+  await expect(status.getByText("Completed: 10 of 10 rows")).toBeVisible({ timeout: 60_000 });
+
+  await page.goto("/batches");
+  await upload(page, csvFile("twice.csv", body));
+  await expect(status.getByText("Completed with errors: 10 of 10 rows")).toBeVisible({ timeout: 60_000 });
+  const second = ((await (await apiCall(page, "GET", "/api/v1/batches?limit=1")).json()) as {
+    items: { succeeded_records: number; failed_records: number }[];
+  }).items[0];
+  expect(second).toMatchObject({ succeeded_records: 0, failed_records: 10 });
+  const stored = (await (await apiCall(page, "GET", `/api/v1/transactions?external_id=${prefix}-0&limit=5`)).json()) as { total: number };
+  expect(stored.total).toBe(1);
 });

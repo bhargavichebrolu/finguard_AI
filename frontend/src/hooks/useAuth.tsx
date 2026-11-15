@@ -6,15 +6,20 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { onUnauthorized } from "../services/api";
+import { ApiError, onUnauthorized, toApiError } from "../services/api";
 import { authApi, type CurrentUser } from "../services/endpoints";
 
-export type AuthStatus = "checking" | "signedOut" | "signedIn";
+/** "unavailable": the session could not be checked because the server did not answer properly. */
+export type AuthStatus = "checking" | "signedOut" | "signedIn" | "unavailable";
 
 export interface AuthState {
   status: AuthStatus;
   user: CurrentUser | null;
   notice: string | null;
+  /** Why the session could not be checked, while status is "unavailable". */
+  checkError: ApiError | null;
+  /** Check the session again, as after the server comes back. */
+  recheck: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   can: (permission: string) => boolean;
@@ -27,6 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("checking");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [checkError, setCheckError] = useState<ApiError | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   const endSession = useCallback((message: string | null) => {
     setUser(null);
@@ -36,20 +43,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    setStatus("checking");
     authApi
       .me()
       .then((current) => {
         if (!active) return;
         setUser(current);
+        setCheckError(null);
         setStatus("signedIn");
       })
-      .catch(() => {
-        if (active) endSession(null);
+      .catch((caught: unknown) => {
+        if (!active) return;
+        const error = toApiError(caught);
+        // Only a 401 means there is no session. Anything else (no answer, a 5xx while the API or
+        // database is down) says nothing about the session, which may be perfectly valid, so
+        // the user is told the server is unavailable instead of being sent to sign in (Phase 5 M7).
+        if (error.status === 401) {
+          endSession(null);
+        } else {
+          setCheckError(error);
+          setStatus("unavailable");
+        }
       });
     return () => {
       active = false;
     };
-  }, [endSession]);
+  }, [endSession, attempt]);
+
+  const recheck = useCallback(() => setAttempt((count) => count + 1), []);
 
   useEffect(() => {
     onUnauthorized(() => endSession(SESSION_ENDED));
@@ -84,8 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ status, user, notice, signIn, signOut, can }),
-    [status, user, notice, signIn, signOut, can],
+    () => ({ status, user, notice, checkError, recheck, signIn, signOut, can }),
+    [status, user, notice, checkError, recheck, signIn, signOut, can],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

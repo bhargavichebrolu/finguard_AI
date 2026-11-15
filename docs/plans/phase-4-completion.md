@@ -1,6 +1,6 @@
 # Phase 4 completion: React frontend
 
-Status: complete on branch `phase-4-frontend`, awaiting review. Not merged into `main`, not pushed. Phase 5 has not started.
+Status: accepted on 2026-11-08 and fast-forwarded into `main` at `5c392a5`, not pushed. (When this record was written it was awaiting review and Phase 5 had not started.)
 
 Plan: [phase-4-plan.md](phase-4-plan.md). Decisions: [ADR 0004](../decisions/0004-phase-4-decisions.md).
 

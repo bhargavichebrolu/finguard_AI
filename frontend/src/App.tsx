@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LoadingState } from "./components/feedback";
 import { ForbiddenPage, NotFoundPage, RequireAuth, RequirePermission } from "./components/guards";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
@@ -37,7 +38,10 @@ export function AppRoutes() {
             path={page.path.slice(1)}
             element={
               <RequirePermission permission={page.permission}>
-                <Suspense fallback={<LoadingState label="Loading page" />}>{page.element}</Suspense>
+                {/* Keyed by page, so choosing another page clears an error (Phase 5 M7). */}
+                <ErrorBoundary key={page.path}>
+                  <Suspense fallback={<LoadingState label="Loading page" />}>{page.element}</Suspense>
+                </ErrorBoundary>
               </RequirePermission>
             }
           />
@@ -50,10 +54,12 @@ export function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

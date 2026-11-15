@@ -8,6 +8,8 @@ Building the schema starts no server and opens no database connection.
 
 import argparse
 import json
+import os
+import secrets
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,8 +18,22 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = REPO_ROOT / "frontend" / "openapi.json"
 
 
+def use_placeholder_settings() -> None:
+    """Let the app's settings load without a .env, as in a clean clone or CI.
+
+    Building the schema never connects to the database or signs anything, so throwaway values
+    are enough. Values already set in the environment or .env are left alone.
+    """
+    if not (REPO_ROOT / ".env").is_file():
+        os.environ.setdefault(
+            "DATABASE_URL", "postgresql+psycopg://unused:unused@127.0.0.1:1/unused"
+        )
+        os.environ.setdefault("SECRET_KEY", secrets.token_urlsafe(48))
+
+
 def current_schema() -> dict[str, Any]:
     """Return the schema FastAPI generates from the routes."""
+    use_placeholder_settings()
     from app.main import create_app
 
     return create_app().openapi()

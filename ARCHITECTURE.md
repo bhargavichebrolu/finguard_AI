@@ -1,6 +1,6 @@
 # Architecture
 
-**Implemented through Phase 3:** the offline data pipeline, experiments and model artefacts, the FastAPI service and PostgreSQL database, running locally in Docker, and the frontend toolchain. Everything else below is the target design from the [PRD](docs/PRD.md) and is marked as planned.
+**Implemented through Phase 6** (Phases 1–5 accepted; Phase 6 on branch `phase-5-hardening`, not merged or pushed): the offline data pipeline, experiments and model artefacts, the FastAPI service and PostgreSQL database, the React interface, browser tests in three engines, an HTTPS production-like stack, a CI workflow (written, not yet run on GitHub), and a production deployment on one Docker host (`docker-compose.prod.yml`), verified in a local rehearsal. Nothing is deployed to a public host.
 
 ## Target system
 
@@ -15,7 +15,7 @@ Parquet partitions                        FastAPI backend (container)
    |                                          |        |
 training and evaluation  ---- artefacts --->  |        +--- PostgreSQL (managed)
    |                                          |
-saved experiment results ----- metrics ------>+--- temporary batch storage
+saved experiment results ----- metrics ------>+--- batch queue (PostgreSQL)
 ```
 
 Training and live inference are separate processes. The API loads an already-trained, validated model at startup and never trains or downloads PaySim.
@@ -35,10 +35,14 @@ Training and live inference are separate processes. The API loads an already-tra
 | Configuration, errors, logging, middleware | `backend/app/core/` | Implemented |
 | Database models and migrations | `backend/app/models/`, `backend/migrations/` | Implemented |
 | React application | `frontend/src/` | Implemented: ten pages, cookie sessions, code-split per page |
-| Browser tests | `frontend/tests/e2e/`, `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Implemented: real API and test database, three viewports, axe |
-| CI | `.github/workflows/` | Planned: Phase 5 |
-| Containers | `backend/Dockerfile`, `docker-compose.yml` | Implemented for local use |
-| Deployment | | Planned: Phase 6 |
+| Browser tests | `frontend/tests/e2e/`, `scripts/e2e_stack.py`, `scripts/e2e_database.py` | Implemented: real API and test database, three viewports, axe; Chromium, Firefox and WebKit since Phase 5 |
+| CI | `.github/workflows/ci.yml`, `.github/expected-tests.json`, `scripts/check_test_run.py` | Written in Phase 5 M8 and rehearsed locally; not yet run on GitHub |
+| Batch queue | `backend/app/services/batch_service.py` (`BatchWorker`, started by `backend/app/main.py`) | Implemented in Phase 5: leases, resumable chunks, any number of processes |
+| Shared rate limits | `backend/app/core/rate_limit.py` | Implemented in Phase 5: counted in PostgreSQL |
+| Retention command | `backend/app/commands/retention.py` | Implemented in Phase 5: dry run by default |
+| HTTPS production-like stack | `docker/caddy/Caddyfile`, `scripts/prodlike_stack.py`, `frontend/tests/prodlike/` | Implemented in Phase 5, local only |
+| Containers | `backend/Dockerfile` (two stages, 979 MB), `docker-compose.yml` | Implemented; the same API image serves development and production |
+| Production deployment | `docker-compose.prod.yml`, `docker/web/Dockerfile`, `docker/caddy/Caddyfile.production`, `scripts/generate_production_env.py`, `scripts/verify_deployment.py` | Implemented in Phase 6: one Docker host; verified in a local rehearsal, not on a public host |
 
 ## Design rules
 
@@ -47,7 +51,7 @@ Training and live inference are separate processes. The API loads an already-tra
 3. **Separated labels.** Partitions store labels in their own column, and `load_partition` returns them apart from features.
 4. **Fixed direction of dependencies.** `schema` depends on nothing. `features` and `splitting` build on it, then `dataset_preparation`, `eda` and `leakage_audit`, then `scripts`. Lower layers never import higher ones.
 5. **Library code takes paths as arguments.** Only `scripts/` uses repository defaults, which is what lets tests run on small fixtures.
-6. **Saved outputs are the source of truth.** Charts render from saved summaries, and documentation and the planned UI report saved results.
+6. **Saved outputs are the source of truth.** Charts render from saved summaries, and the documentation and the interface report saved results.
 7. **Three kinds of truth stay separate** (PRD 6.1): ground-truth labels, model predictions and investigation outcomes.
 8. **The serving path is light.** `model_artifacts`, `preprocessing`, `features` and `schema` import no training-only code, which a test checks in a new process.
 9. **One choke point per rule.** Oversampling happens only in `fit_candidate`. The test partition is read only by `final_evaluation`. The served model is loaded only by `load_verified_model`.
@@ -128,15 +132,46 @@ The browser holds no token. The API, not the interface, enforces every permissio
 
 ```
 scripts/e2e_stack.py up      docker compose profile "e2e": migrate-e2e, then api-e2e on 127.0.0.1:8011
-                             (same image, APP_ENV=test, finguard_test, fresh signing key)
+                             (same image, APP_ENV=test, finguard_e2e_test, fresh signing key)
 playwright global setup      scripts/e2e_database.py seed: refuses non-*_test names, empties tables
                              (keeping the registered model), creates accounts with random passwords,
                              then proves port 8011 reads that database by signing in
 playwright web server        npm run build; vite preview on 127.0.0.1:4173 with the production CSP,
                              forwarding /api to port 8011
-projects                     setup (sign in per role) -> desktop (all specs), tablet and mobile (layout and accessibility)
+projects                     setup (sign in per role) -> desktop (all specs), tablet and mobile (layout and accessibility);
+                             since Phase 5 also firefox and webkit (all specs) and webkit-mobile
 ```
+
+## Reliability and production shape (Phase 5)
+
+```
+API process (1..N, WEB_CONCURRENCY)   each runs one batch worker thread
+  upload -> checks -> batch_uploads + batch_jobs (PENDING)
+  worker -> claim (FOR UPDATE SKIP LOCKED, 60 s lease in database time)
+         -> 1,000-row chunks: predictions + processed_records + lease renewal in one transaction
+         -> done: bytes deleted | crash or lost database: lease expires, any worker resumes
+rate limits     rate_limit_windows (predictions, uploads) and rate_limit_events (sign-in), shared
+database down   503 + Retry-After; pool pre-ping reconnects; interface says "unavailable", keeps session
+prodlike        browser -> Caddy (HTTPS, HSTS, built frontend) -> /api -> API (APP_ENV=production,
+                trusts only Caddy's forwarded headers, __Secure- and __Host- cookies)
+CI              .github/workflows/ci.yml: clean checkout; skips must equal .github/expected-tests.json
+```
+
+## Production (Phase 6)
+
+```
+internet -> web (Caddy: ACME certificate, HSTS, CSP, built interface, bodies <= 11 MB)
+             |  edge network 172.30.240.0/24; /api/* and /health only, uncompressed
+             v
+           api (APP_ENV=production; trusts X-Forwarded-For from 172.30.240.10 only;
+             |   no /docs, /redoc or /openapi.json; frozen model mounted read-only)
+             |  data network (Caddy is not on it)
+             v
+           db (PostgreSQL 17, volume pgdata, SCRAM, non-superuser role)   <- migrate (once), retention (daily)
+```
+
+Only Caddy publishes ports. Secrets come from a generated, Git-ignored `.env.production` with no defaults. The explorer fetches pages with a deferred join: identifiers are sorted and skipped first, then only the page's rows are joined.
 
 ## Key decisions
 
-Recorded in [ADR 0001](docs/decisions/0001-phase-1-decisions.md), [ADR 0002](docs/decisions/0002-phase-2-decisions.md), [ADR 0003](docs/decisions/0003-phase-3-decisions.md) and [ADR 0004](docs/decisions/0004-phase-4-decisions.md).
+Recorded in [ADR 0001](docs/decisions/0001-phase-1-decisions.md), [ADR 0002](docs/decisions/0002-phase-2-decisions.md), [ADR 0003](docs/decisions/0003-phase-3-decisions.md), [ADR 0004](docs/decisions/0004-phase-4-decisions.md), [ADR 0005](docs/decisions/0005-phase-5-decisions.md) and [ADR 0006](docs/decisions/0006-phase-6-decisions.md).

@@ -98,7 +98,7 @@ cd backend; uv run alembic upgrade head; uv run uvicorn app.main:app --port 8010
 uv run --project backend python scripts/create_admin.py --email you@example.com
 ```
 
-Then open `http://127.0.0.1:8010/docs`, use **Authorize** with your email and password, and try the endpoints.
+Then open `http://127.0.0.1:8010/docs`, use **Authorize** with your email and password, and try the endpoints. These documentation pages exist in development and test only; production serves none (Phase 6, see [DEPLOYMENT.md](DEPLOYMENT.md)).
 
 The API refuses to start if the frozen model file is missing, altered or under different library versions. `model.joblib` is not in Git, so a fresh clone needs it placed at `artifacts/models/fraud_detector_v1/model.joblib` (see `DEPLOYMENT.md`).
 
@@ -121,17 +121,60 @@ npm run preview   # http://127.0.0.1:4173, the built app with its Content Securi
 
 The app calls the API on its own origin. The Vite servers forward `/api` and `/health` to `FINGUARD_API_PROXY_TARGET`, which defaults to `http://127.0.0.1:8010`. Sign in with an account made by `scripts/create_admin.py`. After an API change, run `uv run --project backend python scripts/export_openapi.py`, then `npm run gen:api`.
 
+### Worker processes and rate limits (Phase 5)
+
+`WEB_CONCURRENCY` sets the API's worker processes (default 1). Each loads the model, about 170 MiB; two workers nearly doubled concurrent throughput in measurement, four were slower than two (`docs/performance/phase-5-m3-rate-limits-and-workers.md`). Rate limits are shared through PostgreSQL, so any number of workers or containers enforce one limit. `RATE_LIMIT_STORE=memory` exists only for comparison measurements and is refused in production.
+
+### Batch queue (Phase 5)
+
+Every API process runs one batch worker. `BATCH_LEASE_SECONDS` (60) is how long a crashed process holds a job before another resumes it, `BATCH_MAX_ATTEMPTS` (3) how many interrupted attempts a job gets, `BATCH_POLL_SECONDS` (2) how often an idle worker looks for work. A graceful stop gives the job back at once. Uploads are stored in the database until their job ends, so no shared disk is needed.
+
+### Production-like HTTPS stack (Phase 5)
+
+```powershell
+uv run --project backend python scripts/prodlike_stack.py up   # https://127.0.0.1:8443
+cd frontend; npm run test:prodlike
+cd ..; uv run --project backend python scripts/prodlike_stack.py down
+```
+
+Caddy serves the built frontend over HTTPS with its own local certificate (browsers will warn), and forwards `/api` to an API running with production settings on its own test database. Plain HTTP on 8082 redirects to HTTPS. Windows `curl` cannot complete the handshake with this certificate; browsers and Python can.
+
+### Production deployment (Phase 6)
+
+[DEPLOYMENT.md](DEPLOYMENT.md) has the complete steps. A rehearsal on this computer, with Caddy's own certificate authority:
+
+```powershell
+uv run --project backend python scripts/generate_production_env.py --domain 127.0.0.1 --tls internal --http-port 9080 --https-port 9443 --bind-address 127.0.0.1 --output <a folder outside the repository>\env.production
+docker compose -f docker-compose.prod.yml --env-file <...>\env.production up -d --build --wait
+docker exec -it finguard-prod-api-1 python -m app.commands.create_admin --email admin@example.com
+docker cp finguard-prod-web-1:/data/caddy/pki/authorities/local/root.crt <...>
+oot.crt
+uv run --project backend python scripts/verify_deployment.py --origin https://127.0.0.1:9443 --ca-file <...>
+oot.crt --email admin@example.com
+docker compose -f docker-compose.prod.yml --env-file <...>\env.production down     # add --volumes to delete its data
+```
+
+The production stack is a separate Compose project (`finguard-prod`) with its own volumes, so it never touches the development database.
+
+### Continuous integration (Phase 5)
+
+`.github/workflows/ci.yml` runs on GitHub after a push; it has not run there yet. Its commands can be run locally as listed in [TESTING_GUIDE.md](TESTING_GUIDE.md#continuous-integration-phase-5-m8).
+
+### Maintenance
+
+`python -m app.commands.retention` reports what retention would delete; add `--apply` to delete it. `uv run --project backend python scripts/scan_secrets.py` scans all history for secrets.
+
 ### Browser tests
 
 ```powershell
-uv run --project backend python scripts/e2e_stack.py up   # API on 127.0.0.1:8011 using finguard_test
+uv run --project backend python scripts/e2e_stack.py up   # API on 127.0.0.1:8011 using finguard_e2e_test
 cd frontend
-npx playwright install chromium                           # once
+npx playwright install chromium firefox webkit            # once (Firefox and WebKit since Phase 5 M6)
 npm run test:e2e                                          # builds, serves on 127.0.0.1:4173, runs all projects
 cd ..; uv run --project backend python scripts/e2e_stack.py down
 ```
 
-Global setup reseeds `finguard_test` (and refuses any other database), so nothing in development data is touched. The backend test suite empties the same database, including the model registration, so run `e2e_stack.py up` again after it. Generated passwords, saved test sessions and screenshots go to `frontend/.e2e/`, which Git ignores. The browser-test API uses its own random signing key on each start and allows only `http://127.0.0.1:4173` as an origin.
+`python scripts/e2e_stack.py database off` makes `finguard_e2e_test` refuse connections, and `database on` restores it, for outage tests (Phase 5 M7); `up` always restores it. `e2e_stack.py up` creates `finguard_e2e_test` if it is missing, and global setup reseeds it (refusing any name not ending in `_test`), so nothing in development data is touched. The backend suite uses `finguard_test` instead, so the two suites can run one after the other without restarting anything. Generated passwords, saved test sessions and screenshots go to `frontend/.e2e/`, which Git ignores. The browser-test API uses its own random signing key on each start and allows only `http://127.0.0.1:4173` as an origin. Its sessions last 120 minutes (`E2E_ACCESS_TOKEN_MINUTES`), because the setup project signs in once for the whole run (Phase 6).
 
 ## Environment variables
 
@@ -139,7 +182,7 @@ Run `scripts/generate_env.py` rather than copying `.env.example` by hand. It fil
 
 ## Configuration files
 
-From Phase 3, configuration files that are authored by hand have their own explanation documents beside them, for example `docker-compose.yml.explanation.md` ([why](docs/decisions/0003-phase-3-decisions.md)). The frontend configuration below is still described only here, because Phase 3 made no frontend changes.
+From Phase 3, configuration files that are authored by hand have their own explanation documents beside them, for example `docker-compose.yml.explanation.md` ([why](docs/decisions/0003-phase-3-decisions.md)). Since Phase 4 the frontend configuration files have them too, since Phase 5 the CI files (`.github/workflows/ci.yml`, `.github/expected-tests.json`), and since Phase 6 the production files (`docker-compose.prod.yml`, `docker/caddy/Caddyfile.production`, `docker/web/Dockerfile` and its ignore file).
 
 | File | Purpose | Maintenance |
 |---|---|---|
@@ -152,6 +195,9 @@ From Phase 3, configuration files that are authored by hand have their own expla
 | `experiments/experiment-configs/experiments_v1.json` | Seeds, threads, model settings, search budgets, threshold objective, selection limits | Do not edit after results exist. Add a new version instead |
 | `.gitignore` | Excludes secrets, data, model binaries and build output | Review before adding any new data location |
 | `.env.example` | Placeholder configuration only | Never put a real value here |
+| `.github/expected-tests.json` | Tests CI expects to skip on a clean checkout, and minimum passes | Change only with `scripts/check_test_run.py --update` on a fresh clone, and review the diff |
+| `docker-compose.prod.yml`, `docker/caddy/Caddyfile.production` | Production deployment (Phase 6) | Keep `TRUSTED_PROXY_IPS` equal to Caddy's fixed address; change the CSP in both Caddyfiles and `vite.config.ts` together |
+| `.env.production` | Production secrets and site settings, generated, never committed | Regenerate only for a new deployment: the database keeps its first passwords |
 
 ## Troubleshooting
 

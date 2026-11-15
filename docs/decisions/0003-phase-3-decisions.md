@@ -50,8 +50,12 @@ The application reports counts of supplied labels, but computes no performance m
 ## 10. Batch processing runs inside the API process
 PRD 11.7 says not to assume background workers. Uploads are stored in a temporary file and processed in chunks by FastAPI background tasks. Each chunk commits on its own, which gives progress reporting and limits lost work. A restart interrupts a running job, and start-up marks such jobs as failed rather than leaving them looking active. They must be uploaded again. The limits default to 10 MB and 50,000 rows.
 
+*Superseded in Phase 5 (M4) by a PostgreSQL job queue that resumes interrupted jobs: [ADR 0005](0005-phase-5-decisions.md), D1.*
+
 ## 11. Rate limits are per process
 PRD section 10 says "where supported". Login, prediction and upload limits are held in memory, so they reset on restart and are not shared between workers. That is enough for one process and is documented as a limitation for anything larger.
+
+*Superseded in Phase 5 (M3) by counters in PostgreSQL shared by every process: [ADR 0005](0005-phase-5-decisions.md), D2.*
 
 ## 12. Tokens are stateless, but checked against the database
 Tokens are signed JWTs valid for 30 minutes. Every request also loads the user, so deactivating an account or changing a role takes effect at once. A changed password invalidates earlier tokens through a counter stored on the user.

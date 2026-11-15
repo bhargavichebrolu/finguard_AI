@@ -8,6 +8,8 @@
 import axios, { AxiosError, type AxiosInstance } from "axios";
 
 export const CSRF_COOKIE = "finguard_csrf";
+/** In production the cookie is Secure and carries the browser-enforced __Host- prefix (Phase 5 M5). */
+export const CSRF_COOKIE_NAMES = [`__Host-${CSRF_COOKIE}`, CSRF_COOKIE];
 export const CSRF_HEADER = "X-CSRF-Token";
 const UNSAFE_METHODS = new Set(["post", "put", "patch", "delete"]);
 const SIGN_IN_PATH = "/api/v1/auth/session";
@@ -42,6 +44,15 @@ export class ApiError extends Error {
 }
 
 /** Read one cookie by name from document.cookie. HttpOnly cookies are invisible here by design. */
+/** The CSRF token, from the prefixed cookie when cookies are Secure, otherwise the plain one. */
+export function readCsrfToken(): string | null {
+  for (const name of CSRF_COOKIE_NAMES) {
+    const value = readCookie(name);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 export function readCookie(name: string): string | null {
   for (const part of document.cookie.split(";")) {
     const [key, ...rest] = part.trim().split("=");
@@ -58,13 +69,24 @@ interface ErrorBody {
   errors?: { location?: unknown[]; message?: string }[];
 }
 
+export const UNREACHABLE_MESSAGE = "The server could not be reached. Check your connection and try again.";
+export const TIMEOUT_MESSAGE = "The server took too long to respond. Try again in a moment.";
+/** Added when a change got no answer: it may have been applied before the connection failed. */
+export const MAY_HAVE_SAVED = " Your change may still have been saved, so check before repeating it.";
+
 /** Turn any thrown value from Axios into an ApiError with a message that is safe to show. */
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) {
     return error;
   }
   if (!(error instanceof AxiosError) || !error.response) {
-    return new ApiError("The server could not be reached. Check your connection and try again.", 0);
+    // No answer at all (Phase 5 M7): say whether it timed out, and warn that a change may
+    // have reached the server, so it is checked rather than blindly repeated.
+    const timedOut = error instanceof AxiosError && (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT");
+    const method = error instanceof AxiosError ? (error.config?.method ?? "get").toLowerCase() : "get";
+    const url = error instanceof AxiosError ? (error.config?.url ?? "") : "";
+    const caveat = UNSAFE_METHODS.has(method) && !url.startsWith(SIGN_IN_PATH) ? MAY_HAVE_SAVED : "";
+    return new ApiError((timedOut ? TIMEOUT_MESSAGE : UNREACHABLE_MESSAGE) + caveat, 0);
   }
   const { status, data, headers } = error.response;
   const body = (typeof data === "object" && data !== null ? data : {}) as ErrorBody;
@@ -88,8 +110,30 @@ function defaultMessage(status: number): string {
   if (status === 403) return "Your role does not allow this action.";
   if (status === 404) return "Not found.";
   if (status === 429) return "Too many requests. Try again shortly.";
+  // 502 to 504 come from a proxy in front of an API that is restarting or stopped.
+  if (status >= 502 && status <= 504) return "The server is unavailable at the moment. Try again shortly.";
   if (status >= 500) return "The server had a problem. Try again later.";
   return "The request could not be completed.";
+}
+
+/** A Blob's text. FileReader is the fallback where Blob.text() is missing, as in older runtimes. */
+function blobText(blob: Blob): Promise<string> {
+  if (typeof blob.text === "function") return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
+/** A Blob's JSON, or null when it is not JSON (such as a proxy's HTML error page). */
+export async function readJsonBlob(blob: Blob): Promise<unknown> {
+  try {
+    return JSON.parse(await blobText(blob));
+  } catch {
+    return null;
+  }
 }
 
 let unauthorizedHandler: (() => void) | null = null;
@@ -104,7 +148,7 @@ export function createApiClient(baseURL: string = import.meta.env.VITE_API_BASE_
   const client = axios.create({ baseURL, withCredentials: true, timeout: REQUEST_TIMEOUT_MS });
   client.interceptors.request.use((config) => {
     if (UNSAFE_METHODS.has((config.method ?? "get").toLowerCase())) {
-      const token = readCookie(CSRF_COOKIE);
+      const token = readCsrfToken();
       if (token) {
         config.headers.set(CSRF_HEADER, token);
       }
@@ -113,7 +157,13 @@ export function createApiClient(baseURL: string = import.meta.env.VITE_API_BASE_
   });
   client.interceptors.response.use(
     (response) => response,
-    (error: unknown) => {
+    async (error: unknown) => {
+      // A download asks for a Blob, so its error body arrives as one too. Read it as JSON here,
+      // before mapping, so the API's message and reference reach the user (Phase 5 M7: they were
+      // lost, because this interceptor mapped the error before any caller could read the Blob).
+      if (error instanceof AxiosError && error.response?.data instanceof Blob) {
+        error.response.data = await readJsonBlob(error.response.data);
+      }
       const apiError = toApiError(error);
       const url = error instanceof AxiosError ? (error.config?.url ?? "") : "";
       // A failed sign-in is not a session ending, so it is left to the sign-in form to report.

@@ -12,7 +12,7 @@ The PRD's repository structure requires it, and it gives every developer the sam
 - **Tools:** `make`, `uv`, `npm`, `docker compose`.
 - **Internal files:** `scripts/*.py`, `backend/pyproject.toml`, `frontend/package.json`.
 - **External services / database:** none.
-- **Depended on by:** developers; CI may use it from Phase 5.
+- **Depended on by:** developers. CI (Phase 5 M8) runs its commands directly, not through `make`.
 
 ## D. Every Function Explained
 A Makefile has targets rather than functions. Each takes no parameters and returns the exit code of its command; a failure stops the run.

@@ -25,7 +25,8 @@ Module fixtures holding the committed report and the saved sources.
 |---|---|
 | `test_committed_report_matches_the_pinned_hash` | The file matches the hash the API checks. |
 | `test_rebuilding_from_sources_gives_the_committed_report` | The report is reproducible and current. |
-| `test_recorded_source_hashes_match_the_files` | Its sources are the committed ones. |
+| `test_recorded_source_hashes_match_the_files` | Its sources are the committed ones, by content hash. |
+| `test_source_hashes_do_not_depend_on_line_endings` | Regression (Phase 5 M1): CRLF and LF copies hash the same; a changed value does not. |
 | `test_sources_are_saved_results_only` | Every source is a saved result, and none is under `data/` or a Parquet file. |
 | `test_script_imports_no_data_loader_and_mentions_no_data_folder` | A source scan finds no partition loader, experiment code, pandas or `data` path. |
 | `test_family_rows_copy_selection_values` | Comparison rows equal `selection.json`. |

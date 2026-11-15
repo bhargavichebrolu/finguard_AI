@@ -23,10 +23,25 @@ from app.services.audit_service import record_event
 
 SESSION_COOKIE = "finguard_session"
 CSRF_COOKIE = "finguard_csrf"
+# Phase 5 M5: when cookies are Secure (production), browsers enforce these name prefixes.
+# __Secure- requires Secure; __Host- also requires Path=/ and no Domain, so only the CSRF cookie
+# can take it (the session cookie is scoped to /api).
+SECURE_PREFIX = "__Secure-"
+HOST_PREFIX = "__Host-"
 CSRF_HEADER = "x-csrf-token"
 SESSION_COOKIE_PATH = "/api"
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 _CSRF_BYTES = 32
+
+
+def session_cookie_name() -> str:
+    """The session cookie's name: __Secure- prefixed whenever it is sent with Secure."""
+    return (SECURE_PREFIX if get_settings().cookie_secure else "") + SESSION_COOKIE
+
+
+def csrf_cookie_name() -> str:
+    """The CSRF cookie's name: __Host- prefixed whenever it is sent with Secure."""
+    return (HOST_PREFIX if get_settings().cookie_secure else "") + CSRF_COOKIE
 
 
 def _digest(value: str) -> str:
@@ -55,7 +70,7 @@ def set_session_cookies(response: Response, token: str, csrf_token: str) -> None
     settings = get_settings()
     max_age = settings.access_token_minutes * 60
     response.set_cookie(
-        SESSION_COOKIE,
+        session_cookie_name(),
         token,
         max_age=max_age,
         path=SESSION_COOKIE_PATH,
@@ -64,7 +79,7 @@ def set_session_cookies(response: Response, token: str, csrf_token: str) -> None
         samesite="strict",
     )
     response.set_cookie(
-        CSRF_COOKIE,
+        csrf_cookie_name(),
         csrf_token,
         max_age=max_age,
         path="/",
@@ -78,9 +93,15 @@ def clear_session_cookies(response: Response) -> None:
     """Tell the browser to delete both cookies."""
     secure = get_settings().cookie_secure
     response.delete_cookie(
-        SESSION_COOKIE, path=SESSION_COOKIE_PATH, secure=secure, httponly=True, samesite="strict"
+        session_cookie_name(),
+        path=SESSION_COOKIE_PATH,
+        secure=secure,
+        httponly=True,
+        samesite="strict",
     )
-    response.delete_cookie(CSRF_COOKIE, path="/", secure=secure, httponly=False, samesite="strict")
+    response.delete_cookie(
+        csrf_cookie_name(), path="/", secure=secure, httponly=False, samesite="strict"
+    )
 
 
 def find_active_session(db: Session, claims: TokenClaims) -> UserSession | None:

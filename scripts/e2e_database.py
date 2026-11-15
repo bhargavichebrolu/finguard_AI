@@ -6,7 +6,9 @@ Commands:
                           credentials to FILE, which is Git-ignored. Passwords are never printed.
   expire-sessions EMAIL   Mark that account's live sessions as expired, to test expiry.
 
-The address comes from TEST_DATABASE_URL, from the environment or the repository's .env.
+The address is E2E_DATABASE_URL if set; otherwise TEST_DATABASE_URL (environment or .env) with
+the database name replaced by E2E_DB_NAME, default finguard_e2e_test. The backend suite uses
+finguard_test and empties it, so the two suites no longer disturb each other.
 """
 
 import argparse
@@ -38,15 +40,19 @@ ACCOUNTS = {
     "deactivate": "analyst",
 }
 EMAIL_DOMAIN = "e2e.example.com"
+DEFAULT_DATABASE = "finguard_e2e_test"
 
 
-def test_database_url() -> str:
-    """Return TEST_DATABASE_URL, refusing anything that is not clearly a test database."""
-    url = os.environ.get("TEST_DATABASE_URL") or dotenv_values(REPO_ROOT / ".env").get(
-        "TEST_DATABASE_URL"
-    )
+def browser_test_database_url() -> str:
+    """Return the browser-test database address, refusing anything not clearly a test database."""
+    settings = dotenv_values(REPO_ROOT / ".env")
+    url = os.environ.get("E2E_DATABASE_URL")
     if not url:
-        raise SystemExit("TEST_DATABASE_URL is not set.")
+        base = os.environ.get("TEST_DATABASE_URL") or settings.get("TEST_DATABASE_URL")
+        if not base:
+            raise SystemExit("Set E2E_DATABASE_URL, or TEST_DATABASE_URL to derive it from.")
+        name = os.environ.get("E2E_DB_NAME", DEFAULT_DATABASE)
+        url = make_url(base).set(database=name).render_as_string(hide_password=False)
     name = make_url(url).database or ""
     if not name.endswith("_test"):
         raise SystemExit(f"Refusing to use the database named {name!r}: it must end in _test.")
@@ -132,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
     expire_parser.add_argument("email")
     arguments = parser.parse_args(argv)
 
-    url = test_database_url()
+    url = browser_test_database_url()
     if arguments.command == "seed":
         return seed(url, arguments.out)
     return expire_sessions(url, arguments.email)

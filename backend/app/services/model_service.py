@@ -14,7 +14,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -34,6 +34,8 @@ from app.models.records import ModelVersion
 
 EXPLANATION_METHOD = "xgboost_tree_shap"
 EXPLANATION_SCALE = "log_odds"
+# Any fixed number shared by every process; it names the model-registration advisory lock.
+_REGISTRATION_LOCK = 4_242_001
 
 
 @dataclass
@@ -174,7 +176,12 @@ def load_verified_model(settings: Settings) -> ServingModel:
 
 
 def register_active_model(session: Session, model: ServingModel) -> None:
-    """Record the served model in model_versions, as the only active row. Safe to repeat."""
+    """Record the served model in model_versions, as the only active row. Safe to repeat.
+
+    Every API process does this at start-up. The transaction-scoped advisory lock makes
+    simultaneous starts take turns, so two processes cannot both insert the row (Phase 5 M3).
+    """
+    session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": _REGISTRATION_LOCK})
     session.execute(
         update(ModelVersion).where(ModelVersion.version != model.version).values(is_active=False)
     )

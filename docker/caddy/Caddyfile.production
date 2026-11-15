@@ -1,0 +1,60 @@
+# Production site (Phase 6), baked into the web image by docker/web/Dockerfile.
+# The browser talks only to Caddy: it serves the built interface and forwards /api and /health to
+# the API, which trusts forwarded headers from Caddy's fixed address only (TRUSTED_PROXY_IPS).
+#
+# Values come from the environment (docker-compose.prod.yml, from .env.production):
+#   FINGUARD_DOMAIN       the public host name, for example finguard.example.com
+#   FINGUARD_TLS          an email address: Caddy obtains and renews a public certificate (ACME)
+#                         "internal": Caddy's own authority, for a local rehearsal only
+#   FINGUARD_HTTP_PORT    plain HTTP: Caddy's automatic redirect to HTTPS and certificate
+#                         challenges (default 80). On a non-default HTTPS port the redirect
+#                         omits the port; production uses 80 and 443.
+#   FINGUARD_HTTPS_PORT   HTTPS (default 443)
+{
+	admin off
+	http_port {$FINGUARD_HTTP_PORT:80}
+	https_port {$FINGUARD_HTTPS_PORT:443}
+	# A client gives no server name (SNI) when it connects to an IP address.
+	default_sni {$FINGUARD_DOMAIN}
+}
+
+{$FINGUARD_DOMAIN}:{$FINGUARD_HTTPS_PORT:443} {
+	tls {$FINGUARD_TLS}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	@api path /api/* /health
+	handle @api {
+		# A ceiling on every request body, applied while it streams, so an upload without a
+		# Content-Length cannot be spooled beyond it. The API's own limit is 10 MB of CSV; 11 MB
+		# leaves room for the multipart wrapping. Larger bodies get 413 from Caddy.
+		request_body {
+			max_size 11MB
+		}
+		# Caddy replaces any X-Forwarded-For sent by the client with the client's real address,
+		# because no proxy in front of Caddy is trusted. API responses are not compressed, so
+		# secrets in them cannot be probed through compressed sizes (BREACH).
+		reverse_proxy api:8000
+	}
+
+	handle {
+		# Must match CONTENT_SECURITY_POLICY in frontend/vite.config.ts and the production-like
+		# Caddyfile (backend/tests/unit/test_deployment.py compares them).
+		header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		# File names under /assets carry a content hash, so they never change; the page itself
+		# is always revalidated, so a new release is picked up at once.
+		@hashed path /assets/*
+		@page not path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		header @page Cache-Control "no-cache"
+		encode zstd gzip
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

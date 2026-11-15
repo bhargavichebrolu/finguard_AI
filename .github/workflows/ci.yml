@@ -1,0 +1,172 @@
+# Continuous integration (Phase 5 M8; image job Phase 6). Runs every check that works on a clean
+# checkout.
+#
+# The PaySim dataset and the frozen model binary are not in Git, so the tests that need them
+# skip here. The skipped tests, and their reasons, must equal the committed list in
+# .github/expected-tests.json; any other skip, a missing result file or fewer passing tests
+# than recorded fails the run. Real-model inference, the API tests and the browser tests are
+# therefore NOT verified by CI: they run locally before each commit (see TESTING_GUIDE.md).
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Read-only token: CI never writes to the repository, and no secret is used.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend, database and repository checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # scan_secrets.py reads every commit
+          persist-credentials: false
+
+      - name: Install uv and Python 3.11
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.11.3"
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Confirm the dataset, model binary and .env are absent
+        run: |
+          for path in .env artifacts/models/fraud_detector_v1/model.joblib data/raw/PS_20174392719_1491204439457_log.csv; do
+            if [ -e "$path" ]; then echo "$path must not be in the checkout"; exit 1; fi
+          done
+
+      - name: Install backend dependencies from the lockfile
+        run: uv sync --frozen --project backend
+
+      - name: Start PostgreSQL with newly generated credentials
+        # generate_env.py writes random passwords to the ignored .env and never prints them.
+        run: |
+          uv run --frozen --project backend python scripts/generate_env.py --api-port 8010
+          docker compose up -d --wait db
+
+      - name: Lint
+        run: uv run --frozen --project backend ruff check backend scripts --config backend/pyproject.toml
+
+      - name: Formatting
+        run: uv run --frozen --project backend ruff format --check backend/app backend/tests/api backend/migrations --config backend/pyproject.toml
+
+      - name: Backend tests
+        run: >-
+          uv run --frozen --project backend pytest backend/tests
+          --rootdir backend -c backend/pyproject.toml -p no:cacheprovider
+          --junitxml="$RUNNER_TEMP/pytest.xml"
+          --deselect tests/integration/test_real_models.py::test_test_results_can_be_recalculated_from_the_saved_model
+
+      - name: Compare skipped tests with the expected list
+        if: ${{ !cancelled() }}
+        run: python3 scripts/check_test_run.py backend "$RUNNER_TEMP/pytest.xml" --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Explanation documents
+        if: ${{ !cancelled() }}
+        run: uv run --frozen --project backend python scripts/check_explanations.py
+
+      - name: API schema matches the code
+        if: ${{ !cancelled() }}
+        run: uv run --frozen --project backend python scripts/export_openapi.py --check
+
+      - name: Model report matches its sources
+        if: ${{ !cancelled() }}
+        run: uv run --frozen --project backend python scripts/export_model_report.py --check
+
+      - name: Secrets in history
+        if: ${{ !cancelled() }}
+        run: uv run --frozen --project backend python scripts/scan_secrets.py
+
+      - name: Python dependency audit
+        if: ${{ !cancelled() }}
+        run: uv run --frozen --project backend pip-audit
+
+      - name: Stop PostgreSQL
+        if: ${{ always() }}
+        run: docker compose down --volumes
+
+  frontend:
+    name: Frontend type check, tests and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.22.1"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies from the lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Unit and component tests
+        run: npm test -- --reporter=default --reporter=junit --outputFile.junit="$RUNNER_TEMP/vitest.xml"
+
+      - name: Compare with the expected test count
+        if: ${{ !cancelled() }}
+        run: python3 ../scripts/check_test_run.py frontend "$RUNNER_TEMP/vitest.xml" --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Production build
+        if: ${{ !cancelled() }}
+        run: npm run build
+
+      - name: Node dependency audit
+        if: ${{ !cancelled() }}
+        run: npm audit
+
+  images:
+    name: Container images and production configuration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The model binary is not in Git, so the images are built but not started here: the API
+      # refuses to start without the frozen model. Running them is checked locally (DEPLOYMENT.md).
+      - name: Build the API image
+        run: docker build -t finguard-api:ci backend
+
+      - name: Build the web image (interface and Caddy)
+        run: docker build -f docker/web/Dockerfile -t finguard-web:ci .
+
+      - name: Check the production Compose file with generated settings
+        run: |
+          python3 scripts/generate_production_env.py --domain ci.example --tls internal \
+            --output "$RUNNER_TEMP/env.production"
+          docker compose -f docker-compose.prod.yml --env-file "$RUNNER_TEMP/env.production" \
+            config --quiet
+
+      - name: Report image sizes
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "### Image sizes"
+            docker image ls --format '| {{.Repository}}:{{.Tag}} | {{.Size}} |' 'finguard-*'
+          } >> "$GITHUB_STEP_SUMMARY"

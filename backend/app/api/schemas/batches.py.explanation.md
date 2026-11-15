@@ -35,6 +35,7 @@ A route loads a job, then calls `batch_view`.
 For example, `{"status": "COMPLETED_WITH_ERRORS", "total_records": 10, "processed_records": 10, "failed_records": 2, "succeeded_records": 8, "progress_percent": 100.0}`.
 
 ## H. Important Technical Concepts
+- **`attempts`** (Phase 5 M4) counts how many times a worker claimed the job; above one while processing, the interface says it is resuming after an interruption.
 - **`ignored_columns` tells the user what was dropped,** so the handling of `isFraud` is visible rather than silent.
 
 ## I. Example

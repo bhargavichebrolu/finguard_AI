@@ -1,0 +1,44 @@
+{
+  "rule": "overhead <= max(share x baseline, 2 ms); share 10% for p50, 15% for p95",
+  "baseline_runs": [
+    "phase-5-ratelimit-window-1-memory.json",
+    "phase-5-ratelimit-window-3-memory.json"
+  ],
+  "candidate_runs": [
+    "phase-5-ratelimit-window-2-database.json",
+    "phase-5-ratelimit-window-4-database.json"
+  ],
+  "checks": {
+    "sequential_p50_ms": {
+      "baseline_ms": 25.19,
+      "candidate_ms": 23.63,
+      "overhead_ms": -1.55,
+      "allowed_ms": 2.52,
+      "within_budget": true
+    },
+    "sequential_p95_ms": {
+      "baseline_ms": 29.13,
+      "candidate_ms": 26.63,
+      "overhead_ms": -2.5,
+      "allowed_ms": 4.37,
+      "within_budget": true
+    },
+    "concurrent_p50_ms": {
+      "baseline_ms": 190.06,
+      "candidate_ms": 182.9,
+      "overhead_ms": -7.16,
+      "allowed_ms": 19.01,
+      "within_budget": true
+    },
+    "concurrent_p95_ms": {
+      "baseline_ms": 250.46,
+      "candidate_ms": 229.74,
+      "overhead_ms": -20.73,
+      "allowed_ms": 37.57,
+      "within_budget": true
+    }
+  },
+  "accepted": true,
+  "candidate": "fixed one-minute window: one autocommit INSERT ... ON CONFLICT DO UPDATE ... WHERE count < limit",
+  "decision": "accepted for predictions and uploads: all four checks within budget; the differences are within run-to-run noise (the database runs were slightly faster)"
+}

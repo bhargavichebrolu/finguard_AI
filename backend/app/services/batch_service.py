@@ -1,26 +1,42 @@
-"""CSV batch processing (PRD 6.4).
+"""CSV batch processing (PRD 6.4), as a queue any API process can work (Phase 5 M4).
 
-The upload is saved to a temporary file, checked, then processed in chunks by a background task.
-Each chunk commits on its own, which gives progress reporting and limits lost work. The temporary
-file is always deleted afterwards, and only validated rows and results reach the database.
+An upload is checked through a temporary file, then its bytes are stored in batch_uploads and the
+job waits as PENDING. Each API process runs one BatchWorker thread. A worker claims the oldest
+claimable job with SELECT ... FOR UPDATE SKIP LOCKED and holds it with a lease. Each chunk is
+stored in one transaction that also locks the job row, checks this worker still owns it, advances
+processed_records and renews the lease, so a crash loses at most the chunk in progress, which is
+redone, and never stores a row twice. A job whose lease expires is resumed by any worker after the
+last committed chunk; after batch_max_attempts interrupted claims it is marked failed. The bytes
+are deleted when the job ends.
 """
 
 import csv
+import io
 import logging
+import os
+import socket
+import threading
+import time
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import BinaryIO
 
 from pydantic import ValidationError
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.api.schemas.transactions import TransactionInput
 from app.core.config import Settings, get_settings
-from app.core.errors import InvalidInputError, NotFoundError, PayloadTooLargeError
+from app.core.errors import (
+    InvalidInputError,
+    NotFoundError,
+    PayloadTooLargeError,
+    is_connection_error,
+)
 from app.database.session import session_scope
 from app.ml.schema import (
     ACCOUNT_IDENTIFIER_COLUMNS,
@@ -30,7 +46,14 @@ from app.ml.schema import (
     TARGET_COLUMN,
 )
 from app.models.enums import BatchStatus, UserRole
-from app.models.records import BatchJob, BatchRowError, GroundTruthLabel, Transaction, User
+from app.models.records import (
+    BatchJob,
+    BatchRowError,
+    BatchUpload,
+    GroundTruthLabel,
+    Transaction,
+    User,
+)
 from app.services.audit_service import record_event
 from app.services.model_service import ServingModel
 from app.services.prediction_service import (
@@ -54,6 +77,9 @@ _READ_BYTES = 1024 * 1024
 _FILE_ENCODING = "utf-8-sig"
 _ENTIRE_ROW = "row"
 _LABEL_VALUES = {"0": False, "1": True}
+FAILED_MESSAGE = "Processing stopped unexpectedly. Rows already stored are kept."
+# Temporary files older than this can only belong to a request that crashed mid-upload.
+_STALE_UPLOAD_SECONDS = 3600
 
 
 @dataclass(frozen=True)
@@ -136,8 +162,8 @@ def inspect_csv(path: Path, max_rows: int) -> CsvInspection:
 
 def start_batch(
     session: Session, source: BinaryIO, filename: str | None, user: User, settings: Settings
-) -> tuple[BatchJob, Path]:
-    """Check an upload and create its job. Returns the temporary file to process."""
+) -> BatchJob:
+    """Check an upload, store its bytes and queue its job. Any API process may then process it."""
     if not (filename or "").lower().endswith(".csv"):
         raise InvalidInputError("Only .csv files are accepted.")
     settings.upload_tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -147,9 +173,9 @@ def start_batch(
     try:
         save_upload(source, path, settings.max_upload_bytes)
         inspection = inspect_csv(path, settings.max_batch_rows)
-    except Exception:
+        content = path.read_bytes()
+    finally:
         path.unlink(missing_ok=True)
-        raise
     job = BatchJob(
         id=job_id,
         filename=clean_filename(filename),
@@ -161,9 +187,11 @@ def start_batch(
         created_by=user.id,
     )
     session.add(job)
+    session.flush()
+    session.add(BatchUpload(job_id=job_id, content=content))
     record_event(session, user.id, "batch.uploaded", "batch_job", job_id, {"rows": inspection.rows})
     session.commit()
-    return job, path
+    return job
 
 
 def _parse_label(value: str | None) -> tuple[bool | None, bool]:
@@ -222,19 +250,31 @@ def _parse_row(row: dict, row_number: int, seen: set[str], chunk: _ParsedChunk) 
     chunk.labels.append(label)
 
 
-def _read_chunks(path: Path, chunk_rows: int) -> Iterator[list[tuple[int, dict]]]:
-    with path.open(encoding=_FILE_ENCODING, newline="") as handle:
-        reader = csv.DictReader(handle, skipinitialspace=True)
-        reader.fieldnames = [name.strip() for name in (reader.fieldnames or [])]
-        chunk: list[tuple[int, dict]] = []
-        # The header is row 1, matching what a spreadsheet shows.
-        for row_number, row in enumerate(reader, start=2):
-            chunk.append((row_number, row))
-            if len(chunk) == chunk_rows:
-                yield chunk
-                chunk = []
-        if chunk:
+def _read_chunks(
+    content: bytes, chunk_rows: int, skip_rows: int, seen: set[str]
+) -> Iterator[list[tuple[int, dict]]]:
+    """Yield chunks of (row number, row), after skipping rows a previous attempt committed.
+
+    Identifiers in skipped rows are added to `seen`, so a repeat later in the file is still
+    reported as repeated in the file.
+    """
+    handle = io.TextIOWrapper(io.BytesIO(content), encoding=_FILE_ENCODING, newline="")
+    reader = csv.DictReader(handle, skipinitialspace=True)
+    reader.fieldnames = [name.strip() for name in (reader.fieldnames or [])]
+    chunk: list[tuple[int, dict]] = []
+    # The header is row 1, matching what a spreadsheet shows.
+    for index, row in enumerate(reader):
+        if index < skip_rows:
+            identifier = (row.get(IDENTIFIER_COLUMN) or "").strip()
+            if identifier:
+                seen.add(identifier)
+            continue
+        chunk.append((index + 2, row))
+        if len(chunk) == chunk_rows:
             yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
 
 
 def _store_scored_rows(
@@ -318,22 +358,137 @@ def _process_chunk(
     session.commit()
 
 
-def process_batch(job_id: uuid.UUID, path: Path, model: ServingModel) -> None:
-    """Background task: process a stored upload. The temporary file is always deleted."""
-    settings = get_settings()
+def new_worker_id() -> str:
+    """A name for one worker: host, process and a random part, so restarts never reuse it."""
+    return f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
+
+
+def fail_exhausted_jobs(session: Session, max_attempts: int) -> int:
+    """Fail jobs whose lease ran out after their last allowed attempt, and drop their bytes."""
+    ids = session.scalars(
+        update(BatchJob)
+        .where(
+            BatchJob.status == BatchStatus.PROCESSING,
+            BatchJob.lease_expires_at < func.clock_timestamp(),
+            BatchJob.attempts >= max_attempts,
+        )
+        .values(
+            status=BatchStatus.FAILED,
+            error_message=(
+                f"Processing was interrupted {max_attempts} times, so it stopped. "
+                "Rows already stored are kept."
+            ),
+            completed_at=func.now(),
+            worker_id=None,
+            lease_expires_at=None,
+        )
+        .returning(BatchJob.id)
+    ).all()
+    if ids:
+        session.execute(delete(BatchUpload).where(BatchUpload.job_id.in_(ids)))
+    session.commit()
+    return len(ids)
+
+
+def claim_next_job(
+    session: Session, worker_id: str, lease_seconds: int, max_attempts: int
+) -> uuid.UUID | None:
+    """Claim the oldest waiting job, or one whose lease expired, for this worker.
+
+    SKIP LOCKED makes simultaneous claims by other workers pass over a row being claimed, so two
+    workers never claim the same job.
+    """
+    claimable = (
+        select(BatchJob.id)
+        .where(
+            or_(
+                BatchJob.status == BatchStatus.PENDING,
+                and_(
+                    BatchJob.status == BatchStatus.PROCESSING,
+                    BatchJob.lease_expires_at < func.clock_timestamp(),
+                ),
+            ),
+            BatchJob.attempts < max_attempts,
+        )
+        .order_by(BatchJob.created_at)
+        .limit(1)
+        .with_for_update(skip_locked=True)
+        .scalar_subquery()
+    )
+    job_id = session.scalar(
+        update(BatchJob)
+        .where(BatchJob.id == claimable)
+        .values(
+            status=BatchStatus.PROCESSING,
+            worker_id=worker_id,
+            attempts=BatchJob.attempts + 1,
+            lease_expires_at=func.clock_timestamp() + timedelta(seconds=lease_seconds),
+        )
+        .returning(BatchJob.id)
+    )
+    session.commit()
+    return job_id
+
+
+def _owned_job(session: Session, job_id: uuid.UUID, worker_id: str) -> BatchJob | None:
+    """Lock the job row if this worker still owns it. None means another worker took it over."""
+    return session.scalar(
+        select(BatchJob)
+        .where(BatchJob.id == job_id, BatchJob.worker_id == worker_id)
+        .with_for_update()
+    )
+
+
+def process_job(
+    job_id: uuid.UUID,
+    worker_id: str,
+    model: ServingModel,
+    settings: Settings,
+    stop: threading.Event | None = None,
+) -> str:
+    """Work a claimed job to the end.
+
+    Returns "completed", "failed", "released", "lost" or "interrupted". A lost database connection
+    interrupts the job rather than failing it: chunks are idempotent, so it is resumed from the
+    last stored chunk, within the attempt limit (Phase 5 M7).
+    """
+    lease = timedelta(seconds=settings.batch_lease_seconds)
     try:
         with session_scope() as session:
-            job = session.get(BatchJob, job_id)
-            job.status = BatchStatus.PROCESSING
+            upload = session.get(BatchUpload, job_id)
+            job = _owned_job(session, job_id, worker_id)
+            if job is None:
+                session.rollback()
+                return "lost"
+            if upload is None:
+                raise RuntimeError("the job's upload is missing")
+            content = upload.content
+            skip = job.processed_records
             high_boundary = get_high_risk_boundary(session)
             session.commit()
             seen: set[str] = set()
-            for rows in _read_chunks(path, settings.batch_chunk_rows):
+            for rows in _read_chunks(content, settings.batch_chunk_rows, skip, seen):
+                if stop is not None and stop.is_set():
+                    release_job(session, job_id, worker_id)
+                    return "released"
+                job = _owned_job(session, job_id, worker_id)
+                if job is None:
+                    session.rollback()
+                    return "lost"
+                # The heartbeat: renewed in the same commit as this chunk's rows and progress.
+                job.lease_expires_at = func.clock_timestamp() + lease
                 _process_chunk(session, job, rows, seen, model, high_boundary, settings)
+            job = _owned_job(session, job_id, worker_id)
+            if job is None:
+                session.rollback()
+                return "lost"
             job.status = (
                 BatchStatus.COMPLETED_WITH_ERRORS if job.failed_records else BatchStatus.COMPLETED
             )
             job.completed_at = func.now()
+            job.worker_id = None
+            job.lease_expires_at = None
+            session.execute(delete(BatchUpload).where(BatchUpload.job_id == job_id))
             record_event(
                 session,
                 job.created_by,
@@ -343,41 +498,126 @@ def process_batch(job_id: uuid.UUID, path: Path, model: ServingModel) -> None:
                 {"processed": job.processed_records, "failed": job.failed_records},
             )
             session.commit()
-    except Exception:
+            return "completed"
+    except Exception as error:
+        if is_connection_error(error):
+            logger.warning("Batch %s interrupted: the database connection was lost", job_id)
+            _release_after_interruption(job_id, worker_id)
+            return "interrupted"
         logger.exception("Batch %s processing failed", job_id)
-        _mark_failed(job_id, "Processing stopped unexpectedly. Rows already stored are kept.")
-    finally:
-        path.unlink(missing_ok=True)
+        _mark_failed(job_id, worker_id, FAILED_MESSAGE)
+        return "failed"
 
 
-def _mark_failed(job_id: uuid.UUID, message: str) -> None:
+def _release_after_interruption(job_id: uuid.UUID, worker_id: str) -> None:
+    """Give an interrupted job back. If the database is still down, its lease expiring does."""
+    try:
+        with session_scope() as session:
+            release_job(session, job_id, worker_id)
+    except Exception as error:
+        if not is_connection_error(error):
+            raise
+        logger.warning("Batch %s will be resumed when its lease expires", job_id)
+
+
+def release_job(session: Session, job_id: uuid.UUID, worker_id: str) -> None:
+    """Give a job back at once, as when the process stops, so another worker resumes it now."""
+    session.rollback()
+    session.execute(
+        update(BatchJob)
+        .where(BatchJob.id == job_id, BatchJob.worker_id == worker_id)
+        .values(worker_id=None, lease_expires_at=func.clock_timestamp())
+    )
+    session.commit()
+
+
+def _mark_failed(job_id: uuid.UUID, worker_id: str, message: str) -> None:
     with session_scope() as session:
-        job = session.get(BatchJob, job_id)
+        job = _owned_job(session, job_id, worker_id)
+        if job is None:
+            return
         job.status = BatchStatus.FAILED
         job.error_message = message
         job.completed_at = func.now()
+        job.worker_id = None
+        job.lease_expires_at = None
+        session.execute(delete(BatchUpload).where(BatchUpload.job_id == job_id))
         session.commit()
 
 
-def recover_interrupted_jobs(session: Session, upload_dir: Path) -> int:
-    """At start-up, mark unfinished jobs as failed and delete leftover temporary files.
+def process_available_jobs(
+    model: ServingModel,
+    worker_id: str,
+    settings: Settings | None = None,
+    stop: threading.Event | None = None,
+) -> int:
+    """Claim and process jobs until none is waiting. Returns how many were claimed."""
+    settings = settings or get_settings()
+    claimed = 0
+    while stop is None or not stop.is_set():
+        with session_scope() as session:
+            fail_exhausted_jobs(session, settings.batch_max_attempts)
+            job_id = claim_next_job(
+                session, worker_id, settings.batch_lease_seconds, settings.batch_max_attempts
+            )
+        if job_id is None:
+            break
+        claimed += 1
+        if process_job(job_id, worker_id, model, settings, stop) == "interrupted":
+            # Wait for the next poll rather than reclaiming at once against a failing database.
+            break
+    return claimed
 
-    Assumes one API process, so anything unfinished at start-up cannot still be running.
+
+def remove_stale_uploads(upload_dir: Path, max_age_seconds: int = _STALE_UPLOAD_SECONDS) -> int:
+    """Delete temporary upload files left by requests that crashed mid-upload.
+
+    Only old files are removed, so a request still checking its upload in another process is
+    never disturbed. Job data itself lives in the database.
     """
-    result = session.execute(
-        update(BatchJob)
-        .where(BatchJob.status.in_([BatchStatus.PENDING, BatchStatus.PROCESSING]))
-        .values(
-            status=BatchStatus.FAILED,
-            error_message="The server restarted during processing. Upload the file again.",
-            completed_at=func.now(),
-        )
-    )
-    session.commit()
-    if upload_dir.is_dir():
-        for leftover in upload_dir.glob("*.csv"):
+    if not upload_dir.is_dir():
+        return 0
+    cutoff = time.time() - max_age_seconds
+    removed = 0
+    for leftover in upload_dir.glob("*.csv"):
+        if leftover.stat().st_mtime < cutoff:
             leftover.unlink(missing_ok=True)
-    return result.rowcount
+            removed += 1
+    return removed
+
+
+class BatchWorker:
+    """One background thread per API process that works the batch queue."""
+
+    def __init__(self, model: ServingModel, settings: Settings) -> None:
+        self.model = model
+        self.settings = settings
+        self.worker_id = new_worker_id()
+        self._stop = threading.Event()
+        self._wake = threading.Event()
+        self._thread = threading.Thread(target=self._run, name="batch-worker", daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def wake(self) -> None:
+        """Look for work now, rather than at the next poll; called after an upload."""
+        self._wake.set()
+
+    def stop(self, timeout: float = 30) -> None:
+        """Finish the current chunk, give the job back, and stop."""
+        self._stop.set()
+        self._wake.set()
+        self._thread.join(timeout)
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            try:
+                process_available_jobs(self.model, self.worker_id, self.settings, self._stop)
+            except Exception:
+                logger.exception("The batch worker could not reach the queue")
+            self._wake.wait(self.settings.batch_poll_seconds)
+            self._wake.clear()
 
 
 def get_job(session: Session, job_id: uuid.UUID, is_demo: bool) -> BatchJob:
@@ -414,7 +654,7 @@ def error_report_lines(job_id: uuid.UUID) -> Iterator[str]:
                 .where(BatchRowError.batch_job_id == job_id)
                 .order_by(BatchRowError.row_number)
             )
-            for row in session.execute(query).yield_per(1000):
+            for row in session.execute(query.execution_options(yield_per=1000)):
                 yield tuple(row)
 
     return csv_lines(ERROR_REPORT_HEADER, rows())

@@ -43,6 +43,9 @@ Shows who the case is assigned to. A select lists the restricted assignee list (
 ### `NoteForm`
 A text box up to 5,000 characters with a counter. Blank notes cannot be sent.
 
+### `error`
+Inside `act`: the failure as an `ApiError`; a 409 also reloads the case.
+
 ## E. Classes Explained
 None.
 
@@ -53,6 +56,7 @@ Filter the queue, open a case, act, then the case and queue reload.
 Input: filters and actions. Output: the queue and the case panel.
 
 ## H. Important Technical Concepts
+- **Stale status (Phase 5 M7):** a status change sends `expected_status`, the status shown. If a colleague changed it first, the API answers 409; `act` shows the message and reloads the case and the queue, so the reviewer sees the current status before deciding again.
 - **`CONCLUDING`** holds the statuses that ask for confirmation. Any status can still follow any other, as the API allows, and the history records each move.
 - **`STATUSES`** is the PRD 6.7 list, in order.
 - **Accessible names:** an earlier version labelled the forms with the same words as their fields, giving two controls one name. The form labels were removed.

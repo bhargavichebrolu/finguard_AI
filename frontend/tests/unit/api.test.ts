@@ -2,7 +2,7 @@
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
-import { ApiError, CSRF_HEADER, createApiClient, onUnauthorized, readCookie, toApiError } from "../../src/services/api";
+import { ApiError, CSRF_HEADER, createApiClient, onUnauthorized, readCookie, readCsrfToken, toApiError } from "../../src/services/api";
 import { errorBody, server } from "./server";
 
 function captureHeaders() {
@@ -92,5 +92,18 @@ describe("api client", () => {
     document.cookie = "finguard_csrf=right; path=/";
     expect(readCookie("finguard_csrf")).toBe("right");
     expect(readCookie("missing")).toBeNull();
+  });
+
+  it("prefers the __Host- CSRF cookie that Secure production cookies use", () => {
+    // jsdom will not store a __Host- cookie on an insecure test origin, so the browser's cookie
+    // string is supplied directly.
+    const cookie = vi.spyOn(document, "cookie", "get");
+    cookie.mockReturnValue("finguard_csrf=plain; __Host-finguard_csrf=prefixed");
+    expect(readCsrfToken()).toBe("prefixed");
+    cookie.mockReturnValue("finguard_csrf=plain");
+    expect(readCsrfToken()).toBe("plain");
+    cookie.mockReturnValue("");
+    expect(readCsrfToken()).toBeNull();
+    cookie.mockRestore();
   });
 });

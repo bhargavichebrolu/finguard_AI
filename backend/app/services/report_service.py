@@ -36,7 +36,8 @@ SEPARATION_NOTE = (
 
 def build_summary(session: Any, model: ServingModel, is_demo: bool) -> SummaryReport:
     """Build the summary from stored records and saved results."""
-    totals = queries.model_flag_totals(session, is_demo)
+    # One pass over predictions for every model-flag figure (Phase 5 M2).
+    flags = queries.model_flag_breakdown(session, is_demo)
     rows, _ = list_transactions(
         session, is_demo, TransactionFilters(), "created_at", "desc", _RECENT_ROWS, 0
     )
@@ -45,15 +46,15 @@ def build_summary(session: Any, model: ServingModel, is_demo: bool) -> SummaryRe
         is_demo=is_demo,
         note=SEPARATION_NOTE,
         model_flags=ModelFlagsSection(
-            total_analysed=totals["total"],
-            flagged_for_review=totals["flagged"],
-            not_flagged=totals["total"] - totals["flagged"],
-            flag_rate=totals["flagged"] / totals["total"] if totals["total"] else 0.0,
-            total_value=float(totals["total_value"]),
-            flagged_value=float(totals["flagged_value"]),
-            risk_distribution=queries.risk_distribution(session, is_demo),
-            type_distribution=queries.type_distribution(session, is_demo),
-            flags_by_simulation_day=queries.flags_by_simulation_day(session, is_demo),
+            total_analysed=flags.total,
+            flagged_for_review=flags.flagged,
+            not_flagged=flags.total - flags.flagged,
+            flag_rate=flags.flagged / flags.total if flags.total else 0.0,
+            total_value=float(flags.total_value),
+            flagged_value=float(flags.flagged_value),
+            risk_distribution=flags.by_risk,
+            type_distribution=flags.by_type,
+            flags_by_simulation_day=flags.by_day,
         ),
         investigation_workflow=InvestigationWorkflowSection(
             status_counts=queries.investigation_status_counts(session, is_demo)
@@ -96,7 +97,7 @@ def _investigation_rows(is_demo: bool) -> Iterator[tuple[Any, ...]]:
             .where(Transaction.is_demo == is_demo)
             .order_by(Investigation.created_at)
         )
-        for row in session.execute(query).yield_per(1000):
+        for row in session.execute(query.execution_options(yield_per=1000)):
             yield (
                 str(row[0]),
                 row[1],

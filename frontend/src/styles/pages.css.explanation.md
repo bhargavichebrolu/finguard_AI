@@ -28,6 +28,7 @@ Loaded once by `main.tsx`.
 Output: style rules.
 
 ## H. Important Technical Concepts
+- **`.stat-value` (Phase 5 M6):** `.stat-tile` is a size container, and the figure's size follows the tile's width (`8.5cqi`, between 1rem and 1.5rem) and never wraps. In WebKit a billions-sized total overflowed its tile by 9 pixels; fonts measure differently by engine, so the tile must not rely on one engine's text width. A first fix let figures wrap, which broke one number into what read as two; wrapping is now forbidden and `responsive.spec.ts` checks every figure fits on one line.
 - **M7 fixes:** checkboxes are 24 px, and selects in inline rows can shrink below their longest option.
 - **Tokens only:** colours come from `tokens.css` variables, never raw values, except white on primary buttons.
 - Page rules stay here so shared components stay generic.

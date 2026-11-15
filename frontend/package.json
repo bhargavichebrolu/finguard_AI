@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "perf:pages": "playwright test -c playwright.perf.config.ts",
+    "test:prodlike": "playwright test -c playwright.prodlike.config.ts",
     "gen:api": "openapi-typescript openapi.json -o src/types/api.generated.ts"
   },
   "dependencies": {

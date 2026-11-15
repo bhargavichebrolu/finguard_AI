@@ -271,6 +271,25 @@ def test_explorer_pagination_is_complete_and_stable(client, analyst):
     assert len(seen) == len(set(seen)) == 4
 
 
+@pytest.mark.parametrize("sort_by", ["created_at", "amount", "model_score", "step"])
+@pytest.mark.parametrize("sort_order", ["asc", "desc"])
+@pytest.mark.parametrize("query", ["", "&investigation_status=NEW", "&transaction_type=PAYMENT"])
+def test_explorer_pages_match_one_full_sort(client, analyst, sort_by, sort_order, query):
+    # Phase 6: pages are fetched by a deferred join (identifiers sorted and skipped first, then
+    # the rows joined). Walking the pages one row at a time must give exactly the single-page
+    # order, including filters on the outer-joined investigation.
+    _store_samples(client, analyst)
+    base = f"{LIST}?sort_by={sort_by}&sort_order={sort_order}{query}"
+    full = client.get(f"{base}&limit=100", headers=analyst).json()
+    paged = []
+    for offset in range(full["total"] + 1):
+        page = client.get(f"{base}&limit=1&offset={offset}", headers=analyst).json()
+        assert page["total"] == full["total"]
+        paged.extend(page["items"])
+    assert paged == full["items"]
+    assert len(full["items"]) == full["total"] > 0
+
+
 def test_detail_view_has_prd_fields(client, analyst):
     created = client.post(PREDICT, headers=analyst, json=HIGH_SCORING).json()
     body = client.get(f"{LIST}/{created['transaction_id']}", headers=analyst).json()

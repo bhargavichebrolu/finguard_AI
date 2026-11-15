@@ -11,13 +11,13 @@ Authorisation decision 4 and the M7 brief require desktop, tablet, mobile and ac
 ## C. Dependencies
 - **Libraries:** Playwright Test.
 - **Internal modules:** `support.ts`.
-- **External services / database:** The browser-test API on 127.0.0.1:8011 and the finguard_test database, through the preview server on 127.0.0.1:4173.
+- **External services / database:** The browser-test API on 127.0.0.1:8011 and the finguard_e2e_test database, through the preview server on 127.0.0.1:4173.
 - **Depended on by:** none; run by `npm run test:e2e`.
 
 ## D. Every Function Explained
 
 ### `narrow`
-True for the tablet and mobile projects.
+True when the viewport is 900 pixels or narrower (the tablet, mobile and webkit-mobile projects), the width at which the navigation becomes a menu.
 
 ### `settle`
 Waits for the page heading, network quiet and no loading state.
@@ -29,7 +29,7 @@ Runs axe with the WCAG 2.0, 2.1 and 2.2 A and AA tags and fails with a readable 
 Fails on sideways scrolling, and on a layout viewport wider than the device, which is how an overflowing select showed on phones.
 
 ### `screenshot`
-Saves a full-page screenshot to `.e2e/screenshots/<project>-<name>.png`.
+Saves a full-page screenshot to `.e2e/screenshots/<project>-<name>.png`. Callers check for CSP and console problems before taking it: in WebKit every Playwright screenshot injects a style, whatever its options, which the page's strict CSP refuses. Nothing is reported on load or after axe, so the order keeps the check about the app, not the test tool.
 
 ### `expectTouchTargets`
 Fails if any visible control is smaller than 24 x 24 CSS pixels (WCAG 2.5.8), except inline text links.
@@ -51,11 +51,14 @@ Runs in all three projects as the administrator, who can open every page, plus t
 | a chart switches to its table by keyboard | Enter toggles, focus stays. |
 | the top bar stays on one line and inside the screen | FinGuard AI, the role and Sign out each on one line. |
 | the navigation menu opens, works by keyboard, and hides its links when closed | Closed links never take focus; Escape closes and returns focus; a link closes the menu. Desktop: collapse and expand. |
+| only the navigation control for this width is shown | Desktop: the collapse toggle, not the phone menu button; narrow: the reverse. Failed before the Phase 5 M6 fix. |
+| every figure fits its tile on one line | Each Dashboard figure fits inside its tile, unbroken. Failed in WebKit before the Phase 5 M6 fix. |
 | the skip link and focus indicator work from the keyboard | Skip link first, focus moves to main, visible focus ring. |
 | a confirmation dialog keeps focus inside and returns it when closed | Focus trap and return. |
 | sign-in page: fits, has no automated WCAG violations, and shows field errors accessibly | The signed-out page and its error state. |
 
 ## H. Important Technical Concepts
+- **Engine differences (Phase 5 M6):** Playwright's WebKit on Windows moves focus to no link with Tab or Option+Tab, so in WebKit the skip-link test focuses the link directly and checks the rest (shown when focused, Enter moves to the content); being first in the Tab order is checked in Chromium and Firefox. The focus-return test opens the dialog from the keyboard: in WebKit, as in Safari, clicking a button does not focus it, so a mouse user has no focused control to return to.
 - **Data first:** `beforeAll` creates records, so tables, badges and row buttons are always present to check.
 - **Located by id:** the closed menu is absent from the accessibility tree, so it is found by `#main-navigation`.
 - **Defects this found:** see the Phase 4 report; each fix has a unit or browser regression test.

@@ -50,6 +50,9 @@ Builds the `Origin` and `X-CSRF-Token` headers from the client's CSRF cookie, as
 | `test_session_sign_in_is_rate_limited` | Browser sign-in shares the login limit. |
 | `test_cors_allows_credentials_and_the_csrf_header_for_listed_origins` | CORS is strict, and credentials are allowed only for listed origins. |
 
+### `test_secure_cookies_carry_browser_enforced_prefixes`
+Phase 5 M5: over HTTPS with Secure cookies, sign-in sets `__Secure-finguard_session` (HttpOnly, Path=/api) and `__Host-finguard_csrf` (Path=/, no Domain); signed-in reads and CSRF-protected changes work; a cookie under the unprefixed name is refused.
+
 ## E. Classes Explained
 None.
 

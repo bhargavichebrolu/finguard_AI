@@ -33,7 +33,12 @@ Start-up validation is a security control only if it actually rejects bad values
 | `test_database_url_cannot_be_the_template_value` | The template's password is refused. |
 | `test_wildcard_cors_is_refused_everywhere` | `*` is refused in every environment. |
 | `test_production_refuses_localhost_origins` | Production cannot allow `localhost`. |
-| `test_production_accepts_a_real_origin` | Real origins are parsed into a list. |
+| `test_production_refuses_per_process_rate_limits` | Production must store rate limits in the database (Phase 5 M3). |
+| `test_production_accepts_a_real_origin` | Real origins are parsed into a list (with the proxy production now requires). |
+| `test_production_requires_its_reverse_proxy` | Phase 6, S14: production without `TRUSTED_PROXY_IPS` is refused; development may run without one. |
+| `test_trusted_proxies_must_be_specific_addresses` | `0.0.0.0/0`, `::/0`, a host name and a network with host bits set are refused. |
+| `test_trusted_proxies_accept_addresses_and_networks` | IPv4, IPv6 and a network are accepted. |
+| `test_api_documentation_is_off_in_production_and_cannot_be_turned_on` | Phase 6, S13: documentation is off by default in production and forcing it on is refused. Uses `PRODUCTION`, the shared production values. |
 | `test_secrets_do_not_appear_when_settings_are_printed` | `repr` hides the password and key. |
 | `test_validation_error_does_not_contain_the_secret` | The error detail, without its input field, omits a rejected key. |
 | `test_frozen_values_match_phase_2` | The pinned threshold, hash and calibration flag are as frozen. |

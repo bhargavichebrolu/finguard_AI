@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.functions import Function
 
 from app.api.schemas.investigations import InvestigationSummary, InvestigationUpdate
-from app.core.errors import InvalidInputError, NotFoundError
+from app.core.errors import ConflictError, InvalidInputError, NotFoundError
 from app.models.enums import UserRole
 from app.models.records import (
     Investigation,
@@ -71,6 +71,14 @@ def update_investigation(
     investigation = lock_investigation(session, investigation_id)
     if investigation is None:
         raise NotFoundError("Investigation not found.")
+    # Checked under the row lock, so a change committed just before this one is seen.
+    if change.expected_status is not None and change.expected_status != investigation.status:
+        current = investigation.status.value.replace("_", " ").capitalize()
+        session.rollback()
+        raise ConflictError(
+            f"Someone else changed this investigation: its status is now {current}. "
+            "Review it and try again."
+        )
 
     if "status" in change.model_fields_set and change.status != investigation.status:
         session.add(

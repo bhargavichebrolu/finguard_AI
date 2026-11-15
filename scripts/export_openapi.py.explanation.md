@@ -25,6 +25,9 @@ Formats the schema as indented JSON with sorted keys and a final newline, so reg
 ### `main`
 Writes the file, or with `--check` returns 1 if the saved file differs from the current API.
 
+### `use_placeholder_settings`
+When there is no `.env` (a clean clone or CI), sets a throwaway `DATABASE_URL` and a random `SECRET_KEY` for this process only, so the app's settings load. Building the schema connects to nothing. Existing values are never replaced. Added in Phase 5 M1, when the clean-clone check found `--check` could not run without `.env`.
+
 ## E. Classes Explained
 None.
 

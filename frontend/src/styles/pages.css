@@ -58,6 +58,7 @@
   flex-direction: column;
   gap: var(--space-1);
   margin-bottom: 0;
+  container-type: inline-size;
 }
 
 .stat-label {
@@ -65,10 +66,15 @@
   font-size: 0.85rem;
 }
 
+/* Long figures, such as a total value in the billions, must stay inside their tile in every
+   browser: text widths differ by engine and font (WebKit overflowed by 9 px in Phase 5 M6). The
+   size follows the tile's width (container units), and a figure never wraps, because a number
+   broken across lines reads as two numbers. */
 .stat-value {
-  font-size: 1.5rem;
+  font-size: clamp(1rem, 8.5cqi, 1.5rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .grid + .grid,

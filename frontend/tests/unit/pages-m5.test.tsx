@@ -111,7 +111,7 @@ describe("investigation centre", () => {
     const panel = await openCase();
     await userEvent.selectOptions(within(panel).getByLabelText("Change status"), "UNDER_REVIEW");
     await userEvent.click(within(panel).getByRole("button", { name: "Update status" }));
-    await waitFor(() => expect(patches).toEqual([{ status: "UNDER_REVIEW" }]));
+    await waitFor(() => expect(patches).toEqual([{ status: "UNDER_REVIEW", expected_status: "NEW" }]));
     expect(await within(panel).findByText(/New to Under review/)).toBeInTheDocument();
   });
 
@@ -125,7 +125,7 @@ describe("investigation centre", () => {
     expect(patches).toEqual([]);
     await userEvent.click(within(panel).getByRole("button", { name: "Update status" }));
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as false alarm" }));
-    await waitFor(() => expect(patches).toEqual([{ status: "FALSE_ALARM" }]));
+    await waitFor(() => expect(patches).toEqual([{ status: "FALSE_ALARM", expected_status: "NEW" }]));
   });
 
   it("adds a trimmed note and shows it", async () => {

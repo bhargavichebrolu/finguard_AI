@@ -11,11 +11,13 @@ An end-to-end machine learning application for monitoring simulated financial tr
 | 1 | Foundation and data engineering | Complete |
 | 2 | Machine learning experiments | Complete |
 | 3 | Backend and database | Complete |
-| 4 | React frontend | Complete, awaiting review |
-| 5 | Integration and quality assurance | Not started |
-| 6 | Deployment and portfolio release | Not started |
+| 4 | React frontend | Complete |
+| 5 | Integration hardening, quality assurance and reliability | Complete: accepted on 2026-11-13 with its documented residual risks ([completion record](docs/plans/phase-5-completion.md), [Firefox investigation](docs/plans/phase-5-firefox-investigation.md)) |
+| 6 | Deployment and portfolio release | Complete: production configuration built and verified end to end in a local rehearsal from a fresh clone ([DEPLOYMENT.md](DEPLOYMENT.md), [completion record](docs/plans/phase-6-completion.md)); awaiting the owner's review. **Not deployed to a public host** |
 
-**What works today:** the data pipeline and experiments from the command line, and a FastAPI service backed by PostgreSQL. The service runs locally in Docker. It verifies and loads the frozen model, scores single transactions and CSV batches, stores predictions and investigations, and serves the saved evaluation. A React interface covers all ten PRD pages: dashboard, single and CSV batch scoring, the transaction explorer, investigations, model performance, explanations, reports, settings and system information. It signs in with HttpOnly cookie sessions, shows each role only what it may use, and states the model's measured shortfalls beside every score. Browser tests run it against the real API and PostgreSQL at desktop, tablet and mobile sizes, with automated accessibility checks.
+Phases 5 and 6 are on branch `phase-5-hardening`, which is not merged into `main` and not pushed.
+
+**What works today:** the data pipeline and experiments from the command line, and a FastAPI service backed by PostgreSQL. The service runs locally in Docker. It verifies and loads the frozen model, scores single transactions and CSV batches, stores predictions and investigations, and serves the saved evaluation. A React interface covers all ten PRD pages: dashboard, single and CSV batch scoring, the transaction explorer, investigations, model performance, explanations, reports, settings and system information. It signs in with HttpOnly cookie sessions, shows each role only what it may use, and states the model's measured shortfalls beside every score. Browser tests run it against the real API and PostgreSQL at desktop, tablet and mobile sizes, with automated accessibility checks, in Chromium, Firefox and WebKit. Since Phase 5, batch jobs survive restarts and run across several API processes, rate limits are shared between processes, the production settings are tested over HTTPS behind a proxy, outages give clear messages and recover without a restart, and a CI workflow is written (it has not yet run on GitHub). Phase 6 added a production deployment on one Docker host (HTTPS through Caddy, no API documentation in production, proxy trust enforced, daily retention), halved the API image without changing a single score, and sped up deep explorer pages. Safari itself and screen readers have not been tested.
 
 `model_score` is not a calibrated probability, and `FLAG_FOR_REVIEW` is a request for human review.
 
@@ -30,7 +32,7 @@ An end-to-end machine learning application for monitoring simulated financial tr
 
 ## Quick start
 
-Requires [uv](https://docs.astral.sh/uv/) and Node.js 20 or later.
+Requires [uv](https://docs.astral.sh/uv/) and Node.js 20 or later (24.22.1 is the version tested and used in CI).
 
 ```powershell
 uv sync --project backend
@@ -42,15 +44,30 @@ uv run --project backend python scripts/audit_leakage.py
 uv run --project backend pytest backend/tests --rootdir backend -c backend/pyproject.toml
 ```
 
-To run the API, with Docker Desktop installed:
+The pipeline commands need the PaySim CSV; the application does not. To run the application, with Docker Desktop installed and the frozen model at `artifacts/models/fraud_detector_v1/model.joblib` (not in Git):
 
 ```powershell
 uv run --project backend python scripts/generate_env.py --api-port 8010
 docker compose up -d --build --wait
 uv run --project backend python scripts/create_admin.py --email you@example.com
+cd frontend; npm ci; npm run dev
 ```
 
-Then open `http://127.0.0.1:8010/docs`. Full instructions are in [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md).
+Then open `http://127.0.0.1:5173` and sign in; the API's interactive documentation is at `http://127.0.0.1:8010/docs`. Full instructions are in [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md).
+
+To run the production configuration (HTTPS, Caddy, no API documentation), see [DEPLOYMENT.md](DEPLOYMENT.md): `scripts/generate_production_env.py`, then `docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait`.
+
+## Demonstration
+
+A five-minute walk through the whole workflow, as an administrator:
+
+1. **Dashboard:** totals, flag rate and risk distribution of stored predictions, with the model's measured limitations.
+2. **Transaction Analysis:** score `CASH_OUT`, 5,000,000.00, step 50, customer. The result is `FLAG_FOR_REVIEW` with an uncalibrated `model_score`, a risk level and a SHAP explanation, and an investigation opens as New. For contrast, `TRANSFER`, 1,000,000.00, step 400 is `NOT_FLAGGED` (both inputs are used by the browser tests).
+3. **CSV Batch Analysis:** upload a CSV with the columns `external_transaction_id,amount,transaction_type,step,destination_category`. Watch progress, page through results, and download the results and errors (formula-safe).
+4. **Transaction Explorer:** filter by decision, risk or type; sort by score; open a transaction.
+5. **Investigation Centre:** open the new case, move it to Under review, add a note, then close it (a confirmation explains that statuses never change scores); the history keeps every step.
+6. **Model Performance and Explainable AI:** the saved evaluation of the frozen model (PR curves by regime, the 0.282% false positive rate against its 0.1% target) and global feature importance.
+7. **Reports and Settings:** export predictions as CSV; change the high-risk boundary (the decision threshold stays frozen); add an analyst account and sign in as them. An analyst sees every page but cannot change investigations, settings or accounts, and the API refuses those changes whatever the interface shows.
 
 ## Documentation index
 
@@ -62,7 +79,7 @@ Then open `http://127.0.0.1:8010/docs`. Full instructions are in [ENVIRONMENT_SE
 | [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md) | Experimental design and results |
 | [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) | Tables, constraints, roles and migrations |
 | [API_DOCUMENTATION.md](API_DOCUMENTATION.md) | Endpoints, roles, inputs, errors and score meaning |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment plan |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Production deployment: configuration, commands, verification |
 | [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) | Local setup and configuration |
 | [TESTING_GUIDE.md](TESTING_GUIDE.md) | How to run tests, and what they cover |
 | [SECURITY.md](SECURITY.md) | Security rules and status |

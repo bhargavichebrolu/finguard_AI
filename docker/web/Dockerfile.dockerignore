@@ -1,0 +1,11 @@
+# Build context for docker/web/Dockerfile is the repository root, which also holds the dataset,
+# the model and local secrets. Everything is excluded except what the web image needs.
+*
+!frontend/
+!docker/caddy/Caddyfile.production
+frontend/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+frontend/.e2e
+frontend/coverage

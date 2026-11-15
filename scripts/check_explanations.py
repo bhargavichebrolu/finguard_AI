@@ -29,6 +29,11 @@ SOURCE_FILES = (
     "frontend/index.html",
     "Makefile",
     "docker-compose.yml",
+    "docker-compose.prod.yml",
+    "docker/caddy/Caddyfile",
+    "docker/caddy/Caddyfile.production",
+    "docker/web/Dockerfile",
+    "docker/web/Dockerfile.dockerignore",
     ".env.example",
     ".gitattributes",
     ".gitignore",
@@ -40,6 +45,10 @@ SOURCE_FILES = (
     "frontend/tsconfig.json",
     "frontend/vitest.config.ts",
     "frontend/playwright.config.ts",
+    "frontend/playwright.perf.config.ts",
+    "frontend/playwright.prodlike.config.ts",
+    ".github/workflows/ci.yml",
+    ".github/expected-tests.json",
 )
 # Generated from frontend/openapi.json by openapi-typescript. Never edited by hand, so exempt
 # (PRD 12.2), and a frontend test fails if it falls out of step with the schema.

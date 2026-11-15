@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { expect, type APIResponse, type BrowserContext, type Page } from "@playwright/test";
+import { expect, type APIResponse, type Browser, type BrowserContext, type Page } from "@playwright/test";
 
 export const FRONTEND_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const REPO_ROOT = path.resolve(FRONTEND_DIR, "..");
@@ -73,10 +73,62 @@ export function runDatabaseScript(...args: string[]): string {
   });
 }
 
+/**
+ * Restart the browser-test API container gracefully (SIGTERM, then start), as a deploy would.
+ * Needs the Docker CLI on PATH. The container keeps its environment, so sessions stay valid.
+ */
+export function restartApiContainer(): void {
+  execFileSync("docker", ["restart", "--time", "30", API_CONTAINER], { stdio: "ignore" });
+}
+
+const API_CONTAINER = process.env.FINGUARD_E2E_CONTAINER ?? "finguard-api-e2e-1";
+
+/** Stop the browser-test API, as a crash or a deploy in progress would leave it (Phase 5 M7). */
+export function stopApiContainer(): void {
+  execFileSync("docker", ["stop", "--time", "30", API_CONTAINER], { stdio: "ignore" });
+}
+
+/** Start the browser-test API again and wait until it answers. */
+export async function startApiContainer(): Promise<void> {
+  execFileSync("docker", ["start", API_CONTAINER], { stdio: "ignore" });
+  await waitForApi();
+}
+
+/** Wait until the browser-test API answers its health check. */
+export async function waitForApi(): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        try {
+          return (await fetch(`${API_URL}/health`)).status;
+        } catch {
+          return 0;
+        }
+      },
+      { timeout: 120_000, intervals: [500] },
+    )
+    .toBe(200);
+}
+
+/**
+ * Simulate an outage of the browser-test database only: new connections are refused and open
+ * ones ended, as when a database server restarts (Phase 5 M7). Other databases are untouched.
+ * Always pair with setDatabaseAvailable(true) in a finally block; `e2e_stack.py up` also ends
+ * any outage a stopped run left behind.
+ */
+export function setDatabaseAvailable(available: boolean): void {
+  execFileSync(pythonPath(), ["-I", path.join(REPO_ROOT, "scripts", "e2e_stack.py"), "database", available ? "on" : "off"], {
+    cwd: REPO_ROOT,
+    stdio: "ignore",
+  });
+}
+
 /** Headers a changing request needs from a signed-in browser: its CSRF token and origin. */
-export async function changeHeaders(context: BrowserContext): Promise<Record<string, string>> {
-  const csrf = (await context.cookies(BASE_URL)).find((cookie) => cookie.name === "finguard_csrf");
-  return { "X-CSRF-Token": csrf?.value ?? "", Origin: BASE_URL };
+export async function changeHeaders(context: BrowserContext, origin = BASE_URL): Promise<Record<string, string>> {
+  // Prefixed __Host- when cookies are Secure, as on the HTTPS production-like stack.
+  const names = ["__Host-finguard_csrf", "finguard_csrf"];
+  const csrf = (await context.cookies()).find((cookie) => names.includes(cookie.name));
+  return { "X-CSRF-Token": csrf?.value ?? "", Origin: origin };
 }
 
 /** Call the API with the page's session, as the interface would. */
@@ -98,6 +150,31 @@ export async function signInThroughForm(page: Page, name: AccountName, password?
   await page.getByLabel("Password").fill(password ?? seeded);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+}
+
+/** Sign in through the form with given credentials. */
+export async function signInWith(page: Page, email: string, password: string): Promise<void> {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+}
+
+/**
+ * Create a fresh account through the administrator API. Tests that use an account up, such as
+ * changing its password or deactivating it, use one of these so every browser project gets its
+ * own (Phase 5 M6: the seeded account was used up by the first browser).
+ */
+export async function createAccount(browser: Browser, role = "analyst"): Promise<Account> {
+  const email = `fresh-${uniqueId("u").toLowerCase()}@e2e.example.com`;
+  const password = `Pw-${uniqueId("x")}-${uniqueId("y")}`;
+  const context = await browser.newContext({ storageState: statePath("admin") });
+  const page = await context.newPage();
+  const response = await apiCall(page, "POST", "/api/v1/users", { email, password, role });
+  expect(response.status(), "account created").toBe(201);
+  await context.close();
+  return { email, password, role };
 }
 
 /** Start a session through the API, returning the response. */

@@ -10,12 +10,13 @@ records each source's SHA-256 so it can be traced and checked.
 
 import argparse
 import csv
+import hashlib
 import json
 import sys
 from pathlib import Path
 from typing import Any
 
-from app.ml.pipeline_io import sha256_file, write_json
+from app.ml.pipeline_io import write_json
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REPORT_PATH = REPO_ROOT / "artifacts" / "metadata" / "model_v1_report.json"
@@ -63,9 +64,19 @@ def read_sources(root: Path) -> dict[str, Any]:
     return loaded
 
 
+def content_sha256(path: Path) -> str:
+    """SHA-256 of a text file's content with line endings normalised to LF.
+
+    Git stores these files with LF, but a Windows checkout can write CRLF. Hashing raw bytes made
+    the recorded hashes depend on how the repository was checked out (found by the Phase 5
+    clean-clone check), so the content is hashed instead.
+    """
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def source_hashes(root: Path) -> dict[str, str]:
-    """Return the SHA-256 of each source, keyed by its repository path."""
-    return {relative: sha256_file(root / relative) for relative in SOURCES.values()}
+    """Return the content hash of each source, keyed by its repository path."""
+    return {relative: content_sha256(root / relative) for relative in SOURCES.values()}
 
 
 def csv_value(field: str, text: str) -> Any:

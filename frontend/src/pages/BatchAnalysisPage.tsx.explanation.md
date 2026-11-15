@@ -22,6 +22,9 @@ Returns a message if the file is not `.csv`, is empty, or exceeds `max_upload_by
 ### `BatchAnalysisPage`
 Shows the limits, the file input, upload progress, a template download and recent uploads. Opening a recent upload shows its job.
 
+### `BatchJobView` (Phase 5 M4 additions)
+Shows "Resuming after an interruption" while a job is processing on a later attempt, and "Lost contact with the server" while a progress check fails, keeping the last known progress and carrying on checking.
+
 ### `chooseFile`
 Stores the chosen file. The check (`fileError`) is worked out on every render from the file and the loaded limits, so a file chosen before the limits arrive is still checked. Before M7 the check ran only at the moment of choosing and was skipped if the limits had not loaded.
 

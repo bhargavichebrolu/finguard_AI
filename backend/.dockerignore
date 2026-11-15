@@ -2,6 +2,11 @@
 .venv
 __pycache__
 *.py[cod]
+# Root-level patterns above do not match inside folders; these do (Phase 6: the image held
+# local bytecode caches and the explanation documents beside the code).
+**/__pycache__
+**/*.py[cod]
+**/*.md
 .pytest_cache
 .ruff_cache
 tests

@@ -62,7 +62,7 @@ def start_session(
 @router.delete("/session", status_code=status.HTTP_204_NO_CONTENT)
 def end_session(request: Request, response: Response, db: DbSession) -> None:
     """Sign out: revoke this browser session on the server and delete its cookies."""
-    cookie = request.cookies.get(sessions.SESSION_COOKIE)
+    cookie = request.cookies.get(sessions.session_cookie_name())
     if cookie is not None:
         try:
             row = sessions.find_active_session(db, decode_access_token(cookie))

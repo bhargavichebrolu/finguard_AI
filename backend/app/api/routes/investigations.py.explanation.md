@@ -38,6 +38,7 @@ Permission check, validation, service, response.
 See `API_DOCUMENTATION.md`.
 
 ## H. Important Technical Concepts
+- **409 (Phase 5 M7):** `update` documents the conflict answer given when `expected_status` no longer matches.
 - **Two levels of access:** analysts can see the queue but cannot change it, following PRD 2.1 and 2.2.
 
 ## I. Example

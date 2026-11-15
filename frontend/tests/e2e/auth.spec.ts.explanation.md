@@ -11,7 +11,7 @@ Authorisation decision 1 requires HttpOnly cookies, CSRF protection, strict CORS
 ## C. Dependencies
 - **Libraries:** Playwright Test.
 - **Internal modules:** `support.ts`.
-- **External services / database:** The browser-test API on 127.0.0.1:8011 and the finguard_test database, through the preview server on 127.0.0.1:4173.
+- **External services / database:** The browser-test API on 127.0.0.1:8011 and the finguard_e2e_test database, through the preview server on 127.0.0.1:4173.
 - **Depended on by:** none; run by `npm run test:e2e`.
 
 ## D. Every Function Explained
@@ -39,6 +39,7 @@ Signed-out tests start with `NO_SESSION`; the CSRF tests use the analyst's saved
 | CORS answers only the configured origin | No Access-Control-Allow-Origin for other origins; credentials allowed for the preview origin. |
 
 ## H. Important Technical Concepts
+- **SameSite (Phase 5 M6):** the sign-in test reads the `Set-Cookie` header the server sent and requires `HttpOnly` and `SameSite=Strict` in every browser. It also checks the attribute the browser stored, except in WebKit: Playwright's WebKit build on Windows reports `None` for these cookies although the server sends `Strict`. The CSRF token and origin check protect changes regardless.
 - **Secure flag:** the test API runs over plain HTTP with `APP_ENV=test`, so `Secure` is off here. Production refuses to start with it off (`backend/tests/unit/test_config.py`).
 - **Rate-limit isolation:** the limit lives in the API's memory for a minute, so the lockout test creates a new account through the API each run.
 

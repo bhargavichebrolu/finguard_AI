@@ -28,8 +28,9 @@
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+/* 220 px: wide enough for an exact figure in the billions at a legible size (Phase 5 M6). */
 .grid.four {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .grid > .card {

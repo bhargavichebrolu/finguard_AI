@@ -28,6 +28,7 @@ Loaded once by `main.tsx`.
 Output: style rules.
 
 ## H. Important Technical Concepts
+- **Visibility helpers (Phase 5 M6):** `.mobile-only` and `.desktop-only` use `!important`. Without it, `.button` in `components.css`, loaded later with equal specificity, set its own display, so the phone menu button also showed on desktop (beside the collapse toggle, and taking keyboard focus) and the collapse toggle showed on phones. Found in WebKit, present in every engine since Phase 4; `responsive.spec.ts` now checks it.
 - **M7 fixes:** the brand, role and sign-out label never wrap; below 480 px the sign-out label is hidden visually; the closed narrow-screen menu is `visibility: hidden`.
 - **Tokens only:** colours come from `tokens.css` variables, never raw values, except white on primary buttons.
 - Below 900 px the navigation becomes a panel opened from the menu button, and the content uses the full width, so nothing scrolls sideways.

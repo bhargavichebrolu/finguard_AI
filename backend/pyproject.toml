@@ -40,6 +40,7 @@ dev = [
     "pytest>=8",
     "ruff>=0.6",
     "httpx>=0.27",
+    "pip-audit>=2.10.1",
 ]
 
 [build-system]
@@ -51,6 +52,11 @@ packages = ["app"]
 
 [tool.uv]
 default-groups = ["training", "dev"]
+# XGBoost's Linux wheel requires NVIDIA's NCCL (469 MB), used only for multi-GPU training. The
+# frozen model is scored on the CPU and nothing here trains on a GPU, so it is never installed:
+# a marker that matches no platform removes it. XGBoost itself stays the exact version the model
+# was saved with, and the scores were shown to be identical without it (DEPLOYMENT.md, image size).
+override-dependencies = ["nvidia-nccl-cu12; sys_platform == 'never'"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

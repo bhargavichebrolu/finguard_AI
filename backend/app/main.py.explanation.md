@@ -19,9 +19,9 @@ It is the entry point for `uvicorn`. It also records the start-up rule from the 
 ### `lifespan`
 - **Purpose:** run start-up steps.
 - **Parameters / types:** `app: FastAPI`. **Returns / type:** an async iterator.
-- **Internal processing:** verifies and loads the model, records it in `model_versions`, recovers batch jobs interrupted by an earlier shutdown, and stores the model on `app.state`.
+- **Internal processing:** verifies and loads the model, records it in `model_versions`, removes stale temporary upload files, stores the model on `app.state`, and starts this process's `BatchWorker` unless `BATCH_WORKER_ENABLED` is false. On shutdown it stops the worker, which gives its job back for another process to resume. Since Phase 5 M4 it no longer fails unfinished jobs at start-up.
 - **Error handling:** any exception stops the application, so it can never run without a verified model.
-- **Calls:** `load_verified_model`, `register_active_model`, `recover_interrupted_jobs`. **Used by:** FastAPI.
+- **Calls:** `load_verified_model`, `register_active_model`, `remove_stale_uploads`, `BatchWorker`. **Used by:** FastAPI.
 
 ### `create_app`
 - **Purpose:** build and configure the application.
@@ -30,6 +30,7 @@ It is the entry point for `uvicorn`. It also records the start-up rule from the 
 - **Error handling:** invalid settings raise here.
 - **Calls:** `configure_logging`, `register_exception_handlers`. **Used by:** the module body, tests.
 - **Proxy middleware:** added only when trusted proxies are configured.
+- **API documentation:** `docs_url`, `redoc_url` and `openapi_url` are `None` when `docs_enabled` is false (production, Phase 6), so those routes do not exist.
 
 ## E. Classes Explained
 None.

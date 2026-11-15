@@ -137,6 +137,7 @@ pytest loads this file automatically and injects fixtures by parameter name.
 No external input. Output is fixture values for tests.
 
 ## H. Important Technical Concepts
+- **`BATCH_WORKER_ENABLED=false`** (Phase 5 M4): API tests drain the batch queue themselves.
 The fixture is synthetic and contains no real PaySim rows. It has a uniform 20 rows per step, so all of its steps count as low-volume in EDA, and a test relies on that.
 
 ## I. Example

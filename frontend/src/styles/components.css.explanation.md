@@ -28,6 +28,7 @@ Loaded once by `main.tsx`.
 Output: style rules.
 
 ## H. Important Technical Concepts
+- **`.grid.four` (Phase 5 M6):** tiles are at least 220 px wide (was 180 px), so an exact figure in the billions fits at a legible size.
 - **M7 accessibility fixes:** `.table-wrap` is positioned and shows a focus ring; text-style buttons are at least 24 px; form controls never exceed their container.
 - **Tokens only:** colours come from `tokens.css` variables, never raw values, except white on primary buttons.
 - Focus outlines are visible on every interactive element. Badge colours use darker text tokens for contrast.

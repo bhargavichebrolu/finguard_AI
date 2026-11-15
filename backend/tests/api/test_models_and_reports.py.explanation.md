@@ -59,6 +59,7 @@ None.
 Input: saved files and HTTP requests. Output: pass or fail.
 
 ## H. Important Technical Concepts
+- **Queued uploads (Phase 5 M4):** the summary test drains the batch queue after uploading, as a worker would.
 - **Exact equality, not approximate.** Results are served, not recalculated, so they should match to the last digit.
 - **`test_saved_results_are_the_phase_2_figures` is a tripwire.** It fails if the frozen file is ever altered.
 

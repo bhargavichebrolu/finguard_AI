@@ -19,7 +19,7 @@ PRD 6.1 lists the summary figures, and PRD 6.9 lists the exports. PRD 6.1 also r
 ### `build_summary`
 - **Purpose:** build the summary.
 - **Parameters / types:** `session`, `model: ServingModel`, `is_demo: bool`. **Returns / type:** `SummaryReport`.
-- **Internal processing:** fills separate sections from separate queries, plus recent activity and notes from saved metrics.
+- **Internal processing:** fills the model-flag section from one `model_flag_breakdown` pass (Phase 5 M2), and the workflow and label sections from their own queries, plus recent activity and notes from saved metrics.
 - **Error handling:** zero records gives a flag rate of 0.
 - **Calls:** `queries.*`, `list_transactions`, `performance_notes`. **Used by:** the route.
 

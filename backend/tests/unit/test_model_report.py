@@ -42,9 +42,22 @@ def test_rebuilding_from_sources_gives_the_committed_report(load_script, report)
     assert load_script("export_model_report").build_report(REPO_ROOT) == report
 
 
-def test_recorded_source_hashes_match_the_files(report):
+def test_recorded_source_hashes_match_the_files(load_script, report):
+    content_sha256 = load_script("export_model_report").content_sha256
     for relative, digest in report["source_files"].items():
-        assert sha256_file(REPO_ROOT / relative) == digest, relative
+        assert content_sha256(REPO_ROOT / relative) == digest, relative
+
+
+def test_source_hashes_do_not_depend_on_line_endings(load_script, tmp_path):
+    # Regression (Phase 5 M1): raw-byte hashes differed between a Windows checkout (CRLF) and a
+    # clean or Linux checkout (LF) of the same committed file.
+    content_sha256 = load_script("export_model_report").content_sha256
+    lf, crlf, changed = tmp_path / "lf.json", tmp_path / "crlf.json", tmp_path / "changed.json"
+    lf.write_bytes(b'{"a": 1,\n "b": 2}\n')
+    crlf.write_bytes(b'{"a": 1,\r\n "b": 2}\r\n')
+    changed.write_bytes(b'{"a": 1,\n "b": 3}\n')
+    assert content_sha256(lf) == content_sha256(crlf)
+    assert content_sha256(lf) != content_sha256(changed)
 
 
 def test_sources_are_saved_results_only(load_script):

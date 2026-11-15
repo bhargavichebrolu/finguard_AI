@@ -14,13 +14,16 @@ The PRD 9.1 tables are marked PRD. The others close gaps the PRD's list left ope
 | `investigations` | PRD | id, prediction_id (unique), status, assigned_user_id, created_at, updated_at |
 | `investigation_notes` | PRD | id, investigation_id, user_id, note, created_at |
 | `model_versions` | PRD | id, version (unique), algorithm, model_path_or_artifact_reference, model_sha256, threshold, feature_schema_version, metrics_json, is_active, created_at |
-| `batch_jobs` | PRD | id, filename, status, total_records, processed_records, failed_records, ignored_columns, labels_supplied, is_demo, error_message, created_by, created_at, completed_at |
+| `batch_jobs` | PRD | id, filename, status, total_records, processed_records, failed_records, ignored_columns, labels_supplied, is_demo, error_message, created_by, created_at, completed_at; queue columns worker_id, lease_expires_at, attempts (Phase 5 M4, revision `0004`) |
+| `batch_uploads` | added in Phase 5 M4 (revision `0004`) | job_id (primary key, cascades from batch_jobs), content: the checked upload's bytes, at most 10 MB, deleted when the job ends |
 | `audit_logs` | PRD | id, user_id, action, entity_type, entity_id, details, created_at |
 | `investigation_status_history` | added | id, investigation_id, from_status, to_status, changed_by, created_at |
 | `batch_row_errors` | added | id, batch_job_id, row_number, column_name, message |
 | `ground_truth_labels` | added | transaction_id (primary key), is_fraud, source, created_at |
 | `app_settings` | added | key, value, updated_by, updated_at |
 | `user_sessions` | added in Phase 4 (revision `0002`) | id, user_id, csrf_token_hash, created_at, expires_at, revoked_at |
+| `rate_limit_events` | added in Phase 5 M3 (revision `0003`) | id, key, occurred_at (index on key and time): sliding-window events such as failed sign-ins |
+| `rate_limit_windows` | added in Phase 5 M3 (revision `0003`) | key and window_start (primary key), count: fixed-window counters for predictions and uploads |
 
 `predictions.fraud_probability` from PRD 9.1 is named `model_score`, as the Phase 3 authorisation requires, because the score is not calibrated. See [ADR 0003](docs/decisions/0003-phase-3-decisions.md).
 
@@ -33,6 +36,7 @@ transactions 1---1 predictions 1---0..1 investigations 1---* investigation_notes
 transactions 1---0..1 ground_truth_labels       model_versions 1---* predictions (by version)
 users 1---* investigations (assigned_user_id), investigation_notes, audit_logs
 batch_jobs 1---* batch_row_errors
+batch_jobs 1---1 batch_uploads (only while the job is unfinished)
 ```
 
 Deleting a transaction removes its prediction, investigation, notes, history and label (`CASCADE`). Deleting a user keeps their work and clears the reference (`SET NULL`). No route deletes either.
@@ -73,7 +77,7 @@ On `transactions`: created_at, transaction_type, amount, simulation_step, is_dem
 | Role | Rights | Used by |
 |---|---|---|
 | `POSTGRES_USER` (`finguard_admin`) | Superuser | Administration only |
-| `APP_DB_USER` (`finguard_app`) | Owns `finguard` and `finguard_test`. No superuser, database or role creation rights. | API, migrations, tests |
+| `APP_DB_USER` (`finguard_app`) | Owns `finguard`, `finguard_test` (backend suite) and `finguard_e2e_test` (browser tests, created by `scripts/e2e_stack.py`). No superuser, database or role creation rights. | API, migrations, tests |
 
 Every authentication rule uses `scram-sha-256`, including connections inside the container, because `POSTGRES_INITDB_ARGS` is set from the first initialisation. Verified on 2026-11-07, both on a throwaway Compose project and on the development database:
 - **Rules:** all 7 loaded rules in `pg_hba_file_rules` are SCRAM.

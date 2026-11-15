@@ -1,0 +1,142 @@
+# Production deployment on one Docker host (Phase 6). Separate from docker-compose.yml, which is
+# the local development and test stack. Run with the values in .env.production, which
+# scripts/generate_production_env.py creates and Git ignores:
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait
+#
+# No credential is written here; a missing one stops "docker compose" before anything starts.
+# The frozen model is not in Git or in an image: copy artifacts/ to the host and point
+# FINGUARD_ARTIFACTS_DIR at it. The API refuses to start unless the model matches its pinned hash.
+name: finguard-prod
+
+x-api-environment: &api-environment
+  APP_ENV: production
+  DATABASE_URL: postgresql+psycopg://${APP_DB_USER:?set APP_DB_USER}:${APP_DB_PASSWORD:?set APP_DB_PASSWORD}@db:5432/${POSTGRES_DB:?set POSTGRES_DB}
+  SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+  # The site's own origin. Same-origin requests need no CORS, but the CSRF check compares Origin.
+  CORS_ALLOWED_ORIGINS: ${FINGUARD_PUBLIC_ORIGIN:?set FINGUARD_PUBLIC_ORIGIN}
+  # Caddy's fixed address on the edge network below, and nothing else (security finding S14).
+  TRUSTED_PROXY_IPS: 172.30.240.10
+  MODEL_METADATA_PATH: /app/artifacts/metadata/model_v1.json
+  MODEL_METRICS_PATH: /app/artifacts/metadata/model_v1_metrics.json
+  PREPROCESSING_METADATA_PATH: /app/artifacts/metadata/preprocessing_v1.json
+  MODEL_ARTIFACT_DIR: /app/artifacts/models
+  MODEL_REPORT_PATH: /app/artifacts/metadata/model_v1_report.json
+  UPLOAD_TMP_DIR: /tmp/finguard-uploads
+  # Each worker process loads the model (about 170 MB). Two suit a host with at least 1 GB.
+  WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+
+services:
+  db:
+    image: postgres:17-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: "--auth-local=scram-sha-256 --auth-host=scram-sha-256"
+      APP_DB_USER: ${APP_DB_USER:?set APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD}
+      # No test database in production: the init script creates one only when this is set.
+      TEST_DB_NAME: ""
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    # No published port: only the API, migrations and retention reach the database.
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    stop_grace_period: 30s
+
+  migrate:
+    build: ./backend
+    image: finguard-api:${FINGUARD_RELEASE:-production}
+    command: ["alembic", "upgrade", "head"]
+    environment: *api-environment
+    networks: [data]
+    # A one-off job, not a server: the image's HTTP health check does not apply.
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: finguard-api:${FINGUARD_RELEASE:-production}
+    restart: unless-stopped
+    environment: *api-environment
+    volumes:
+      - ${FINGUARD_ARTIFACTS_DIR:-./artifacts}:/app/artifacts:ro
+    # No published port: the browser reaches the API only through Caddy.
+    networks: [data, edge]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # The image's health check calls /health, which answers only once start-up has finished:
+    # the model verified against its pinned hash and registered in the database. A batch job
+    # interrupted by a stop resumes from its last stored chunk after its lease expires.
+    stop_grace_period: 30s
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    image: finguard-web:${FINGUARD_RELEASE:-production}
+    restart: unless-stopped
+    environment:
+      FINGUARD_DOMAIN: ${FINGUARD_DOMAIN:?set FINGUARD_DOMAIN}
+      FINGUARD_TLS: ${FINGUARD_TLS:?set FINGUARD_TLS to an email address, or internal}
+      FINGUARD_HTTP_PORT: ${FINGUARD_HTTP_PORT:-80}
+      FINGUARD_HTTPS_PORT: ${FINGUARD_HTTPS_PORT:-443}
+    ports:
+      - "${FINGUARD_BIND_ADDRESS:-0.0.0.0}:${FINGUARD_HTTP_PORT:-80}:${FINGUARD_HTTP_PORT:-80}"
+      - "${FINGUARD_BIND_ADDRESS:-0.0.0.0}:${FINGUARD_HTTPS_PORT:-443}:${FINGUARD_HTTPS_PORT:-443}"
+    volumes:
+      # Certificates and ACME account keys survive restarts, so renewals are not repeated.
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      edge:
+        ipv4_address: 172.30.240.10
+    healthcheck:
+      # The whole path: HTTPS through Caddy to the API's own health check.
+      test: ["CMD-SHELL", "wget -q -O /dev/null --no-check-certificate https://127.0.0.1:$${FINGUARD_HTTPS_PORT}/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Deletes records past their retention period once a day (sessions 7 days, audit 365 days),
+  # recording each run in the audit log. Phase 5 approved the periods.
+  retention:
+    image: finguard-api:${FINGUARD_RELEASE:-production}
+    restart: unless-stopped
+    environment: *api-environment
+    command: ["sh", "-c", "while true; do python -m app.commands.retention --apply; sleep 86400; done"]
+    networks: [data]
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+networks:
+  # Database traffic only; not reachable from Caddy.
+  data: {}
+  # Caddy and the API. The fixed subnet gives Caddy the address the API trusts.
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.240.0/24
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

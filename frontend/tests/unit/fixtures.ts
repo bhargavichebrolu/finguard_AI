@@ -331,6 +331,7 @@ export function batchFixture(overrides: Partial<Batch> = {}): Batch {
     error_message: null,
     created_at: "2026-11-08T10:00:00Z",
     completed_at: "2026-11-08T10:00:05Z",
+    attempts: 1,
     ...overrides,
   };
 }

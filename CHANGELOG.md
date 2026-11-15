@@ -1,5 +1,188 @@
 # Changelog
 
+## Phase 6: deployment and release (2026-11-15)
+
+Branch `phase-5-hardening`: Step 1 `23dcb2f`, then the Step 2 verification commit. Not merged into `main`, not pushed, and **not deployed to a public host**: the production configuration was verified in a local rehearsal. Decisions are in [ADR 0006](docs/decisions/0006-phase-6-decisions.md), and evidence is in the [completion record](docs/plans/phase-6-completion.md).
+
+### Added
+- **Production deployment on one Docker host:**
+  - `docker-compose.prod.yml` runs Caddy, the API, PostgreSQL, migrations and daily retention.
+  - `docker/web/Dockerfile` builds the interface from source and serves it with Caddy.
+  - `docker/caddy/Caddyfile.production` handles the ACME certificate, HSTS, CSP, and caching.
+- **Deployment scripts:**
+  - `scripts/generate_production_env.py` writes new secrets to a Git-ignored file.
+  - `scripts/verify_deployment.py` runs 26 HTTPS checks of a running deployment.
+  - `scripts/score_reference_grid.py` gives an inference-parity fingerprint for image changes.
+- **`app/commands/create_admin.py`:** creates the first administrator inside the API container. `scripts/create_admin.py` now calls it.
+- **CI:** a third job, `images`, builds both images and validates the production Compose file. It has not run on GitHub.
+- **ADR 0006**, DEPLOYMENT.md rewritten, and the Phase 6 completion record.
+
+### Changed
+- **API image:**
+  - Two-stage build; NVIDIA NCCL no longer installed; 1.92 GB to 979 MB.
+  - XGBoost 3.2.0 and scikit-learn 1.9.1 unchanged; identical scores and explanations on 550 synthetic inputs.
+- **Explorer pages use a deferred join:** at 180,285 rows, the last page went from 392 to 79 ms, with the same rows.
+- **Database init script:** creates a test database only when `TEST_DB_NAME` is set.
+- **Browser-test API sessions last 120 minutes**, so a slow run keeps its signed-in sessions.
+
+### Fixed (security findings)
+- **S13:** production no longer serves `/docs`, `/redoc` or `/openapi.json`, and refuses to turn them on.
+- **S14:** production refuses to start without a trusted proxy, and every environment refuses malformed or all-covering `TRUSTED_PROXY_IPS` entries.
+- **S15:** the production Caddyfile obtains a public certificate. This is untested without a public host.
+- **Chunked uploads:** Caddy caps request bodies at 11 MB while streaming.
+
+### Results (Step 2 verification, 2026-11-15)
+| Suite | Passed | Failed | Skipped |
+|---|---|---|---|
+| Backend, full, with the model | 835 | 0 | 0 (1 deselected: rereads the test partition) |
+| CI rehearsal, fresh clone: backend | 514 | 0 | 322, exactly the expected list |
+| Frontend unit and component (Vitest) | 111 | 0 | 0 |
+| Browser, all seven projects | 311 | 0 | 0 |
+| HTTPS production-like | 7 | 0 | 0 |
+| Production rehearsal checks (`verify_deployment.py --write`) | 26 | 0 | |
+| README demonstration in Chromium | 13 | 0 | |
+
+- **CI rehearsal:** all 23 workflow steps passed, including the explanation checker (245 files, 0 problems), the secret scan (0 findings), `pip-audit` and `npm audit` (0 vulnerabilities), and both image builds.
+- **Production rehearsal:** run from a fresh clone, with images built without cache. It survived a crash, a database outage, a full restart, and a backup with data loss and restore. Details are in [DEPLOYMENT.md](DEPLOYMENT.md#6-local-rehearsal-what-was-verified).
+- **Frozen model:** hash `69813c17…` and threshold `0.02841914258897305` unchanged; inference fingerprint identical in the old and new images.
+
+### Fixed during verification
+- **CI skip list:** the 24 new explorer cases were added to the expected list, and the minimum number of passing tests rose from 480 to 512.
+- **API image contents:** it contained explanation documents and bytecode caches; `.dockerignore` now excludes them at every depth.
+- **Backup commands:** the backup and restore commands lacked the database password.
+- **Model folder:** the deployment steps now create the model folder in a fresh clone.
+- **Demonstration wording:** the README demonstration misdescribed what an analyst sees.
+
+### Known limitations
+- **Not deployed:** no public host, DNS name or public certificate exists.
+- **CI:** it has never run on GitHub.
+- **Untested:** Safari, screen readers, and WebKit's SameSite enforcement.
+- **Phase 5 residual risks:** the unexplained single Firefox status-change failure, and the Firefox teardown hang under CPU starvation.
+- **Limits around the minute boundary:** prediction and upload limits use fixed windows, so up to twice the limit can pass across a minute boundary.
+- **Deep explorer offsets:** still pass over earlier rows, though they no longer build them.
+- **Development without the proxy:** chunked uploads to the API directly are still spooled before the size check.
+
+## Phase 5: integration hardening, quality assurance and reliability (2026-11-11)
+
+Branch `phase-5-hardening`, nine milestones and the Firefox investigation follow-up (`79b2947`). Accepted on 2026-11-13 with its documented residual risks; not merged into `main`, not pushed. Decisions are in [ADR 0005](docs/decisions/0005-phase-5-decisions.md), and evidence is in the [completion record](docs/plans/phase-5-completion.md).
+
+### Added
+- **M1, isolation and reproducibility:**
+  - Browser tests have their own database, `finguard_e2e_test`.
+  - `scripts/verify_clean_clone.py` records what a clean checkout skips.
+  - Base images are pinned by digest.
+- **M2, performance baseline:** `scripts/measure_performance.py` and `npm run perf:pages`, using synthetic inputs only. Two measured fixes:
+  - Dashboard summary at 500,000 predictions: p50 862 ms to 434 ms.
+  - CSV export of 500,000 rows: 109.5 s to 10.4 s, with the same bytes.
+- **M3, multi-process correctness:**
+  - Rate limits are counted in PostgreSQL, within the latency budget fixed in M2. A first, sliding-window design was over budget and rejected.
+  - `WEB_CONCURRENCY` sets the worker count, default 1.
+  - Model registration at start-up is serialised with an advisory lock.
+- **M4, batch queue:**
+  - Upload bytes are stored in `batch_uploads`.
+  - One worker per process claims jobs with `FOR UPDATE SKIP LOCKED` and holds a 60-second lease.
+  - Each 1,000-row chunk is idempotent, and a job gets at most 3 attempts.
+  - A crashed or restarted process's job resumes from its last committed chunk, with no duplicates.
+- **M5, production security review:**
+  - An HTTPS production-like stack runs through Caddy.
+  - Production cookies use `__Secure-` and `__Host-` prefixes.
+  - A history-wide secret scan.
+  - `pip-audit` and `npm audit`.
+  - A retention command: sessions after 7 days, audit records after 365.
+  - 15 findings recorded in [docs/security/phase-5-review.md](docs/security/phase-5-review.md).
+- **M6, cross-browser:**
+  - Playwright Firefox and WebKit projects.
+  - Accessibility-tree tests.
+  - A Narrator/NVDA checklist, marked UNTESTED.
+- **M7, integration error handling:**
+  - A database outage answers 503 and the API recovers without a restart.
+  - A batch whose database connection drops is resumed, not failed.
+  - A model failure while scoring says that nothing was stored.
+  - Investigation status changes accept `expected_status`, and a stale one answers 409.
+  - The interface says "unavailable" instead of signing out, has error boundaries per page, shows timeout and no-answer messages, and shows the API's message on failed downloads.
+- **M8, CI:**
+  - `.github/workflows/ci.yml` checks a clean checkout with a PostgreSQL database.
+  - `scripts/check_test_run.py` fails on any change to the 298 expected skips, or on missing tests.
+  - It has not run on GitHub.
+- **M9:**
+  - Every document checked against the implementation.
+  - ADR 0005.
+  - The completion record.
+
+### Fixed
+The tests for each fix are named in TESTING_GUIDE.md and in the milestone's commit message.
+
+- **M1:**
+  - The model report's source hashes depended on checkout line endings.
+  - Three model tests failed instead of skipping without the binary.
+  - `export_openapi.py --check` needed `.env`.
+  - Component tests timed out on a cold start.
+- **M3 and M4:**
+  - Memory rate limits multiplied with processes and reset on restart.
+  - Start-up failed every unfinished batch job and deleted files in every process (F1).
+  - Concurrent start-ups could fail to register the model.
+- **M5:** cookies had no browser-enforced prefixes.
+- **M6:**
+  - The phone menu button showed on desktop in every engine.
+  - Large Dashboard totals overflowed their tile in WebKit.
+- **M7:**
+  - A database outage gave a bare 500.
+  - A lost connection failed a resumable batch.
+  - A scoring failure gave a bare 500.
+  - A stale page could override a colleague's status.
+  - A reload during an outage signed the user out.
+  - A failed page download blanked the app (F7).
+  - Failed downloads lost the API's message (since Phase 4).
+  - No answer gave no hint that a change might have been saved.
+- **M8:** a skip-reason check that would have accepted a database-caused skip.
+- **Gate follow-up:** the batch progress test read the bar and its label in two calls, which could straddle a re-render (2 of 13 Firefox runs). They are now read in one call, with the same assertions.
+
+### Results at the gate
+| Suite | Passed | Failed | Skipped | Deselected |
+|---|---|---|---|---|
+| Backend, full, with the model | 778 | 0 | 0 | 1 (rereads the test partition) |
+| Frontend unit and component (Vitest) | 111 | 0 | 0 | 0 |
+| Browser, first gate run (all seven projects) | 309 | **2, both Firefox, unexplained** | 0 | 0 |
+| Browser, full rerun (all seven projects) | 311 | 0 | 0 | 0 |
+| HTTPS production-like | 6 | 0 | 0 | 0 |
+| CI rehearsal, fresh clone: backend | 480 | 0 | 298, exactly the expected list | 1 |
+| CI rehearsal, fresh clone: frontend | 111 | 0 | 0 | 0 |
+
+Browser rerun by project: setup 5, desktop 83, tablet 19, mobile 19, firefox 83, webkit 83, webkit-mobile 19.
+
+Other checks, all passed on the CI rehearsal of the final tree (all 19 workflow steps):
+- `ruff check`, and `ruff format --check` (167 files).
+- Explanation checker: 235 files, 0 problems.
+- `export_openapi.py --check` and `export_model_report.py --check`.
+- `scan_secrets.py`: 0 findings, 0 secret files.
+- `pip-audit` and `npm audit`: 0 known vulnerabilities.
+- Type check and production build.
+
+The CI workflow itself has **not** run on GitHub.
+
+Frozen model hash `69813c17…` unchanged. Nothing under `data/`, `artifacts/` or `experiments/` changed in Phase 5, apart from M1's correction of the source hashes in the derived `model_v1_report.json`, where every value is identical. Also, the threshold is unchanged and the test partition was not read.
+
+### Known limitations
+- **Not tested:** Safari itself, and any screen reader. The Narrator/NVDA checklist is UNTESTED until the owner runs it.
+- **WebKit SameSite:** whether WebKit enforces SameSite=Strict is not established. These tests check only that the server sends it.
+- **CI:** it has not run on GitHub, and it cannot run real-model, API, browser or HTTPS tests, because the model binary is not in Git.
+- **Secure cookies:** `Secure` and the cookie prefixes are verified in Chromium only, on a local certificate authority.
+- **Intermittent Firefox failures** (investigated after the gate; see [phase-5-firefox-investigation.md](docs/plans/phase-5-firefox-investigation.md)):
+  - A case change in the Investigation Centre did not show within 10 seconds, once in M7 (assignment) and once in the first gate run (status). It was not reproduced in 33 runs, and its cause is not identified. The status test now checks the request and the API's answer in turn, so a recurrence would show which step broke. **Residual risk awaiting the reviewer's decision.**
+  - Closing a browser context can hang in Playwright's Firefox build under CPU starvation (11 hangs in 3 loaded runs, none in 30 without load). This is a test-infrastructure limitation, not an application defect.
+- **Stored test sessions last 30 minutes:** a browser run slower than that fails with Sign in pages.
+- **Duplicates without an identifier:** a prediction without an identifier whose answer was lost can be stored twice if resubmitted. The interface warns about this.
+- **Last writer wins on assignment:** assignment changes carry no expected value; every change is audited.
+- **Interrupted batches while the database is down:** they resume after the 60-second lease rather than at once.
+- **Deep explorer pages are slow:** they use `OFFSET`.
+- **Limits around the minute boundary:** prediction and upload limits use fixed windows, so up to twice the limit can pass across a minute boundary.
+- **Left for Phase 6:**
+  - deployment;
+  - a public certificate;
+  - the trusted proxy list for the host;
+  - whether to keep `/docs` in production;
+  - the 1.92 GB API image.
+
 ## Phase 4: React frontend (2026-11-08)
 
 ### Added

@@ -6,13 +6,16 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
+    Identity,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -64,6 +67,37 @@ class UserSession(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class RateLimitEvent(Base):
+    """One counted event for a rate limit, such as a failed sign-in (Phase 5 M3).
+
+    Kept in the database so every API process, and every restart, sees the same counts. Rows
+    older than the longest window are deleted as keys are used and by the retention command.
+    """
+
+    __tablename__ = "rate_limit_events"
+    __table_args__ = (Index("ix_rate_limit_events_key_occurred_at", "key", "occurred_at"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    key: Mapped[str] = mapped_column(String(320), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.clock_timestamp()
+    )
+
+
+class RateLimitWindow(Base):
+    """A per-key counter for one fixed time window, used for per-request limits (Phase 5 M3).
+
+    One atomic upsert per request, chosen because the sliding-window events above exceeded the
+    prediction latency budget. Old windows are removed by the retention command.
+    """
+
+    __tablename__ = "rate_limit_windows"
+
+    key: Mapped[str] = mapped_column(String(320), primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
 class ModelVersion(Base):
     """A registered model, copied from the frozen metadata at start-up."""
 
@@ -90,7 +124,12 @@ class ModelVersion(Base):
 
 
 class BatchJob(Base):
-    """One uploaded CSV file and its progress. The file itself is not stored here."""
+    """One uploaded CSV file and its progress. Its bytes are in batch_uploads until it finishes.
+
+    Since Phase 5 M4 this table is also the work queue: a worker in any API process claims a job,
+    holds it with a lease it renews after every chunk, and another worker resumes the job from
+    processed_records if the lease expires.
+    """
 
     __tablename__ = "batch_jobs"
 
@@ -111,6 +150,23 @@ class BatchJob(Base):
     )
     created_at: Mapped[datetime] = created_at_column()
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    worker_id: Mapped[str | None] = mapped_column(String(128))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
+
+class BatchUpload(Base):
+    """The bytes of an uploaded CSV, kept until its job ends, so any API process can process it.
+
+    Separate from batch_jobs so that reading a job's status never loads the file.
+    """
+
+    __tablename__ = "batch_uploads"
+
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("batch_jobs.id", ondelete="CASCADE"), primary_key=True
+    )
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
 
 
 class BatchRowError(Base):

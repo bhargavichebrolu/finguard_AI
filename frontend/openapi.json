@@ -109,6 +109,11 @@
       "BatchView": {
         "description": "A batch job. processed counts rows read, failed counts rows refused.",
         "properties": {
+          "attempts": {
+            "description": "How many times a worker has claimed the job. More than one while processing means it is resuming after an interruption.",
+            "title": "Attempts",
+            "type": "integer"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -199,7 +204,8 @@
           "is_demo",
           "error_message",
           "created_at",
-          "completed_at"
+          "completed_at",
+          "attempts"
         ],
         "title": "BatchView",
         "type": "object"
@@ -701,7 +707,7 @@
       },
       "InvestigationUpdate": {
         "additionalProperties": false,
-        "description": "A change to status or assignee. Send assigned_user_id as null to unassign.",
+        "description": "A change to status or assignee. Send assigned_user_id as null to unassign.\n\nexpected_status, when given, is the status the caller last saw. If someone has changed it\nsince, the update is refused with 409 and nothing changes, so a stale page cannot silently\noverride a colleague's decision (Phase 5 M7).",
         "properties": {
           "assigned_user_id": {
             "anyOf": [
@@ -714,6 +720,16 @@
               }
             ],
             "title": "Assigned User Id"
+          },
+          "expected_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestigationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "anyOf": [
@@ -2810,7 +2826,7 @@
     },
     "/api/v1/batches/upload": {
       "post": {
-        "description": "Accept a CSV file, and process it in the background. Poll the batch for progress.",
+        "description": "Accept a CSV file and queue it. A worker processes it; poll the batch for progress.",
         "operationId": "upload_api_v1_batches_upload_post",
         "requestBody": {
           "content": {
@@ -3294,7 +3310,7 @@
         ]
       },
       "patch": {
-        "description": "Change the status or assignee. Status changes are added to the history.",
+        "description": "Change the status or assignee. Status changes are added to the history.\n\nWith expected_status, the change is refused (409) if the status has changed since.",
         "operationId": "update_api_v1_investigations__investigation_id__patch",
         "parameters": [
           {
@@ -3338,6 +3354,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "422": {
             "content": {

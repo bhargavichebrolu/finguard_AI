@@ -39,7 +39,7 @@ The inner function of `require_permission` and of `rate_limited`, which FastAPI 
 ### `rate_limited`
 - **Purpose:** combine a permission check with a per-user limit.
 - **Parameters / types:** `permission`, `bucket: str`, `per_minute: Callable[[], int]`. **Returns / type:** a dependency.
-- **Internal processing:** checks the permission first, so unauthorised calls do not use up the limit. `per_minute` is a function, so the setting is read when a request arrives.
+- **Internal processing:** checks the permission first, so unauthorised calls do not use up the limit. `per_minute` is a function, so the setting is read when a request arrives. Counts with `limiter.hit_window`: a fixed one-minute window in PostgreSQL, one round trip (Phase 5 M3).
 - **Error handling:** `RateLimitedError` from `limiter.hit`.
 - **Calls:** `require_permission`, `limiter.hit`. **Used by:** predict and upload routes.
 

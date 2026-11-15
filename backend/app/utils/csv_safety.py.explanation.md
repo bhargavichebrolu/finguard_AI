@@ -24,8 +24,8 @@ Exported CSV files are often opened in spreadsheets, where a cell starting with 
 
 ### `csv_lines`
 - **Purpose:** stream a CSV file.
-- **Parameters / types:** `header`, `rows`. **Returns / type:** an iterator of strings.
-- **Internal processing:** writes each row to a small buffer and yields it.
+- **Parameters / types:** `header`, `rows`, `chunk_chars` (default `CSV_CHUNK_CHARS`, 64 KB). **Returns / type:** an iterator of strings.
+- **Internal processing:** writes rows to a buffer and yields it whenever it reaches `chunk_chars`, then the remainder. Until Phase 5 M2 it yielded every line separately; the web server hands each piece over from a worker thread, so a 500,000-row export took 110 seconds. The joined output is byte-identical (`test_csv_streaming.py`), and now takes about 10 seconds.
 - **Error handling:** errors from `rows` propagate. **Calls:** `safe_cell`, `flush`. **Used by:** export functions.
 
 ### `flush`
@@ -47,6 +47,7 @@ Functions are called as needed. `csv_lines` runs while a response is being sent.
 `safe_cell("=SUM(A1)")` gives `'=SUM(A1)`. `clean_filename("..\\..\\evil name.csv")` gives `evil_name.csv`.
 
 ## H. Important Technical Concepts
+- **`CSV_CHUNK_CHARS`** is the piece size: large enough to cut per-piece overhead, small enough to keep memory flat.
 - **Formula injection:** a crafted cell can run commands or send data elsewhere when opened in a spreadsheet. A leading apostrophe makes it plain text.
 - **The stored name is never used as a path.** Temporary files are named by a random identifier, so `clean_filename` is defence in depth.
 

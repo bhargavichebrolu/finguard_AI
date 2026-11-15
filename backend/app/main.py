@@ -18,7 +18,7 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.database.session import session_scope
-from app.services.batch_service import recover_interrupted_jobs
+from app.services.batch_service import BatchWorker, remove_stale_uploads
 from app.services.model_service import load_verified_model, register_active_model
 
 logger = logging.getLogger("finguard.startup")
@@ -31,22 +31,37 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     model = load_verified_model(settings)
     with session_scope() as session:
         register_active_model(session, model)
-        recovered = recover_interrupted_jobs(session, settings.upload_tmp_dir)
-    if recovered:
-        logger.warning("Marked %d interrupted batch jobs as failed", recovered)
+    # Phase 5 M4: start-up no longer fails unfinished jobs. Another process may be working on
+    # them; any job whose lease expires is resumed by whichever worker claims it next.
+    removed = remove_stale_uploads(settings.upload_tmp_dir)
+    if removed:
+        logger.warning("Removed %d temporary upload files left by interrupted requests", removed)
     app.state.model = model
+    app.state.batch_worker = None
+    if settings.batch_worker_enabled:
+        app.state.batch_worker = BatchWorker(model, settings)
+        app.state.batch_worker.start()
+        logger.info("Batch worker %s started", app.state.batch_worker.worker_id)
     logger.info("Model %s verified and loaded", model.version)
     yield
+    if app.state.batch_worker is not None:
+        # Finish the current chunk and give the job back, so another process resumes it at once.
+        app.state.batch_worker.stop()
 
 
 def create_app() -> FastAPI:
     """Build the application."""
     configure_logging()
     settings = get_settings()
+    # Off in production (security finding S13): no interactive pages and no schema endpoint.
+    docs = settings.docs_enabled
     app = FastAPI(
         title="FinGuard AI API",
         version=APP_VERSION,
         lifespan=lifespan,
+        docs_url="/docs" if docs else None,
+        redoc_url="/redoc" if docs else None,
+        openapi_url="/openapi.json" if docs else None,
         description=(
             "Scores simulated transactions for human review. `model_score` is uncalibrated and is "
             "not a probability of fraud. `FLAG_FOR_REVIEW` is a request for review, not a finding. "

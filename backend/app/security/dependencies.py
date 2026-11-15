@@ -19,11 +19,11 @@ from app.database.session import get_db
 from app.models.records import User
 from app.security.permissions import Permission, has_permission
 from app.security.sessions import (
-    SESSION_COOKIE,
     UNSAFE_METHODS,
     find_active_session,
     require_allowed_origin,
     require_csrf_token,
+    session_cookie_name,
 )
 from app.security.tokens import TokenClaims, decode_access_token
 from app.services.model_service import ServingModel
@@ -52,7 +52,7 @@ def get_current_user(
             raise AuthenticationError()
         return _load_user(db, claims)
 
-    cookie = request.cookies.get(SESSION_COOKIE)
+    cookie = request.cookies.get(session_cookie_name())
     if cookie is None:
         raise AuthenticationError()
     claims = decode_access_token(cookie)
@@ -82,10 +82,13 @@ def require_permission(permission: Permission) -> Callable[[User], User]:
 
 
 def rate_limited(permission: Permission, bucket: str, per_minute: Callable[[], int]):
-    """Build a dependency that checks a permission, then counts the call against a limit."""
+    """Build a dependency that checks a permission, then counts the call against a limit.
+
+    Uses a fixed one-minute window: one database round trip per request (Phase 5 M3).
+    """
 
     def check(user: Annotated[User, Depends(require_permission(permission))]) -> User:
-        limiter.hit(f"{bucket}:{user.id}", per_minute(), 60)
+        limiter.hit_window(f"{bucket}:{user.id}", per_minute(), 60)
         return user
 
     return check

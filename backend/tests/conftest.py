@@ -44,6 +44,8 @@ def configure_test_environment() -> str | None:
     os.environ["APP_ENV"] = "test"
     os.environ["DATABASE_URL"] = url or _UNUSED_DATABASE_URL
     os.environ["SECRET_KEY"] = "test-only-signing-key-" + "x" * 32
+    # API tests drain the batch queue themselves, so processing happens at a known moment.
+    os.environ["BATCH_WORKER_ENABLED"] = "false"
     return url
 
 

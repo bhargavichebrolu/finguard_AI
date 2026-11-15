@@ -29,6 +29,8 @@ None.
 Each test renders or calls code against the mock API, then checks the result.
 
 ## G. Input and Output
+Phase 5 M5 added a test that the prefixed CSRF cookie is preferred, read from a supplied cookie string because jsdom will not store a `__Host-` cookie on an insecure origin.
+
 | Test | Proves |
 |---|---|
 | sends the CSRF cookie as a header on requests that change data | POST, PATCH and DELETE carry the token, and GET does not. |

@@ -140,7 +140,13 @@ function InvestigationPanel({ id, summary, onClose, onChanged }: PanelProps) {
       detail.reload();
       onChanged();
     } catch (caught) {
-      setActionError(toApiError(caught));
+      const error = toApiError(caught);
+      setActionError(error);
+      if (error.status === 409) {
+        // Someone else changed the case first: show what it is now beside the explanation.
+        detail.reload();
+        onChanged();
+      }
     }
   }
 
@@ -188,7 +194,7 @@ function InvestigationPanel({ id, summary, onClose, onChanged }: PanelProps) {
           {actionError ? <ErrorState error={actionError} /> : null}
           {canUpdate ? (
             <>
-              <StatusControl current={investigation.status} onChange={(next) => act(() => investigationsApi.update(id, { status: next }))} />
+              <StatusControl current={investigation.status} onChange={(next) => act(() => investigationsApi.update(id, { status: next, expected_status: investigation.status }))} />
               <AssigneeControl investigation={investigation} onChange={(change) => act(() => investigationsApi.update(id, change))} />
             </>
           ) : (

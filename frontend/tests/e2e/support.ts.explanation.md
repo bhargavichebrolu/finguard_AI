@@ -58,6 +58,30 @@ A valid, unique transaction identifier for this run.
 ### `predictThroughApi`
 Scores one transaction through the API and returns the stored prediction, checking it was created.
 
+### `restartApiContainer`
+Restarts the browser-test API container gracefully with `docker restart`, as a deploy would. Needs the Docker CLI on `PATH`; the container keeps its environment, so sessions stay valid.
+
+### `signInWith`
+Signs in through the form with an email and password given directly, for accounts a test created itself.
+
+### `createAccount`
+- **Purpose:** create a fresh account through the administrator API.
+- **Parameters / types:** `browser`, optional `role` (default analyst). **Returns / type:** `Account` with a generated email and password.
+- **Why:** tests that use an account up (changing its password, deactivating it) need one per run of each browser project. With Firefox and WebKit added, the seeded accounts were used up by the first engine (Phase 5 M6).
+- **Error handling:** fails unless the API answers 201.
+
+### `stopApiContainer`
+Stops the browser-test API container (Phase 5 M7).
+
+### `startApiContainer`
+Starts it again and waits until `/health` answers.
+
+### `waitForApi`
+Polls `/health` for up to two minutes until it answers 200.
+
+### `setDatabaseAvailable`
+Runs `e2e_stack.py database on|off`: an outage of the browser-test database only. Always paired with `true` in a `finally` block.
+
 ## E. Classes Explained
 ### `Account, Problems, StoredPrediction`
 Interfaces describing a seeded account, the problem list and the prediction fields the tests read.

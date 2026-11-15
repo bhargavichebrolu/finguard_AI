@@ -1,0 +1,59 @@
+{
+  "label": "database-2",
+  "environment": {
+    "measured_at": "2026-11-09T11:43:49+00:00",
+    "git_commit": "86a1dfd",
+    "host": {
+      "platform": "Windows-10-10.0.26200-SP0",
+      "processor": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+      "logical_cpus": 16
+    },
+    "docker_vm": {
+      "cpus": 16,
+      "memory_gib": 7.6,
+      "version": "29.9.2",
+      "os": "Docker Desktop"
+    },
+    "api": "http://127.0.0.1:8011",
+    "path": "cookie session through the API directly (no proxy)",
+    "inputs": "synthetic, random seed 20261108"
+  },
+  "prediction_latency": {
+    "sequential_round_1": {
+      "n": 400,
+      "mean_ms": 24.19,
+      "p50_ms": 23.77,
+      "p95_ms": 27.08,
+      "p99_ms": 28.53,
+      "max_ms": 105.1,
+      "requests_per_second": 41.3
+    },
+    "concurrent_8_round_1": {
+      "n": 1600,
+      "mean_ms": 186.22,
+      "p50_ms": 183.52,
+      "p95_ms": 233.54,
+      "p99_ms": 275.79,
+      "max_ms": 385.22,
+      "requests_per_second": 42.8
+    },
+    "sequential_round_2": {
+      "n": 400,
+      "mean_ms": 28.4,
+      "p50_ms": 27.64,
+      "p95_ms": 35.6,
+      "p99_ms": 39.16,
+      "max_ms": 44.94,
+      "requests_per_second": 35.2
+    },
+    "concurrent_8_round_2": {
+      "n": 1600,
+      "mean_ms": 203.73,
+      "p50_ms": 202.17,
+      "p95_ms": 260.02,
+      "p99_ms": 317.65,
+      "max_ms": 357.77,
+      "requests_per_second": 39.0
+    }
+  }
+}

@@ -23,6 +23,8 @@ No functions. The steps:
 ### Dependency install
 `uv sync --frozen --no-default-groups --no-install-project` installs exactly what `uv.lock` records, and leaves out the `training` and `dev` groups. Copying the lock file before the code means dependency layers are rebuilt only when dependencies change.
 
+**Two stages (Phase 6).** The `build` stage installs uv and the locked packages; the final stage copies only `/app/.venv`, so uv (66 MB) is not shipped. Together with the lock no longer installing NVIDIA NCCL (469 MB, see `pyproject.toml`), the image went from 1.92 GB to 979 MB as Docker reports it. A fixed grid of 550 synthetic inputs gave byte-for-byte identical scores and SHAP explanations in the old and new images.
+
 ### Non-root user
 The process runs as `finguard`, which cannot change `/app`.
 
@@ -52,7 +54,7 @@ docker compose build api
 ```
 
 ## J. Maintenance Notes
-`uv` is pinned to a minor version so builds do not change unexpectedly. If the lock file format changes, update this pin. New top-level backend folders the API needs must be copied here.
+The base image is pinned by digest and `uv` to an exact version (Phase 5 M1), so a rebuild uses exactly what was tested; `test_reproducibility.py` checks both pins exist. To update, resolve the new digest with `docker buildx imagetools inspect python:3.11-slim`, rebuild and rerun the tests. If the lock file format changes, update this pin. New top-level backend folders the API needs must be copied here.
 
 ## K. Related Files
 - [.dockerignore](.dockerignore.explanation.md): what stays out of the build.

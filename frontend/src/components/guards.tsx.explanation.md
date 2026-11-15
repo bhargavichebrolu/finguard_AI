@@ -38,6 +38,7 @@ Routes wrap pages in these guards.
 Input: children and a permission. Output: the page, a redirect or a message.
 
 ## H. Important Technical Concepts
+- **Unavailable (Phase 5 M7):** `RequireAuth` shows "FinGuard AI is unavailable" with the error and Try again while the session cannot be checked, keeping the address, so the user continues where they were.
 - **Mirroring, not enforcing:** a hidden page is a usability choice, and the security rule lives in the API.
 
 ## I. Example

@@ -40,16 +40,22 @@ class InvestigationSummary(ApiModel):
 
 
 class InvestigationUpdate(BaseModel):
-    """A change to status or assignee. Send assigned_user_id as null to unassign."""
+    """A change to status or assignee. Send assigned_user_id as null to unassign.
+
+    expected_status, when given, is the status the caller last saw. If someone has changed it
+    since, the update is refused with 409 and nothing changes, so a stale page cannot silently
+    override a colleague's decision (Phase 5 M7).
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     status: InvestigationStatus | None = None
     assigned_user_id: uuid.UUID | None = None
+    expected_status: InvestigationStatus | None = None
 
     @model_validator(mode="after")
     def _must_change_something(self) -> "InvestigationUpdate":
-        if not self.model_fields_set:
+        if not {"status", "assigned_user_id"} & self.model_fields_set:
             raise ValueError("Provide status or assigned_user_id")
         if "status" in self.model_fields_set and self.status is None:
             raise ValueError("status cannot be null")

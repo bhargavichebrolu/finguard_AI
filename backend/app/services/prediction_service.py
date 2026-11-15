@@ -4,6 +4,7 @@ Inputs reach the model through inputs_frame only, which uses the four allowed fi
 never passed in, so they cannot influence a score.
 """
 
+import logging
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -14,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.schemas.transactions import PredictionView, TransactionInput, prediction_view
-from app.core.errors import ConflictError
+from app.core.errors import ConflictError, ScoringError
 from app.core.frozen_model import SCORE_IS_CALIBRATED
 from app.models.enums import InvestigationStatus, PredictionDecision, UserRole
 from app.models.records import (
@@ -28,6 +29,8 @@ from app.services.audit_service import record_event
 from app.services.model_service import ServingModel
 from app.services.risk import RiskAssessment, assess_score
 from app.services.settings_service import get_high_risk_boundary
+
+logger = logging.getLogger("finguard.predictions")
 
 
 @dataclass(frozen=True)
@@ -130,7 +133,12 @@ def create_prediction(
     """Score one transaction and store everything in one database transaction."""
     is_demo = user.role == UserRole.DEMO
     high_boundary = get_high_risk_boundary(session)
-    scored = score_inputs(model, [payload], high_boundary, explain_all=True)[0]
+    try:
+        scored = score_inputs(model, [payload], high_boundary, explain_all=True)[0]
+    except Exception as error:
+        # Scoring runs before anything is written, so a failure here stores nothing (Phase 5 M7).
+        logger.exception("The model failed to score a transaction")
+        raise ScoringError() from error
     transaction = Transaction(
         id=uuid.uuid4(),
         external_transaction_id=payload.external_transaction_id or new_external_id(),

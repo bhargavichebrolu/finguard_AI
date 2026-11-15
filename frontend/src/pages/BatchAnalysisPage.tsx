@@ -187,13 +187,16 @@ function BatchJobView({ jobId, onFinished }: { jobId: string; onFinished: () => 
     return job.error ? <ErrorState error={job.error} onRetry={job.reload} /> : <LoadingState />;
   }
   const data = job.data;
+  // A later attempt means a worker picked the job up again after an interruption (Phase 5 M4).
+  const resuming = data.status === "PROCESSING" && data.attempts > 1;
+  const statusText = resuming ? "Resuming after an interruption" : humanise(data.status);
   return (
     <>
       <article className="card" aria-label="Batch status">
         <h2>{data.filename}</h2>
         <div className="progress-row">
           <label htmlFor="processing-progress">
-            {humanise(data.status)}: {formatCount(data.processed_records)} of {formatCount(data.total_records)} rows
+            {statusText}: {formatCount(data.processed_records)} of {formatCount(data.total_records)} rows
           </label>
           <progress id="processing-progress" max={100} value={data.progress_percent} />
         </div>
@@ -217,6 +220,11 @@ function BatchJobView({ jobId, onFinished }: { jobId: string; onFinished: () => 
             </>
           ) : null}
         </dl>
+        {job.error && running ? (
+          <p className="notice" role="status">
+            Lost contact with the server. Still checking; work already done is kept.
+          </p>
+        ) : null}
         {data.error_message ? (
           <p className="error-text" role="alert">
             {data.error_message}

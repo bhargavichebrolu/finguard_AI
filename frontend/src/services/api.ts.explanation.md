@@ -40,6 +40,18 @@ Registers the function to call when a request is refused with 401, meaning the s
 - **Internal processing:** sends cookies. On POST, PUT, PATCH and DELETE it copies the `finguard_csrf` cookie into `X-CSRF-Token`. Every error becomes an `ApiError`. A 401 calls the registered handler, except for a failed sign-in, which the form reports itself.
 - **Error handling:** rejects with `ApiError`. **Calls:** `readCookie`, `toApiError`. **Used by:** the module's `api` instance, tests.
 
+### `readCsrfToken`
+Returns the CSRF token from `__Host-finguard_csrf` when present (production), otherwise from `finguard_csrf`. `CSRF_COOKIE_NAMES` lists both, in that order.
+
+### `blobText`
+Returns a Blob's text, using `Blob.text()` where it exists and `FileReader` otherwise.
+
+### `readJsonBlob`
+Parses a Blob as JSON, or returns null when it is not JSON, such as a proxy's HTML error page.
+
+### `error`
+Inside `toApiError`'s caller, the response interceptor: before mapping, a Blob error body (from a download) is replaced by its JSON, so the API's message and reference survive (Phase 5 M7).
+
 ## E. Classes Explained
 ### `ApiError`
 - **Purpose:** an API failure in one shape. **Attributes:** `status`, `requestId`, `fieldErrors`, `retryAfterSeconds`, and `message`. **Methods:** constructor only. **Inheritance:** `Error`.
@@ -51,6 +63,7 @@ Pages call `endpoints.ts`, which calls `api`. The request interceptor adds the C
 Input: requests from `endpoints.ts`. Output: response data, or a rejected `ApiError`.
 
 ## H. Important Technical Concepts
+- **No answer (Phase 5 M7):** `toApiError` says whether a request timed out (`TIMEOUT_MESSAGE`) or got no answer (`UNREACHABLE_MESSAGE`). For a change (POST, PUT, PATCH, DELETE other than sign-in) it adds `MAY_HAVE_SAVED`, since the server may have applied it before the connection failed. 502 to 504, which a proxy gives while the API is down, read "The server is unavailable at the moment."
 - **Why the page can read the CSRF cookie but not the session cookie:** reading the CSRF token gives another site nothing it can use, because the browser will not send the session cookie with that site's requests (SameSite=Strict), and the server checks the token against this session.
 - **Same origin:** with no base URL, requests go to `/api` on the page's origin, and the Vite server or the host forwards them. Cookies therefore stay first-party.
 - **Request ID:** errors carry the server's `request_id`, which the error state shows as a reference for support.
