@@ -84,6 +84,10 @@ services:
       # For measurements only: compare stores and worker counts on the browser-test stack.
       RATE_LIMIT_STORE: ${E2E_RATE_LIMIT_STORE:-database}
       WEB_CONCURRENCY: ${E2E_WEB_CONCURRENCY:-1}
+      # The setup project signs in once and every test reuses those sessions. With the default
+      # 30 minutes, a run slower than that (a loaded machine) failed with Sign in pages (Phase 5
+      # Firefox investigation). Expiry itself is tested by revoking sessions, not by waiting.
+      ACCESS_TOKEN_MINUTES: ${E2E_ACCESS_TOKEN_MINUTES:-120}
     depends_on:
       db:
         condition: service_healthy

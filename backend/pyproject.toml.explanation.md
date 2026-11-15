@@ -24,6 +24,9 @@ What the API image needs, covering the web framework, database access, authentic
 - `training`: experiment libraries, never installed in the API image.
 - `dev`: `pytest`, `ruff`, and `httpx`, which FastAPI's test client needs.
 
+### `tool.uv`
+`default-groups` installs training and dev tools on developer computers (the API image passes `--no-default-groups`). `override-dependencies` (Phase 6) gives `nvidia-nccl-cu12` a marker that matches no platform, so it is never installed. XGBoost's Linux wheel requires it, but it serves only multi-GPU training: the frozen model is scored on the CPU, and XGBoost itself stays at the exact version the model was saved with, which start-up checks. Removing it took 469 MB out of the API image; scores and explanations were identical without it.
+
 ### `tool.pytest.ini_options`
 `--strict-markers` turns a mistyped marker into an error. `real_data` and `database` mark tests that need outside resources.
 

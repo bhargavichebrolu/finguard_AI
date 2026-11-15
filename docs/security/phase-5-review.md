@@ -22,6 +22,17 @@ Reviewed on 2026-11-09 against the production-like stack (`scripts/prodlike_stac
 | S14 | Sign-in limit behind a platform proxy | The limit is keyed by client address and email. On a host whose proxies are not listed in `TRUSTED_PROXY_IPS`, every user appears to come from the proxy, so the limit becomes per email for everyone; it still stops guessing against one account. | Low | **Open: Phase 6 configuration** | this review |
 | S15 | Certificates | The local stack uses Caddy's own authority, which browsers do not trust; tests ignore the certificate error. A real host must use a public certificate. | Note | **Phase 6** | Caddyfile |
 
+## Phase 6 follow-up
+
+The three findings left for Phase 6 are closed in the production configuration (`docker-compose.prod.yml`, [DEPLOYMENT.md](../../DEPLOYMENT.md)). The table above is kept as written in Phase 5.
+
+| Finding | Phase 6 outcome | Evidence |
+|---|---|---|
+| S13 `/docs` | **Fixed:** production serves no `/docs`, `/redoc` or `/openapi.json`, and refuses `API_DOCS_ENABLED=true` | `test_config.py`, `test_phase4_backend.py::test_production_serves_no_api_documentation`, `production.spec.ts`; 404 from the rehearsal API |
+| S14 sign-in limit behind a proxy | **Fixed for the Compose deployment:** the API trusts Caddy's fixed address; production refuses to start without a trusted proxy and refuses all-covering entries | `test_config.py`, `test_deployment.py`; the rehearsal API logged the caller's address, not Caddy's |
+| S15 certificates | **Configured, not proven on a public host:** Caddy obtains a public ACME certificate when `FINGUARD_TLS` is an email address | `Caddyfile.production`; no public DNS name exists, so issuance is untested |
+| Chunked uploads (SECURITY.md) | **Fixed behind the proxy:** Caddy caps request bodies at 11 MB while streaming | `test_deployment.py`; a 12 MB chunked upload got 413 from Caddy in the rehearsal |
+
 ## Same-origin deployment (ADR 0004 and PRD 11.2)
 
 The production-like stack demonstrates the required shape: the browser reaches one origin; the frontend host serves the built files and forwards `/api` and `/health` to the API. On Netlify or Vercel the same is done with a rewrite (`_redirects` with status 200, or `rewrites`), so cookies stay first-party and SameSite=Strict keeps working. Cross-site cookies (SameSite=None) remain rejected.

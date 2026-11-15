@@ -4,6 +4,7 @@ No credential has a default, so a missing value stops the application instead of
 with something guessable.
 """
 
+import ipaddress
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -67,6 +68,10 @@ class Settings(BaseSettings):
     # Where rate-limit counts live. "database" is shared by every process and survives restarts;
     # "memory" is per process, kept for comparison measurements. Production requires "database".
     rate_limit_store: Literal["database", "memory"] = "database"
+    # Interactive API documentation (/docs, /redoc, /openapi.json). Unset means on, except in
+    # production, where it is off and may not be turned on (security finding S13, Phase 6). The
+    # contract is published instead as API_DOCUMENTATION.md and frontend/openapi.json.
+    api_docs_enabled: bool | None = None
 
     @field_validator("secret_key")
     @classmethod
@@ -98,8 +103,16 @@ class Settings(BaseSettings):
             raise ValueError("Production session cookies must be Secure")
         if "*" in self.trusted_proxies:
             raise ValueError("TRUSTED_PROXY_IPS must list proxies, not a wildcard")
+        for entry in self.trusted_proxies:
+            check_proxy_entry(entry)
         if self.app_env == "production" and self.rate_limit_store != "database":
             raise ValueError("Production rate limits must be stored in the database")
+        if self.app_env == "production" and self.api_docs_enabled:
+            raise ValueError("Production must not serve the interactive API documentation")
+        if self.app_env == "production" and not self.trusted_proxies:
+            # Production cookies need HTTPS, which the API never terminates itself, so it always
+            # runs behind a proxy. Without its address every user would share one sign-in limit.
+            raise ValueError("Production must list its reverse proxy in TRUSTED_PROXY_IPS")
         return self
 
     @property
@@ -115,9 +128,28 @@ class Settings(BaseSettings):
         return self.session_cookie_secure
 
     @property
+    def docs_enabled(self) -> bool:
+        """Whether /docs, /redoc and /openapi.json are served."""
+        if self.api_docs_enabled is None:
+            return self.app_env != "production"
+        return self.api_docs_enabled
+
+    @property
     def trusted_proxies(self) -> list[str]:
         """Return the proxies allowed to report the client's address."""
         return [item.strip() for item in self.trusted_proxy_ips.split(",") if item.strip()]
+
+
+def check_proxy_entry(entry: str) -> None:
+    """Accept one address or network (host bits clear, as uvicorn requires); refuse all-covering."""
+    try:
+        network = ipaddress.ip_network(entry)
+    except ValueError as error:
+        raise ValueError(
+            f"TRUSTED_PROXY_IPS entry {entry!r} is not an IP address or network"
+        ) from error
+    if network.prefixlen == 0:
+        raise ValueError("TRUSTED_PROXY_IPS must not trust every address")
 
 
 @lru_cache

@@ -33,6 +33,16 @@ test("plain HTTP is redirected to HTTPS", async ({ request }) => {
   expect(response.headers().location).toBe(`${SITE}/dashboard?x=1`);
 });
 
+test("production serves no interactive API documentation or schema", async ({ request }) => {
+  // Phase 6 (security finding S13). Asked of the API directly: through Caddy these paths are
+  // the interface's own routes, which answer with the single-page app.
+  for (const path of ["/docs", "/redoc", "/openapi.json"]) {
+    expect((await request.get(`${DIRECT_API}${path}`)).status(), path).toBe(404);
+  }
+  const throughSite = await request.get(`${SITE}/openapi.json`);
+  expect(await throughSite.text()).not.toContain('"openapi"');
+});
+
 test("signs in over HTTPS with Secure, prefixed cookies and production headers", async ({ page, context }) => {
   // The sign-in page asks whether a session exists, which answers 401 before signing in; CSP
   // violations and page errors are still collected.

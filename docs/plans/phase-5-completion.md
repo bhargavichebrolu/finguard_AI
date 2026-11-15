@@ -1,6 +1,6 @@
 # Phase 5 completion: integration hardening, quality assurance and reliability
 
-Status: all nine milestones committed on branch `phase-5-hardening`. M9 was accepted as a documentation commit, but **the gate was not accepted**, pending a Firefox reliability investigation. That investigation is complete ([phase-5-firefox-investigation.md](phase-5-firefox-investigation.md)), and its follow-up commit awaits review. Not merged into `main`, not pushed, and Phase 6 has not started.
+Status: **accepted on 2026-11-13 with its documented residual risks**, after the Firefox reliability investigation ([phase-5-firefox-investigation.md](phase-5-firefox-investigation.md), follow-up commit `79b2947`). All nine milestones are on branch `phase-5-hardening`, which is not merged into `main` and not pushed. Phase 6 continues on the same branch ([phase-6-completion.md](phase-6-completion.md)).
 
 **Open item for the reviewer:** the first browser run at the gate had two Firefox failures.
 - **The teardown hang** is now reproduced and bounded. It is a hang in Playwright's Firefox build under CPU starvation, not an application defect.

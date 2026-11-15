@@ -3,7 +3,7 @@
 Source: [.github/workflows/ci.yml](ci.yml)
 
 ## A. File Purpose
-The GitHub Actions workflow (Phase 5 M8). On every push, pull request or manual run, it checks a clean checkout: backend lint, formatting and tests on a real PostgreSQL database, the skip comparison, the explanation checker, the API schema and model report checks, the secret scan, both dependency audits, and the frontend type check, unit tests and build.
+The GitHub Actions workflow (Phase 5 M8). On every push, pull request or manual run, it checks a clean checkout: backend lint, formatting and tests on a real PostgreSQL database, the skip comparison, the explanation checker, the API schema and model report checks, the secret scan, both dependency audits, and the frontend type check, unit tests and build. Since Phase 6 a third job, `images`, builds the API and web images from the clean checkout and validates `docker-compose.prod.yml` with generated settings; the images are not started, because the model binary is not in Git.
 
 ## B. Why This File Exists
 PRD sections 3.4 and 15 require GitHub Actions checks, and Phase 5 finding F5 recorded that there were none. The approved decision D6-A runs every test that does not need the model binary or dataset (neither is in Git), and fails when the skipped set differs from a committed list.
@@ -17,7 +17,7 @@ PRD sections 3.4 and 15 require GitHub Actions checks, and Phase 5 finding F5 re
 - **Depended on by:** nothing; it is the top of the chain.
 
 ## D. Every Function Explained
-No functions. Two jobs run in parallel:
+No functions. Three jobs run in parallel:
 
 ### Job `backend`
 1. Full-history checkout (`fetch-depth: 0`, for the secret scan), with the token not stored in Git's configuration.
@@ -33,6 +33,13 @@ No functions. Two jobs run in parallel:
 
 ### Job `frontend`
 `npm ci`, `npm run typecheck`, Vitest with a JUnit report, `check_test_run.py frontend` (no skips allowed, at least the recorded number passing), `npm run build`, `npm audit`.
+
+### Job `images` (Phase 6)
+1. Checkout, with the token not stored.
+2. `docker build -t finguard-api:ci backend`: the two-stage API image.
+3. `docker build -f docker/web/Dockerfile -t finguard-web:ci .`: the interface built from source inside Node.js, served by Caddy.
+4. `generate_production_env.py` writes settings to the runner's temporary folder, and `docker compose -f docker-compose.prod.yml ... config --quiet` checks that the production file is valid and every required value is supplied.
+5. The image sizes go to the job summary.
 
 ## E. Classes Explained
 None.

@@ -50,6 +50,7 @@ Returns the identifiers in a list response.
 | `test_explorer_sorting` | Sort fields and directions. |
 | `test_explorer_sorts_by_score` | Scores come back in order. |
 | `test_explorer_pagination_is_complete_and_stable` | Pages cover every row once, and unknown sort fields are refused. |
+| `test_explorer_pages_match_one_full_sort` | Phase 6 deferred join: for each sort field and direction, with no filter, an investigation filter and a type filter, one-row pages walked in turn equal the single full page exactly. |
 | `test_detail_view_has_prd_fields` | The PRD 6.6 fields are present. |
 | `test_unknown_transaction_is_not_found` | 404. |
 | `test_demo_records_are_labelled_and_kept_apart` | Demo records are marked and separated both ways, with no investigation. |

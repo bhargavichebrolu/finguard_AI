@@ -1,6 +1,6 @@
 # Phase 5 gate: Firefox reliability investigation
 
-Status: investigation complete, 2026-11-11. The Phase 5 gate stays open. The status-change failure was not reproduced, so one residual risk needs the reviewer's explicit decision (section 5).
+Status: investigation complete, 2026-11-11. The reviewer accepted Phase 5 on 2026-11-13 with the residual risks in section 5 documented.
 
 This follows the reviewer's decision at the M9 gate: the gate is not accepted while the two first-run Firefox failures are unexplained. The scope was narrow: reproduce the failures under controlled conditions, find causes, and change nothing else. No timeout was raised, and no assertion was removed or relaxed.
 
@@ -8,7 +8,7 @@ This follows the reviewer's decision at the M9 gate: the gate is not accepted wh
 
 | Item | Result |
 |---|---|
-| Firefox status-change failure | **Not reproduced** in 33 runs, under normal and heavy CPU load. Server, database and rendering causes are excluded by evidence. Two candidates remain that the lost evidence cannot separate. The test now checks each step, so a recurrence would name the failing step. **Residual risk for approval.** |
+| Firefox status-change failure | **Not reproduced** in 33 runs, under normal and heavy CPU load. Server, database and rendering causes are excluded by evidence. Two candidates remain that the lost evidence cannot separate. The test now checks each step, so a recurrence would name the failing step. **Residual risk, accepted with Phase 5 on 2026-11-13.** |
 | Firefox teardown hang | **Reproduced and bounded:** 11 hangs in 3 runs under CPU load, 0 in 30 runs without it. Every test step had passed; Playwright's "Close context" call to Firefox was never answered. The cause lies in Playwright's Firefox build under CPU starvation, not in the application or the test's steps. |
 | Found during the investigation | A race in the batch progress test (fixed, below). Stored test sessions expire after 30 minutes, which slow runs exceed (recorded, not changed). One statement in the M9 documents was wrong (corrected). |
 
@@ -86,6 +86,9 @@ The hang affects test infrastructure only; no request or stored data is involved
 **Expired sessions under load.** Every non-hang failure in E5 began 30.0 minutes or more after the setup project signed in. The stored sessions last 30 minutes (`access_token_minutes`), and the loaded runs took 37 to 46 minutes. The pages showed Sign in, and API calls were refused. This is a property of the test design (sign in once, reuse the session), not of Firefox. It was not changed. A full run on a normal machine takes about 17 minutes.
 
 ## 5. Residual risk for the reviewer's decision
+
+**Decision (2026-11-13):** Phase 5 accepted, with these residual risks documented.
+
 
 **Status change in Firefox, unexplained single failure.** It was seen once at the gate and once in M7 (assignment), and not since in 33 runs. Its cause is not identified. The release-gate condition allows an evidence-backed explanation only with an explicitly approved residual risk. This record does not approve it. The decision is the reviewer's:
 - accept the residual risk, with the step-by-step test in place to identify the cause if it recurs; or

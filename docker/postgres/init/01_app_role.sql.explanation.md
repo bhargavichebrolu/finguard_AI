@@ -3,7 +3,7 @@
 Source: [docker/postgres/init/01_app_role.sql](01_app_role.sql)
 
 ## A. File Purpose
-Runs once when a new data volume is initialised. It creates the login role the API uses and a separate test database, and hands the main database to that role.
+Runs once when a new data volume is initialised. It creates the login role the API uses, hands the main database to that role, and creates a separate test database when `TEST_DB_NAME` is set. Production (`docker-compose.prod.yml`) leaves it empty and gets no test database (Phase 6).
 
 ## B. Why This File Exists
 PRD section 10 requires database access controls. An API connecting as a superuser could read or change anything on the server if it were compromised. This role has no superuser, role-creation or database-creation rights.
@@ -22,7 +22,7 @@ No functions: this is a SQL script.
 - `\getenv` reads values from the container's environment into `psql` variables. The password is therefore not written in this file.
 - `CREATE ROLE ... NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION` states the restrictions explicitly. `:'app_password'` quotes the value as a literal and `:"app_user"` as an identifier, which is `psql`'s own safe quoting.
 - `ALTER DATABASE ... OWNER` lets migrations create tables. In PostgreSQL 15 and later the `public` schema belongs to the database owner.
-- `CREATE DATABASE :"test_db"` gives tests a database they can empty without touching development data.
+- `CREATE DATABASE :"test_db"` gives tests a database they can empty without touching development data. It runs only inside `\if :create_test_db`: `\set test_db ''` gives the variable an empty default (`\getenv` leaves it unchanged when the variable is unset), and `\gset` stores whether it is non-empty.
 
 ## E. Classes Explained
 None.

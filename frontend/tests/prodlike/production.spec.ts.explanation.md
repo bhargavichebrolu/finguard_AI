@@ -47,6 +47,7 @@ Each test talks to https://127.0.0.1:8443, and one also to the API directly.
 | Test | Proves |
 |---|---|
 | plain HTTP is redirected to HTTPS | 308 to the HTTPS address, path and query kept. |
+| production serves no interactive API documentation or schema | Phase 6, S13: the API answers 404 for `/docs`, `/redoc` and `/openapi.json`; through Caddy, `/openapi.json` is the interface's page, not the schema. |
 | signs in over HTTPS with Secure, prefixed cookies and production headers | HSTS, the CSP equal to Vite's, no `Server`; `__Secure-` and `__Host-` cookies with their required attributes and no plain-named cookies; a prediction through the interface; sign-out clears cookies; no CSP or page errors. |
 | refuses changes without the CSRF token, from another origin, or over the wrong scheme | 403 for each; 201 when correct. |
 | gives other origins no cross-origin access | No `Access-Control-Allow-Origin`. |

@@ -28,6 +28,7 @@ Sends failed logins with a given `X-Forwarded-For` header, and returns the statu
 | `test_model_report_is_served_unchanged` | The response equals the committed report file exactly. |
 | `test_api_responses_carry_a_strict_content_security_policy` | JSON routes allow loading nothing. |
 | `test_documentation_pages_get_their_own_policy` | `/docs` gets the CDN allowance, and still blocks framing. |
+| `test_production_serves_no_api_documentation` | Phase 6, S13: an app built with production settings answers 404 for `/docs`, `/redoc`, `/openapi.json` and the OAuth redirect page, while `/health` works; a development app still serves them. Built without start-up, so nothing is loaded or stored. |
 | `test_forwarded_addresses_are_ignored_by_default` | A spoofed header gives no fresh rate-limit allowance. |
 | `test_forwarded_addresses_are_used_only_from_a_configured_proxy` | A configured proxy's header is honoured. |
 | `test_wildcard_proxy_trust_is_refused` | `*` cannot be configured. |

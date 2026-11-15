@@ -37,7 +37,7 @@ PRD 8.1 separates database operations from business logic. The explorer's filter
 ### `list_transactions`
 - **Purpose:** return a page and the total.
 - **Parameters / types:** `session`, `is_demo`, `filters`, `sort_by`, `sort_order`, `limit`, `offset`. **Returns / type:** `tuple[list[Row], int]`.
-- **Internal processing:** counts over a subquery, then sorts using a fixed column map, with the identifier breaking ties.
+- **Internal processing:** counts over a subquery, then sorts using a fixed column map, with the identifier breaking ties. The page is fetched with a deferred join (Phase 6): a subquery sorts, skips and limits transaction identifiers alone, and only those rows are then joined to their predictions and investigations. `OFFSET` still passes over earlier rows, but no longer builds them; on 180,285 stored transactions the last page went from 392 ms to 79 ms and a middle page sorted by score from 545 ms to 76 ms, with identical rows.
 - **Error handling:** invalid sort names are refused earlier by the route's `Literal` type.
 - **Calls:** `_base_query`, `_apply_filters`. **Used by:** the transactions and batches routes.
 

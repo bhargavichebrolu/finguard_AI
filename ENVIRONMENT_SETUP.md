@@ -98,7 +98,7 @@ cd backend; uv run alembic upgrade head; uv run uvicorn app.main:app --port 8010
 uv run --project backend python scripts/create_admin.py --email you@example.com
 ```
 
-Then open `http://127.0.0.1:8010/docs`, use **Authorize** with your email and password, and try the endpoints.
+Then open `http://127.0.0.1:8010/docs`, use **Authorize** with your email and password, and try the endpoints. These documentation pages exist in development and test only; production serves none (Phase 6, see [DEPLOYMENT.md](DEPLOYMENT.md)).
 
 The API refuses to start if the frozen model file is missing, altered or under different library versions. `model.joblib` is not in Git, so a fresh clone needs it placed at `artifacts/models/fraud_detector_v1/model.joblib` (see `DEPLOYMENT.md`).
 
@@ -139,6 +139,23 @@ cd ..; uv run --project backend python scripts/prodlike_stack.py down
 
 Caddy serves the built frontend over HTTPS with its own local certificate (browsers will warn), and forwards `/api` to an API running with production settings on its own test database. Plain HTTP on 8082 redirects to HTTPS. Windows `curl` cannot complete the handshake with this certificate; browsers and Python can.
 
+### Production deployment (Phase 6)
+
+[DEPLOYMENT.md](DEPLOYMENT.md) has the complete steps. A rehearsal on this computer, with Caddy's own certificate authority:
+
+```powershell
+uv run --project backend python scripts/generate_production_env.py --domain 127.0.0.1 --tls internal --http-port 9080 --https-port 9443 --bind-address 127.0.0.1 --output <a folder outside the repository>\env.production
+docker compose -f docker-compose.prod.yml --env-file <...>\env.production up -d --build --wait
+docker exec -it finguard-prod-api-1 python -m app.commands.create_admin --email admin@example.com
+docker cp finguard-prod-web-1:/data/caddy/pki/authorities/local/root.crt <...>
+oot.crt
+uv run --project backend python scripts/verify_deployment.py --origin https://127.0.0.1:9443 --ca-file <...>
+oot.crt --email admin@example.com
+docker compose -f docker-compose.prod.yml --env-file <...>\env.production down     # add --volumes to delete its data
+```
+
+The production stack is a separate Compose project (`finguard-prod`) with its own volumes, so it never touches the development database.
+
 ### Continuous integration (Phase 5)
 
 `.github/workflows/ci.yml` runs on GitHub after a push; it has not run there yet. Its commands can be run locally as listed in [TESTING_GUIDE.md](TESTING_GUIDE.md#continuous-integration-phase-5-m8).
@@ -157,7 +174,7 @@ npm run test:e2e                                          # builds, serves on 12
 cd ..; uv run --project backend python scripts/e2e_stack.py down
 ```
 
-`python scripts/e2e_stack.py database off` makes `finguard_e2e_test` refuse connections, and `database on` restores it, for outage tests (Phase 5 M7); `up` always restores it. `e2e_stack.py up` creates `finguard_e2e_test` if it is missing, and global setup reseeds it (refusing any name not ending in `_test`), so nothing in development data is touched. The backend suite uses `finguard_test` instead, so the two suites can run one after the other without restarting anything. Generated passwords, saved test sessions and screenshots go to `frontend/.e2e/`, which Git ignores. The browser-test API uses its own random signing key on each start and allows only `http://127.0.0.1:4173` as an origin.
+`python scripts/e2e_stack.py database off` makes `finguard_e2e_test` refuse connections, and `database on` restores it, for outage tests (Phase 5 M7); `up` always restores it. `e2e_stack.py up` creates `finguard_e2e_test` if it is missing, and global setup reseeds it (refusing any name not ending in `_test`), so nothing in development data is touched. The backend suite uses `finguard_test` instead, so the two suites can run one after the other without restarting anything. Generated passwords, saved test sessions and screenshots go to `frontend/.e2e/`, which Git ignores. The browser-test API uses its own random signing key on each start and allows only `http://127.0.0.1:4173` as an origin. Its sessions last 120 minutes (`E2E_ACCESS_TOKEN_MINUTES`), because the setup project signs in once for the whole run (Phase 6).
 
 ## Environment variables
 
@@ -165,7 +182,7 @@ Run `scripts/generate_env.py` rather than copying `.env.example` by hand. It fil
 
 ## Configuration files
 
-From Phase 3, configuration files that are authored by hand have their own explanation documents beside them, for example `docker-compose.yml.explanation.md` ([why](docs/decisions/0003-phase-3-decisions.md)). Since Phase 4 the frontend configuration files have them too, and since Phase 5 the CI files (`.github/workflows/ci.yml`, `.github/expected-tests.json`).
+From Phase 3, configuration files that are authored by hand have their own explanation documents beside them, for example `docker-compose.yml.explanation.md` ([why](docs/decisions/0003-phase-3-decisions.md)). Since Phase 4 the frontend configuration files have them too, since Phase 5 the CI files (`.github/workflows/ci.yml`, `.github/expected-tests.json`), and since Phase 6 the production files (`docker-compose.prod.yml`, `docker/caddy/Caddyfile.production`, `docker/web/Dockerfile` and its ignore file).
 
 | File | Purpose | Maintenance |
 |---|---|---|
@@ -179,6 +196,8 @@ From Phase 3, configuration files that are authored by hand have their own expla
 | `.gitignore` | Excludes secrets, data, model binaries and build output | Review before adding any new data location |
 | `.env.example` | Placeholder configuration only | Never put a real value here |
 | `.github/expected-tests.json` | Tests CI expects to skip on a clean checkout, and minimum passes | Change only with `scripts/check_test_run.py --update` on a fresh clone, and review the diff |
+| `docker-compose.prod.yml`, `docker/caddy/Caddyfile.production` | Production deployment (Phase 6) | Keep `TRUSTED_PROXY_IPS` equal to Caddy's fixed address; change the CSP in both Caddyfiles and `vite.config.ts` together |
+| `.env.production` | Production secrets and site settings, generated, never committed | Regenerate only for a new deployment: the database keeps its first passwords |
 
 ## Troubleshooting
 

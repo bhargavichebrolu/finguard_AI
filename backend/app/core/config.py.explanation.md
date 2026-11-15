@@ -33,7 +33,7 @@ PRD section 10 requires environment-based configuration and separate development
 ### `_origins_must_be_explicit`
 - **Purpose:** enforce the PRD's CORS restriction.
 - **Parameters / types:** the settings object. **Returns / type:** `Settings`.
-- **Internal processing:** rejects `*` everywhere and `localhost` in production. Also rejects non-Secure session cookies in production, and a wildcard proxy list.
+- **Internal processing:** rejects `*` everywhere and `localhost` in production. Also rejects non-Secure session cookies in production, a wildcard proxy list, and any proxy entry `check_proxy_entry` refuses. In production it also requires database rate limits, refuses `API_DOCS_ENABLED=true` (security finding S13), and requires at least one trusted proxy (S14, Phase 6): production cookies need HTTPS, which the API never terminates, so a proxy is always in front.
 - **Error handling:** raises `ValueError`.
 - **Calls:** `cors_origins`. **Used by:** pydantic.
 
@@ -49,6 +49,16 @@ Returns `SESSION_COOKIE_SECURE` if set, otherwise true in production only.
 
 ### `trusted_proxies`
 Returns `TRUSTED_PROXY_IPS` as a list. It is empty by default, which trusts no proxy.
+
+### `docs_enabled`
+Whether `/docs`, `/redoc` and `/openapi.json` are served: `API_DOCS_ENABLED` if set, otherwise on everywhere except production (Phase 6, security finding S13). `app/main.py` passes `None` as each route's URL when it is off, so the routes do not exist.
+
+### `check_proxy_entry`
+- **Purpose:** accept one proxy address or network, as uvicorn's `ProxyHeadersMiddleware` will parse it.
+- **Parameters / types:** `entry: str`. **Returns / type:** `None`.
+- **Internal processing:** `ipaddress.ip_network` in strict mode, so host bits must be clear (`10.0.0.5/24` is refused, because uvicorn would fail on it at start-up). A prefix of length 0 (`0.0.0.0/0`, `::/0`) trusts every address and is refused.
+- **Error handling:** raises `ValueError`, which pydantic reports.
+- **Calls:** `ipaddress.ip_network`. **Used by:** `_origins_must_be_explicit`.
 
 ### `get_settings`
 - **Purpose:** provide one validated settings object.

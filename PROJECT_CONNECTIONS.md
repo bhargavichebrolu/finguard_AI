@@ -1,6 +1,6 @@
 # Project Connections
 
-How FinGuard AI fits together, from raw data to the screen. **Each section states whether it describes implemented code or a plan.** Current state: Phases 1 to 4 are complete and accepted. Phase 5 is implemented on branch `phase-5-hardening`, and its acceptance is pending the reviewer's decision on the Firefox reliability investigation. Phase 6 is planned and has not started. The model is frozen and evaluated; the API, database and React interface run locally in Docker; Phase 5 added the shared batch queue and rate limits, an HTTPS production-like stack, three browser engines, failure handling and a CI workflow (not yet run on GitHub). Phase 6 is deployment. Results are recorded in [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md).
+How FinGuard AI fits together, from raw data to the screen. **Each section states whether it describes implemented code or a plan.** Current state: Phases 1 to 5 are complete and accepted (Phase 5 on 2026-11-13, with its documented residual risks). Phase 6 is implemented on branch `phase-5-hardening` (not merged into `main`, not pushed): a production deployment on one Docker host, verified in a local rehearsal and not deployed to a public host. The model is frozen and evaluated; the API, database and React interface run locally in Docker; Phase 5 added the shared batch queue and rate limits, an HTTPS production-like stack, three browser engines, failure handling and a CI workflow (not yet run on GitHub). Results are recorded in [ML_EXPERIMENTS.md](ML_EXPERIMENTS.md).
 
 ## 1. Project introduction
 FinGuard AI analyses simulated mobile-money transactions, gives each an uncalibrated model score and a review decision, explains it and supports investigation through a dashboard. It uses the synthetic PaySim dataset and is for research and demonstration only. The point of the project is the connected system rather than any one model.
@@ -61,8 +61,8 @@ Dashboard and reports retrieve stored results [implemented] pages/DashboardPage.
 ```
 finguard-ai/
 |-- README.md and the other root documents
-|-- .env.example, .gitignore, .gitattributes, Makefile, docker-compose.yml
-|-- docker/postgres/init/          first-start SQL: application role and test database
+|-- .env.example, .gitignore, .gitattributes, Makefile, docker-compose.yml, docker-compose.prod.yml
+|-- docker/postgres/init/          first-start SQL: application role, and a test database when named
 |-- docs/
 |   |-- PRD.md                     specification
 |   |-- file-explanations/         Phase 1 and 2 documents, mirroring the source tree
@@ -106,7 +106,8 @@ finguard-ai/
 |   |-- src/{components,pages,layouts,services,hooks,types,utils,assets}/ the React application
 |   |-- tests/{unit,e2e,prodlike,perf}/ Vitest, Playwright (three engines), HTTPS stack, page timings
 |-- scripts/                       command-line entry points
-|-- docker/caddy/                  Caddyfile for the HTTPS production-like stack
+|-- docker/caddy/                  Caddyfiles: the HTTPS production-like stack, and production (Phase 6)
+|-- docker/web/                    production web image: interface built from source, served by Caddy
 |-- .github/workflows/ci.yml      GitHub Actions (Phase 5 M8; not yet run on GitHub)
 |-- .github/expected-tests.json   skips and minimum passes CI expects on a clean checkout
 ```
@@ -207,7 +208,10 @@ Phase 1 and 2 files have documents in [docs/file-explanations/](docs/file-explan
 | `backend/app/repositories/transactions.py`, `investigations.py`, `reports.py` | Queries |
 | `backend/app/api/router.py`, `routes/*.py`, `schemas/*.py` | Routes and schemas |
 | `backend/app/utils/csv_safety.py` | Formula-safe CSV and file names |
-| `scripts/generate_env.py`, `scripts/create_admin.py` | Local secrets and the first administrator |
+| `scripts/generate_env.py`, `scripts/create_admin.py` | Local secrets and the first administrator (`create_admin.py` runs `app/commands/create_admin.py`, which the image also contains) |
+| `docker-compose.prod.yml`, `docker/web/Dockerfile` (+ `.dockerignore`), `docker/caddy/Caddyfile.production` | Production deployment (Phase 6) |
+| `scripts/generate_production_env.py`, `scripts/verify_deployment.py` | Production settings with new secrets; checks of a running deployment (Phase 6) |
+| `backend/app/commands/create_admin.py` | The first administrator, inside the API container (Phase 6) |
 | `backend/tests/unit/test_config.py`, `test_model_service.py` | Settings and model verification |
 | `backend/tests/integration/test_migrations.py` | Migrations and constraints on PostgreSQL |
 | `backend/tests/api/conftest.py`, `test_auth.py`, `test_transactions.py`, `test_batches.py`, `test_investigations.py`, `test_models_and_reports.py` | The API end to end |
@@ -303,7 +307,7 @@ Navigation shows only pages whose permission `/auth/me` reports. The API still e
 
 ## 14. Frontend-to-backend communication (Phase 4)
 ```
-browser -> same origin /api/...    (Vite dev :5173 or preview :4173 locally; host rewrite in Phase 6)
+browser -> same origin /api/...    (Vite dev :5173 or preview :4173 locally; Caddy in production, Phase 6)
         -> proxy -> FastAPI         (FINGUARD_API_PROXY_TARGET, default http://127.0.0.1:8010)
 cookies: finguard_session (HttpOnly, Path=/api)  finguard_csrf (readable, sent back as X-CSRF-Token)
 ```
@@ -457,13 +461,25 @@ A flagged prediction outside demo mode opens an investigation with status `NEW`.
 ## 22. Explainability flow (implemented)
 Phase 2: `explainability.py` produced global importance, saved in the metrics bundle. Phase 3: `ServingModel.explain` uses XGBoost's own TreeSHAP values (`pred_contribs`), which tests show match the `shap` library and add up to the score on the log-odds scale. They are stored for every single prediction and for flagged batch rows, and returned with Phase 2's limitations. SHAP does not establish causality. The Phase 4 interface shows them on Transaction Analysis and Explainable AI.
 
-## 23. Deployment architecture (planned: Phase 6)
-Independently deployed frontend, backend container, managed PostgreSQL and separately stored artefacts. See [DEPLOYMENT.md](DEPLOYMENT.md).
+## 23. Deployment architecture (implemented: Phase 6; verified locally, not on a public host)
+```
+docker-compose.prod.yml  (.env.production from scripts/generate_production_env.py)
+  web        docker/web/Dockerfile: npm run build in Node.js 24 -> Caddy + docker/caddy/Caddyfile.production
+             publishes 80/443; ACME certificate; /api/* and /health -> api:8000; bodies <= 11 MB
+  api        backend/Dockerfile (finguard-api); APP_ENV=production; TRUSTED_PROXY_IPS=172.30.240.10 (web)
+             no /docs, /redoc, /openapi.json; artifacts/ read-only; networks edge + data
+  db         postgres:17-alpine; volume pgdata; no published port; network data only; no test database
+  migrate    alembic upgrade head before api starts
+  retention  python -m app.commands.retention --apply, daily
+first account: python -m app.commands.create_admin (inside api)
+check:         scripts/verify_deployment.py --origin https://... (26 checks)
+```
+The Phase 1 design named Netlify or Vercel, a container host and managed PostgreSQL. One Compose host was chosen instead because it keeps the same-origin rule (ADR 0004) and the database batch queue without platform-specific settings; the same images can be used on a platform. See [DEPLOYMENT.md](DEPLOYMENT.md) and [ADR 0006](docs/decisions/0006-phase-6-decisions.md).
 
 ## 24. Environment configuration (implemented)
 The API reads `app/core/config.py` settings from the environment and `.env`. `scripts/generate_env.py` creates `.env` with random secrets. Phase 1 and 2 scripts still use `pipeline_io.py` defaults and command-line arguments. The frozen model's version, hash and threshold are deliberately not settings.
 
-## 25. Docker architecture (implemented locally; deployment in Phase 6)
+## 25. Docker architecture (implemented: development and test stacks; production in section 23)
 ```
 docker-compose.yml
   db       postgres:17-alpine, SCRAM from first start, named volume, port on 127.0.0.1 only
@@ -472,14 +488,16 @@ docker-compose.yml
   migrate-e2e, api-e2e   profile "e2e" only: the same image against finguard_e2e_test on 127.0.0.1:8011
   migrate-prodlike, api-prodlike, caddy-prodlike   profile "prodlike" only (Phase 5 M5): APP_ENV=production
            behind Caddy on https://127.0.0.1:8443, finguard_prodlike_test
-  images   postgres and caddy pinned by digest (Phase 5 M1, M5)
+  images   postgres and caddy pinned by digest (Phase 5 M1, M5); finguard-api built in two stages, without
+           uv or NVIDIA NCCL, 981 MB (Phase 6)
+  api-e2e  sessions last 120 minutes (E2E_ACCESS_TOKEN_MINUTES), so a slow run keeps its stored sessions
 ```
 
 ## 26. Local setup instructions
 See [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md).
 
-## 27. Production deployment instructions (planned: Phase 6)
-To be written and verified against a live deployment.
+## 27. Production deployment instructions (implemented: Phase 6)
+[DEPLOYMENT.md](DEPLOYMENT.md): generate settings, `docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --wait`, create the administrator inside the API container, run `scripts/verify_deployment.py`. Verified in a local rehearsal with Caddy's own certificate authority; not yet against a public host.
 
 ## 28. Troubleshooting
 See [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md#troubleshooting).

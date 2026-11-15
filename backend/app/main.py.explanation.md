@@ -30,6 +30,7 @@ It is the entry point for `uvicorn`. It also records the start-up rule from the 
 - **Error handling:** invalid settings raise here.
 - **Calls:** `configure_logging`, `register_exception_handlers`. **Used by:** the module body, tests.
 - **Proxy middleware:** added only when trusted proxies are configured.
+- **API documentation:** `docs_url`, `redoc_url` and `openapi_url` are `None` when `docs_enabled` is false (production, Phase 6), so those routes do not exist.
 
 ## E. Classes Explained
 None.

@@ -1,7 +1,18 @@
 # API image. Installs exact versions from uv.lock and leaves out the training libraries.
-# The frozen model is not copied in: docker-compose.yml mounts it read-only at run time.
+# The frozen model is not copied in: it is mounted read-only at run time (DEPLOYMENT.md).
 # Pinned by digest so a rebuild uses exactly this base image (Phase 5 reproducibility). To update:
 # docker buildx imagetools inspect python:3.11-slim, then test and replace the digest.
+#
+# Two stages (Phase 6): the first installs the locked packages with uv; the second copies only the
+# finished virtual environment, so the installer itself is not shipped.
+FROM python:3.11-slim@sha256:07d4824036af339fa1b6ef769cc99d9c10a141769538b52b3b597c84f7a7b535 AS build
+
+RUN pip install --no-cache-dir "uv==0.8.24"
+WORKDIR /app
+ENV UV_LINK_MODE=copy
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-default-groups --no-install-project
+
 FROM python:3.11-slim@sha256:07d4824036af339fa1b6ef769cc99d9c10a141769538b52b3b597c84f7a7b535
 
 # XGBoost needs the OpenMP runtime, which the slim image does not include.
@@ -9,17 +20,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir "uv==0.8.24"
-
 WORKDIR /app
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
 
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-default-groups --no-install-project
-
+COPY --from=build /app/.venv /app/.venv
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY app ./app

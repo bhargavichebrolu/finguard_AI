@@ -42,6 +42,11 @@ uv run --project backend python scripts/check_test_run.py backend pytest.xml --u
 uv run --project backend python scripts/prodlike_stack.py up
 cd frontend; npm run test:prodlike
 
+# Production deployment (Phase 6; see DEPLOYMENT.md): checks of a running deployment over HTTPS,
+# and inference parity of an API image (run inside the image; see the script's docstring)
+uv run --project backend python scripts/verify_deployment.py --origin https://<site> --email <admin> [--ca-file root.crt] [--write]
+docker run ... finguard-api:local /scripts/score_reference_grid.py
+
 # Secrets in all history, and dependency audits
 uv run --project backend python scripts/scan_secrets.py
 uv run --project backend pip-audit
@@ -380,6 +385,19 @@ Verification after the changes:
 Per project: setup 5, desktop 83, tablet 19, mobile 19, firefox 83, webkit 83, webkit-mobile 19 (17.8 minutes). An earlier attempt was invalid. It was started from a shell without Docker on its PATH, so the 15 tests that restart the API or switch off the database (5 per engine) failed at once with `spawnSync docker ENOENT`. The other 296 passed. It was rerun as above.
 
 If the status failure recurs, the failing line says which step broke. Keep the API container's log (`docker logs finguard-api-e2e-1`) before restarting the stack.
+
+## Phase 6 tests (deployment and release)
+
+| Test | What it proves |
+|---|---|
+| `test_config.py` (4 new) | Production refuses to start without a trusted proxy (S14), refuses all-covering or malformed proxy entries, and keeps the API documentation off (S13) |
+| `test_phase4_backend.py::test_production_serves_no_api_documentation` | A production app answers 404 for `/docs`, `/redoc`, `/openapi.json` |
+| `test_transactions.py::test_explorer_pages_match_one_full_sort` (24 cases) | The deferred join returns exactly the single-page order for every sort, direction and filter |
+| `test_create_admin.py` (4) | The in-image administrator command: audited, hashed, never printed, refuses duplicates and bad input |
+| `test_deployment.py` (21 cases) | The production files: proxy trust, published ports, required secrets, read-only model, digests, build context, body limit, no API compression, CI image job, settings generator, reference grid |
+| `production.spec.ts` (1 new) | The production-like API serves no documentation over the real stack |
+
+Verified outside pytest, in the local production rehearsal ([DEPLOYMENT.md](DEPLOYMENT.md), section 6): `verify_deployment.py --write` 26 of 26; persistence across a full stop and start; recovery from a database outage without an API restart; a 12 MB chunked upload stopped by Caddy; identical inference fingerprints in the old and new API images.
 
 ## Latest recorded results
 

@@ -63,6 +63,26 @@ def test_documentation_pages_get_their_own_policy(client):
     assert "default-src 'none'" in policy
 
 
+def test_production_serves_no_api_documentation(monkeypatch):
+    # Phase 6 (security finding S13): production has no interactive pages and no schema endpoint,
+    # so the looser documentation policy above is never served there. Built without start-up, so
+    # nothing is loaded or stored.
+    from app.main import create_app
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "api_docs_enabled", None)
+    production = TestClient(create_app())
+    for path in ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"):
+        assert production.get(path).status_code == 404, path
+    assert production.get("/health").status_code == 200
+
+    monkeypatch.setattr(settings, "app_env", "development")
+    development = TestClient(create_app())
+    assert development.get("/docs").status_code == 200
+    assert development.get("/openapi.json").status_code == 200
+
+
 def _failed_logins_from(client, forwarded_for: str, count: int) -> list[int]:
     return [
         client.post(

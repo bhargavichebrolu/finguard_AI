@@ -1,6 +1,6 @@
 # Architecture
 
-**Implemented through Phase 5** (Phases 1–4 accepted; Phase 5 implemented on branch `phase-5-hardening`, with acceptance pending): the offline data pipeline, experiments and model artefacts, the FastAPI service and PostgreSQL database, the React interface, browser tests in three engines, an HTTPS production-like stack, and a CI workflow (written, not yet run on GitHub). Everything runs locally in Docker. Deployment is the target design from the [PRD](docs/PRD.md), planned for Phase 6.
+**Implemented through Phase 6** (Phases 1–5 accepted; Phase 6 on branch `phase-5-hardening`, not merged or pushed): the offline data pipeline, experiments and model artefacts, the FastAPI service and PostgreSQL database, the React interface, browser tests in three engines, an HTTPS production-like stack, a CI workflow (written, not yet run on GitHub), and a production deployment on one Docker host (`docker-compose.prod.yml`), verified in a local rehearsal. Nothing is deployed to a public host.
 
 ## Target system
 
@@ -41,8 +41,8 @@ Training and live inference are separate processes. The API loads an already-tra
 | Shared rate limits | `backend/app/core/rate_limit.py` | Implemented in Phase 5: counted in PostgreSQL |
 | Retention command | `backend/app/commands/retention.py` | Implemented in Phase 5: dry run by default |
 | HTTPS production-like stack | `docker/caddy/Caddyfile`, `scripts/prodlike_stack.py`, `frontend/tests/prodlike/` | Implemented in Phase 5, local only |
-| Containers | `backend/Dockerfile`, `docker-compose.yml` | Implemented for local use |
-| Deployment | | Planned: Phase 6 |
+| Containers | `backend/Dockerfile` (two stages, 981 MB), `docker-compose.yml` | Implemented; the same API image serves development and production |
+| Production deployment | `docker-compose.prod.yml`, `docker/web/Dockerfile`, `docker/caddy/Caddyfile.production`, `scripts/generate_production_env.py`, `scripts/verify_deployment.py` | Implemented in Phase 6: one Docker host; verified in a local rehearsal, not on a public host |
 
 ## Design rules
 
@@ -157,6 +157,21 @@ prodlike        browser -> Caddy (HTTPS, HSTS, built frontend) -> /api -> API (A
 CI              .github/workflows/ci.yml: clean checkout; skips must equal .github/expected-tests.json
 ```
 
+## Production (Phase 6)
+
+```
+internet -> web (Caddy: ACME certificate, HSTS, CSP, built interface, bodies <= 11 MB)
+             |  edge network 172.30.240.0/24; /api/* and /health only, uncompressed
+             v
+           api (APP_ENV=production; trusts X-Forwarded-For from 172.30.240.10 only;
+             |   no /docs, /redoc or /openapi.json; frozen model mounted read-only)
+             |  data network (Caddy is not on it)
+             v
+           db (PostgreSQL 17, volume pgdata, SCRAM, non-superuser role)   <- migrate (once), retention (daily)
+```
+
+Only Caddy publishes ports. Secrets come from a generated, Git-ignored `.env.production` with no defaults. The explorer fetches pages with a deferred join: identifiers are sorted and skipped first, then only the page's rows are joined.
+
 ## Key decisions
 
-Recorded in [ADR 0001](docs/decisions/0001-phase-1-decisions.md), [ADR 0002](docs/decisions/0002-phase-2-decisions.md), [ADR 0003](docs/decisions/0003-phase-3-decisions.md), [ADR 0004](docs/decisions/0004-phase-4-decisions.md) and [ADR 0005](docs/decisions/0005-phase-5-decisions.md).
+Recorded in [ADR 0001](docs/decisions/0001-phase-1-decisions.md), [ADR 0002](docs/decisions/0002-phase-2-decisions.md), [ADR 0003](docs/decisions/0003-phase-3-decisions.md), [ADR 0004](docs/decisions/0004-phase-4-decisions.md), [ADR 0005](docs/decisions/0005-phase-5-decisions.md) and [ADR 0006](docs/decisions/0006-phase-6-decisions.md).

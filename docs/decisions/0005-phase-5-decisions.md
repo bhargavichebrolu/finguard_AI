@@ -1,6 +1,6 @@
 # ADR 0005: Phase 5 decisions
 
-Status: accepted for Phase 5, subject to review at the phase gate. It records what was built for the decisions approved on 2026-11-08 in [docs/plans/phase-5-plan.md](../plans/phase-5-plan.md) (D1–D6), and the further decisions the milestones needed. Measurements are in [docs/performance/](../performance/phase-5-baseline.md); security findings are in [docs/security/phase-5-review.md](../security/phase-5-review.md).
+Status: accepted with Phase 5 on 2026-11-13. It records what was built for the decisions approved on 2026-11-08 in [docs/plans/phase-5-plan.md](../plans/phase-5-plan.md) (D1–D6), and the further decisions the milestones needed. Measurements are in [docs/performance/](../performance/phase-5-baseline.md); security findings are in [docs/security/phase-5-review.md](../security/phase-5-review.md).
 
 ## D1. Batch processing: a PostgreSQL queue with a worker in each API process (M4)
 Approved option A. It replaces ADR 0003 section 10, where FastAPI background tasks read a local temporary file and start-up failed every unfinished job.

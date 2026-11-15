@@ -61,9 +61,55 @@ def test_production_refuses_per_process_rate_limits():
 
 def test_production_accepts_a_real_origin():
     settings = build(
-        app_env="production", cors_allowed_origins="https://a.example, https://b.example"
+        app_env="production",
+        cors_allowed_origins="https://a.example, https://b.example",
+        trusted_proxy_ips="172.30.240.10",
     )
     assert settings.cors_origins == ["https://a.example", "https://b.example"]
+
+
+PRODUCTION = {"app_env": "production", "cors_allowed_origins": "https://a.example"}
+
+
+def test_production_requires_its_reverse_proxy():
+    # Phase 6 (security finding S14): without the proxy's address, every user would appear to
+    # come from the proxy and share one sign-in limit per email.
+    with pytest.raises(ValidationError, match="reverse proxy in TRUSTED_PROXY_IPS"):
+        build(**PRODUCTION)
+    assert build(**PRODUCTION, trusted_proxy_ips="172.30.240.10").trusted_proxies == [
+        "172.30.240.10"
+    ]
+    assert build().trusted_proxies == []  # development may run without a proxy
+
+
+@pytest.mark.parametrize(
+    ("entry", "message"),
+    [
+        ("0.0.0.0/0", "must not trust every address"),
+        ("::/0", "must not trust every address"),
+        ("proxy.example", "not an IP address or network"),
+        ("10.0.0.5/24", "not an IP address or network"),  # host bits set: uvicorn would crash
+    ],
+)
+def test_trusted_proxies_must_be_specific_addresses(entry, message):
+    with pytest.raises(ValidationError, match=message):
+        build(trusted_proxy_ips=f"172.30.240.10, {entry}")
+
+
+def test_trusted_proxies_accept_addresses_and_networks():
+    settings = build(trusted_proxy_ips="172.30.240.10, 10.0.0.0/24, ::1")
+    assert settings.trusted_proxies == ["172.30.240.10", "10.0.0.0/24", "::1"]
+
+
+def test_api_documentation_is_off_in_production_and_cannot_be_turned_on():
+    # Phase 6 (security finding S13): the interactive pages need a looser CSP and list every
+    # route; production publishes the contract as documents instead.
+    production = build(**PRODUCTION, trusted_proxy_ips="172.30.240.10")
+    assert production.docs_enabled is False
+    with pytest.raises(ValidationError, match="must not serve the interactive API documentation"):
+        build(**PRODUCTION, trusted_proxy_ips="172.30.240.10", api_docs_enabled=True)
+    assert build().docs_enabled is True
+    assert build(api_docs_enabled=False).docs_enabled is False
 
 
 def test_secrets_do_not_appear_when_settings_are_printed():

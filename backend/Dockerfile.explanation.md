@@ -23,6 +23,8 @@ No functions. The steps:
 ### Dependency install
 `uv sync --frozen --no-default-groups --no-install-project` installs exactly what `uv.lock` records, and leaves out the `training` and `dev` groups. Copying the lock file before the code means dependency layers are rebuilt only when dependencies change.
 
+**Two stages (Phase 6).** The `build` stage installs uv and the locked packages; the final stage copies only `/app/.venv`, so uv (66 MB) is not shipped. Together with the lock no longer installing NVIDIA NCCL (469 MB, see `pyproject.toml`), the image went from 1.92 GB to 981 MB as Docker reports it. A fixed grid of 550 synthetic inputs gave byte-for-byte identical scores and SHAP explanations in the old and new images.
+
 ### Non-root user
 The process runs as `finguard`, which cannot change `/app`.
 

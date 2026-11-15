@@ -53,10 +53,15 @@ def create_app() -> FastAPI:
     """Build the application."""
     configure_logging()
     settings = get_settings()
+    # Off in production (security finding S13): no interactive pages and no schema endpoint.
+    docs = settings.docs_enabled
     app = FastAPI(
         title="FinGuard AI API",
         version=APP_VERSION,
         lifespan=lifespan,
+        docs_url="/docs" if docs else None,
+        redoc_url="/redoc" if docs else None,
+        openapi_url="/openapi.json" if docs else None,
         description=(
             "Scores simulated transactions for human review. `model_score` is uncalibrated and is "
             "not a probability of fraud. `FLAG_FOR_REVIEW` is a request for review, not a finding. "

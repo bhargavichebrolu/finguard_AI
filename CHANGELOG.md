@@ -1,8 +1,48 @@
 # Changelog
 
+## Phase 6: deployment and release (2026-11-15)
+
+Branch `phase-5-hardening`, after Phase 5 was accepted. Not merged into `main`, not pushed, and **not deployed to a public host**: the production configuration was verified in a local rehearsal. Decisions are in [ADR 0006](docs/decisions/0006-phase-6-decisions.md), and evidence is in the [completion record](docs/plans/phase-6-completion.md).
+
+### Added
+- **Production deployment on one Docker host:**
+  - `docker-compose.prod.yml` runs Caddy, the API, PostgreSQL, migrations and daily retention.
+  - `docker/web/Dockerfile` builds the interface from source and serves it with Caddy.
+  - `docker/caddy/Caddyfile.production` handles the ACME certificate, HSTS, CSP, and caching.
+- **Deployment scripts:**
+  - `scripts/generate_production_env.py` writes new secrets to a Git-ignored file.
+  - `scripts/verify_deployment.py` runs 26 HTTPS checks of a running deployment.
+  - `scripts/score_reference_grid.py` gives an inference-parity fingerprint for image changes.
+- **`app/commands/create_admin.py`:** creates the first administrator inside the API container. `scripts/create_admin.py` now calls it.
+- **CI:** a third job, `images`, builds both images and validates the production Compose file. It has not run on GitHub.
+- **ADR 0006**, DEPLOYMENT.md rewritten, and the Phase 6 completion record.
+
+### Changed
+- **API image:**
+  - Two-stage build; NVIDIA NCCL no longer installed; 1.92 GB to 981 MB.
+  - XGBoost 3.2.0 and scikit-learn 1.9.1 unchanged; identical scores and explanations on 550 synthetic inputs.
+- **Explorer pages use a deferred join:** at 180,285 rows, the last page went from 392 to 79 ms, with the same rows.
+- **Database init script:** creates a test database only when `TEST_DB_NAME` is set.
+- **Browser-test API sessions last 120 minutes**, so a slow run keeps its signed-in sessions.
+
+### Fixed (security findings)
+- **S13:** production no longer serves `/docs`, `/redoc` or `/openapi.json`, and refuses to turn them on.
+- **S14:** production refuses to start without a trusted proxy, and every environment refuses malformed or all-covering `TRUSTED_PROXY_IPS` entries.
+- **S15:** the production Caddyfile obtains a public certificate. This is untested without a public host.
+- **Chunked uploads:** Caddy caps request bodies at 11 MB while streaming.
+
+### Known limitations
+- **Not deployed:** no public host, DNS name or public certificate exists.
+- **CI:** it has never run on GitHub.
+- **Untested:** Safari, screen readers, and WebKit's SameSite enforcement.
+- **Phase 5 residual risks:** the unexplained single Firefox status-change failure, and the Firefox teardown hang under CPU starvation.
+- **Limits around the minute boundary:** prediction and upload limits use fixed windows, so up to twice the limit can pass across a minute boundary.
+- **Deep explorer offsets:** still pass over earlier rows, though they no longer build them.
+- **Development without the proxy:** chunked uploads to the API directly are still spooled before the size check.
+
 ## Phase 5: integration hardening, quality assurance and reliability (2026-11-11)
 
-Branch `phase-5-hardening`, nine milestones. Awaiting review at the gate: not merged into `main`, not pushed. Decisions are in [ADR 0005](docs/decisions/0005-phase-5-decisions.md), and evidence is in the [completion record](docs/plans/phase-5-completion.md).
+Branch `phase-5-hardening`, nine milestones and the Firefox investigation follow-up (`79b2947`). Accepted on 2026-11-13 with its documented residual risks; not merged into `main`, not pushed. Decisions are in [ADR 0005](docs/decisions/0005-phase-5-decisions.md), and evidence is in the [completion record](docs/plans/phase-5-completion.md).
 
 ### Added
 - **M1, isolation and reproducibility:**
